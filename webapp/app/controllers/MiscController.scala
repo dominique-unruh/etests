@@ -11,7 +11,7 @@ class MiscController @Inject()(val controllerComponents: ControllerComponents) e
   def javascriptRoutes: Action[AnyContent] = Action { implicit request =>
     Ok(
       JavaScriptReverseRouter("jsRoutes")(
-        routes.javascript.AssessmentController.elementAction
+        routes.javascript.AssessmentController.elementEvent
       )
     ).as(MimeTypes.JAVASCRIPT)
   }

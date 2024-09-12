@@ -1,9 +1,3 @@
-@*
-* This template is called from the `index` template. This template
-* handles the rendering of the page header and body tags. It takes
-* two arguments, a `String` for the title of the page and an `Html`
-* object to insert into the body of the page.
-*@
 @import views.html.helper.CSRF
 @(title: String, body: Html)(implicit requestHeader: RequestHeader)
 
@@ -14,15 +8,15 @@
         <link rel="stylesheet" media="screen" href="@routes.Assets.versioned("stylesheets/main.css")">
 @*        <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/favicon.png")">*@
         <script type="text/javascript" src="@routes.MiscController.javascriptRoutes"></script>
+        <!--suppress JSUnresolvedLibraryURL -->
         <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@@3/es5/tex-mml-chtml.js"></script>
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-        <script>
+        <script> @* misc configuration *@
             window.MathJax = {
                 tex: {
                     inlineMath: [['$', '$'], ['\\(', '\\)']]
                 }
             };
-
             let csrfToken = "@(CSRF.getToken.value)";
         </script>
         <script language="JavaScript" src="@routes.Assets.versioned("javascripts/assessment.js")"></script>

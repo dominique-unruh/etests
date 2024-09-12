@@ -8,7 +8,7 @@ implicit class IndentedInterpolator(val sc: StringContext) extends AnyVal {
   }
 
   private inline def indentArg(arg: Any, indent: Int, sb: StringBuilder): Int = {
-    println(arg)
+//    println(arg)
     val argString = arg.toString
     if (argString.isEmpty) indent
     else {

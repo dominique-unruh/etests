@@ -10,8 +10,8 @@ import org.commonmark.renderer.html.HtmlRenderer
 
 import javax.script.{ScriptEngine, ScriptEngineManager}
 import scala.util.matching.Regex
-import assessments.{Assessment, ElementName, IndentedInterpolator}
-import play.api.libs.json.{JsArray, JsBoolean, JsString, JsValue, JsObject}
+import assessments.{Assessment, ElementAction, ElementName, IndentedInterpolator}
+import play.api.libs.json.{JsArray, JsBoolean, JsObject, JsString, JsValue}
 import play.mvc.BodyParser.Json
 import play.twirl.api.Html
 
@@ -73,20 +73,16 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     Ok(html)
   }
 
-  case class ElementAction(element: ElementName, data: JsValue) {
-    def asJson: JsObject = JsObject(Seq(
-      "element" -> JsString(element.toString),
-      "callback" -> JsString(element.jsElementCallbackName),
-      "data" -> data))
-  }
+  private def elementActionAsJson(action: ElementAction) =
+    JsObject(Seq(
+      "element" -> JsString(action.element.toString),
+      "callback" -> JsString(action.element.jsElementCallbackName),
+      "data" -> action.data))
 
-  def elementAction(element: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+  def elementEvent(element: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     val payload = request.body.asJson.get
-//    println((element, payload))
-    val content = payload.asInstanceOf[JsObject].value("content").asInstanceOf[JsString]
-    val actions = Seq(ElementAction(ElementName("test_input.preview"),
-      JsObject(Seq("preview" -> content))))
-    val response: JsValue = JsArray(actions.map(_.asJson))
+    val actions = exampleAssessment.elementEvent(ElementName(element), payload)
+    val response: JsValue = JsArray(actions.map(elementActionAsJson))
     Ok(response)
   }
 }
