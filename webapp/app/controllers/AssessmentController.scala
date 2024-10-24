@@ -5,8 +5,6 @@ import play.api.*
 import play.api.mvc.*
 
 import java.nio.file.{Files, Path}
-import org.commonmark.parser.Parser
-import org.commonmark.renderer.html.HtmlRenderer
 
 import javax.script.{ScriptEngine, ScriptEngineManager}
 import scala.util.matching.Regex

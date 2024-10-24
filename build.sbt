@@ -24,4 +24,6 @@ lazy val problems = (project in file("problems"))
     libraryDependencies += "org.commonmark" % "commonmark" % "0.22.0",
 //    libraryDependencies += "com.github.benoitlouy" %% "indent" % "0.8.0",
     libraryDependencies += "org.playframework" %% "play-json" % "3.0.4",
+    libraryDependencies += "dev.scalapy" %% "scalapy-core" % "0.5.3",
+
   )
