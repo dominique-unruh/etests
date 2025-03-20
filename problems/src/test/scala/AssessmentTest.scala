@@ -1,9 +1,14 @@
+import scala.language.experimental.genericNumberLiterals
 import Dynexite.Dynexite
-import assessments.{Assessment, MultipleChoice, Points}
+import assessments.stack.StackMath.{Bool, Funcall, Integer, Operation, Ops, Variable}
+import assessments.{Assessment, Context, ElementName, Grader, MultipleChoice, Points, Python, SyntaxError, TextInput, UserError}
+import fastparse.Parsed
+import me.shadaj.scalapy
+import me.shadaj.scalapy.py
 import org.scalatest.funsuite.AnyFunSuiteLike
 
-import scala.language.experimental.genericNumberLiterals
 import java.nio.file.{Files, Path, Paths}
+import scala.collection.mutable
 import scala.jdk.StreamConverters.*
 
 class AssessmentTest extends AnyFunSuiteLike {
@@ -40,7 +45,7 @@ object AssessmentTest {
 
         blockType match {
             case Dynexite.BlockType.classification => gradeClassification(assessment, item)
-//            case Dynexite.BlockType.stack => gradeStack(assessment, item)
+            case Dynexite.BlockType.stack => gradeStack(assessment, item)
         }
     }
 
@@ -73,4 +78,58 @@ object AssessmentTest {
         assert(item.earnedPoints == points, (item.earnedPoints, points))
         assert(item.maxPoints == maxPoints, (item.maxPoints, maxPoints))
     }
+
+    def gradeStack(assessment: Assessment, item: Dynexite.Item): Unit = {
+        var points: Points = 0
+        var maxPoints: Points = 0
+        val answers = {
+            val builder = mutable.HashMap[String,String]()
+            for (block0 <- item.blocks;
+                 block = block0.asInstanceOf[Dynexite.StackBlock];
+                 (k,v) <- block.answers) {
+                assert(!builder.contains(k))
+                builder.put(k,v)
+            }
+            builder.to(Map)
+        }
+
+        assert(answers.keySet.subsetOf(assessment.pageElements.keys.toSet.map(_.toString)), (answers, assessment.pageElements.keys))
+
+        val graders = assessment.pageElements.collect {
+            case (_, grader: Grader) => grader
+        }
+
+        if (graders.nonEmpty) {
+            println("With grader")
+            assert(graders.size == 1, graders)
+            val grader = graders.head
+            points = grader.grade(answers.map { (k, v) => (ElementName(k), v) })
+            maxPoints = grader.points
+            println((points, maxPoints))
+        } else {
+            println("Without grader")
+            for ((name, element_) <- assessment.pageElements) {
+                val element = element_.asInstanceOf[TextInput]
+                maxPoints += element.points
+                answers.get(element.name.toString) match {
+                    case Some(answer) =>
+                        if (element.correct.contains(answer))
+                            points += element.points
+                        else if (element.wrong.contains(answer)) {}
+                        else if (element.partiallyCorrect.contains(answer))
+                            points += element.partiallyCorrect(answer)
+                        else
+                            throw RuntimeException(s"Unexpected answer \"$answer\" to \"${element.name}\"")
+                    case None =>
+                }
+            }
+        }
+        // 1.45 + 1.45 + 1.4 = 4.3
+        //        println("-------")
+        //        println(answers)
+        assert(item.earnedPoints == points, (item.earnedPoints, points))
+        assert(item.maxPoints == maxPoints, (item.maxPoints, maxPoints))
+    }
 }
+
+

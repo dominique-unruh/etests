@@ -37,7 +37,6 @@ object Points {
     }
     new Points(num, den)
   }
-
   def apply(value: String): Points = Points(BigDecimal(value, MathContext.UNLIMITED))
   def apply(value: BigInt): Points = new Points(value, bigInt1)
   def apply(value: Int): Points = new Points(value, bigInt1)
