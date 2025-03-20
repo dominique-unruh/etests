@@ -13,7 +13,8 @@ import java.nio.file.{Files, Path}
 import scala.collection.mutable.ListBuffer
 import scala.util.{Random, Using}
 
-class Assessment private (val htmlTemplate: String,
+class Assessment private (val name: String,
+                          val htmlTemplate: String,
                           val pageElements: SeqMap[ElementName, PageElement]) {
   checkValid()
 
@@ -57,9 +58,9 @@ object Assessment {
   private val tagFindingRegex: Regex = """(?s)\{\{(.*?)}}""".r
 
   def fromMarkdownFile(file: Path): Assessment =
-    fromMarkdown(Files.readString(file))
+    fromMarkdown(file.getFileName.toString, Files.readString(file))
 
-  def fromMarkdown(markdown: String): Assessment = {
+  def fromMarkdown(name: String, markdown: String): Assessment = {
     val seen = mutable.HashSet[ElementName]()
 //    val elements = ListBuffer[(ElementName, PageElement)]()
     val elements = SeqMap.newBuilder[ElementName, PageElement]
@@ -76,7 +77,7 @@ object Assessment {
 
     val substituted = tagFindingRegex.replaceAllIn(markdown, substitute)
     val htmlTemplate: String = markdownRenderer.render(markdownParser.parse(substituted))
-    new Assessment(htmlTemplate = htmlTemplate, pageElements = elements.result())
+    new Assessment(name = name, htmlTemplate = htmlTemplate, pageElements = elements.result())
   }
 
   private val markdownParser = Parser.builder.build

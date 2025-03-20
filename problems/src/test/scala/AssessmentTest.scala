@@ -1,7 +1,8 @@
 import scala.language.experimental.genericNumberLiterals
 import Dynexite.Dynexite
+import assessments.ExceptionContext.initialExceptionContext
 import assessments.stack.StackMath.{Bool, Funcall, Integer, Operation, Ops, Variable}
-import assessments.{Assessment, Context, ElementName, Grader, MultipleChoice, Points, Python, SyntaxError, TextInput, UserError}
+import assessments.{Assessment, Context, ElementName, ExceptionContext, ExceptionWithContext, Grader, MultipleChoice, Points, Python, SyntaxError, TextInput, UserError}
 import fastparse.Parsed
 import me.shadaj.scalapy
 import me.shadaj.scalapy.py
@@ -16,9 +17,9 @@ class AssessmentTest extends AnyFunSuiteLike {
 
 object AssessmentTest {
     def main(args: Array[String]): Unit = {
-        val assessmentsPath = Path.of("/home/unruh/r/assessments/data/exam-pqc/")
+        val assessmentsPath = Path.of("/home/unruh/r/assessments/data/exam-2-pqc/")
         //    val resultsPath = "/home/unruh/cloud/qis/lectures/pqc-2024/exam1/dynexite-download-detailed-results.json"
-        val resultsPath = "/home/unruh/tmp/dynexite-download-detailed-results.json"
+        val resultsPath = "/home/unruh/cloud/qis/lectures/pqc-2024/exam2/dynexite-exam-results.json"
 
         val results = Dynexite.parseExamResults(Path.of(resultsPath))
         val assessmentPaths = Files.list(assessmentsPath).toScala(Seq).sorted()
@@ -31,13 +32,15 @@ object AssessmentTest {
             for (attempt <- learner.attempts) {
 //                assert(attempt.items.length == assessments.length) // TODO
                 for ((item, assessment) <- attempt.items.zip(assessments)) {
+                    given ExceptionContext = initialExceptionContext(s"Grading for learner ${learner.learnerId}", learner)
                     grade(assessment, item)
                 }
             }
         }
     }
 
-    def grade(assessment: Assessment, item: Dynexite.Item): Unit = {
+    def grade(assessment: Assessment, item: Dynexite.Item)(using exceptionContext: ExceptionContext): Unit = {
+        given ExceptionContext = exceptionContext.add(s"Correcing assessment ${assessment.name}", assessment, item)
         val blocks = item.blocks
         assert(blocks.nonEmpty)
         val blockType = blocks.head.`type`
@@ -79,7 +82,7 @@ object AssessmentTest {
         assert(item.maxPoints == maxPoints, (item.maxPoints, maxPoints))
     }
 
-    def gradeStack(assessment: Assessment, item: Dynexite.Item): Unit = {
+    def gradeStack(assessment: Assessment, item: Dynexite.Item)(implicit exceptionContext: ExceptionContext): Unit = {
         var points: Points = 0
         var maxPoints: Points = 0
         val answers = {
@@ -93,7 +96,10 @@ object AssessmentTest {
             builder.to(Map)
         }
 
-        assert(answers.keySet.subsetOf(assessment.pageElements.keys.toSet.map(_.toString)), (answers, assessment.pageElements.keys))
+        if (!answers.keySet.subsetOf(assessment.pageElements.keys.toSet.map(_.toString)))
+            throw ExceptionWithContext(s"Got answers in Dynexite for non-existing problems: ${answers.keySet.removedAll(assessment.pageElements.keys.map(_.toString)).mkString(", ")}",
+                answers, assessment.pageElements.keys)
+//        assert(answers.keySet.subsetOf(assessment.pageElements.keys.toSet.map(_.toString)), (answers, assessment.pageElements.keys))
 
         val graders = assessment.pageElements.collect {
             case (_, grader: Grader) => grader

@@ -1,0 +1,19 @@
+package assessments
+
+class ExceptionWithContext(message: String, extraData: Any*)(implicit context: ExceptionContext) extends Exception {
+  override def getMessage: String = {
+    val longMessage = StringBuilder(message)
+    for ((message,_) <- context.messages)
+      longMessage.append("\n  In: ").append(message)
+    longMessage.result()
+  }
+}
+
+class ExceptionContext private (val messages: List[(String, Seq[Any])]) {
+  def add(message: String, extraData: Any*) =
+    ExceptionContext((message, extraData) :: messages)
+}
+
+object ExceptionContext {
+  def initialExceptionContext(message: String, extraData: Any*) = ExceptionContext(List((message, extraData)))
+}
