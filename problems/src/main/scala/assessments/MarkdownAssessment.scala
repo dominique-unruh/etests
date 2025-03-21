@@ -13,6 +13,11 @@ abstract class MarkdownAssessment {
   val markdown: String
   def grade(answers: Map[ElementName, String]): (Points, Seq[String])
   val points: Points
+  val grader: Grader = new Grader(ElementName("grader")) {
+    override def grade(answers: Map[ElementName, String]): (Points, Seq[String]) = MarkdownAssessment.this.grade(answers)
+    override lazy val points: Points = MarkdownAssessment.this.points
+  }
+
 
   final lazy val assessment: Assessment = {
     given ExceptionContext = ExceptionContext.initialExceptionContext(s"Markdown assessment $name")
@@ -29,7 +34,10 @@ abstract class MarkdownAssessment {
             case pageElement: PageElement => pageElement
             case result => throw ExceptionWithContext(s"Page element $name referenced in markdown assessment ${this.name}, but the corresponding method returns a ${result.getClass}", result)
         catch
-          case _: NoSuchMethodException => throw ExceptionWithContext(s"Page element $name referenced in markdown assessment ${this.name}, but no corresponding method found")
+          case _: NoSuchMethodException =>
+            for (m <- getClass.getMethods)
+              println(m)
+            throw ExceptionWithContext(s"Page element $name referenced in markdown assessment ${this.name}, but no corresponding method found")
 
       if (seen.contains(name))
         throw new SyntaxError(s"Duplicate page element name `$name`")
@@ -38,10 +46,7 @@ abstract class MarkdownAssessment {
       s"$tagStart$name$tagEnd"
     }
 
-    elements.addOne(ElementName("grader"), new Grader(ElementName("grader")) {
-      override def grade(answers: Map[ElementName, String]): (Points, Seq[String]) = MarkdownAssessment.this.grade(answers)
-      override val points = MarkdownAssessment.this.points
-    })
+    elements.addOne(ElementName("grader"), grader)
 
     val substituted = tagFindingRegex.replaceAllIn(markdown, substitute)
     val htmlTemplate: String = markdownRenderer.render(markdownParser.parse(substituted))

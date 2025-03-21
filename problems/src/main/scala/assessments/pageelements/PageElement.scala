@@ -1,7 +1,6 @@
 package assessments.pageelements
 
-import assessments.Assessment.{markdownParser, markdownRenderer, templateRegex}
-import assessments.pageelements.MathPreviewElement.mathtextToLatex
+import assessments.Assessment.templateRegex
 import assessments.*
 import com.eed3si9n.eval.Eval
 import me.shadaj.scalapy.py
@@ -53,11 +52,3 @@ object PageElement {
 }
 
 case class ElementAction(element: ElementName, data: JsValue)
-
-
-
-
-
-
-
-
