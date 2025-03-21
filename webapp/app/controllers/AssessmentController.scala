@@ -8,6 +8,7 @@ import java.nio.file.{Files, Path}
 import javax.script.{ScriptEngine, ScriptEngineManager}
 import scala.util.matching.Regex
 import assessments.{Assessment, ElementAction, ElementName, ExceptionContext, IndentedInterpolator}
+import exam.PQC_Exam_2
 import play.api.libs.json.{JsArray, JsBoolean, JsObject, JsString, JsValue}
 import play.mvc.BodyParser.Json
 import play.twirl.api.Html
@@ -62,7 +63,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
 */
 
   private val exampleAssessmentMarkdown: String = Files.readString(Path.of("/home/unruh/r/assessments/data/test.md"))
-  private val exampleAssessment: Assessment = Assessment.fromMarkdown("example", exampleAssessmentMarkdown)
+  private val exampleAssessment: Assessment = PQC_Exam_2.head.assessment
 
   def assessment(): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     val body = exampleAssessment.renderHtml()

@@ -1,5 +1,5 @@
 import scala.language.experimental.genericNumberLiterals
-import Dynexite.Dynexite
+import dynexite.Dynexite
 import assessments.ExceptionContext.initialExceptionContext
 import assessments.stack.StackMath.{Bool, Funcall, Integer, Operation, Ops, Variable}
 import assessments.{Assessment, Context, ElementName, ExceptionContext, ExceptionWithContext, Grader, MultipleChoice, OldGrader, Points, Python, SyntaxError, TextInput, UserError}

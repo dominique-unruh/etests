@@ -1,4 +1,4 @@
-package Dynexite
+package dynexite
 
 import assessments.Points
 import upickle.core.AbortException
