@@ -1,6 +1,6 @@
 package assessments
 
-import assessments.MathPreviewElement.mathtextToLatex
+import assessments.pageelements.MathPreviewElement.mathtextToLatex
 import org.scalatest.funsuite.AnyFunSuiteLike
 
 class MathPreviewElementTest extends AnyFunSuiteLike {

@@ -7,11 +7,12 @@ import play.api.mvc.*
 import java.nio.file.{Files, Path}
 import javax.script.{ScriptEngine, ScriptEngineManager}
 import scala.util.matching.Regex
-import assessments.{Assessment, ElementAction, ElementName, ExceptionContext, IndentedInterpolator}
+import assessments.{Assessment, ElementAction, ElementName, ExceptionContext}
 import exam.PQC_Exam_2
 import play.api.libs.json.{JsArray, JsBoolean, JsObject, JsString, JsValue}
 import play.mvc.BodyParser.Json
 import play.twirl.api.Html
+import utils.IndentedInterpolator
 
 
 @Singleton

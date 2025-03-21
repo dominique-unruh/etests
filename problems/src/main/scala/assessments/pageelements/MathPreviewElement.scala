@@ -1,9 +1,11 @@
-package assessments
+package assessments.pageelements
 
-import assessments.MathPreviewElement.mathtextToLatex
-import play.api.libs.json.{JsObject, JsString, JsValue}
+import MathPreviewElement.mathtextToLatex
+import assessments.{Assessment, ElementAction, ElementName, PageElement}
 import me.shadaj.scalapy.py
 import me.shadaj.scalapy.py.PyQuote
+import play.api.libs.json.{JsObject, JsString, JsValue}
+import utils.IndentedInterpolator
 
 /** Example of a preview that interprets the input as LaTeX math */
 class MathPreviewElement(val name: ElementName, val observed: ElementName) extends PageElement {

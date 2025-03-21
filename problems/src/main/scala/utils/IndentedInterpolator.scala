@@ -1,4 +1,4 @@
-package assessments
+package utils
 
 implicit class IndentedInterpolator(val sc: StringContext) extends AnyVal {
   private inline def stripPipe(s: String): String = {

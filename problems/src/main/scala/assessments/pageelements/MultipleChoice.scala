@@ -1,4 +1,6 @@
-package assessments
+package assessments.pageelements
+
+import assessments.{ElementName, PageElement, Points}
 
 final class MultipleChoice(val name: ElementName,
                            val options: Map[String, String],

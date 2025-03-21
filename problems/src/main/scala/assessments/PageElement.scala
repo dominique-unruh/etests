@@ -1,7 +1,7 @@
 package assessments
 
 import assessments.Assessment.{markdownParser, markdownRenderer, templateRegex}
-import assessments.MathPreviewElement.mathtextToLatex
+import assessments.pageelements.MathPreviewElement.mathtextToLatex
 import com.eed3si9n.eval.Eval
 import me.shadaj.scalapy.py
 import me.shadaj.scalapy.py.PyQuote

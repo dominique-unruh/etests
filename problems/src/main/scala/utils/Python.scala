@@ -1,4 +1,4 @@
-package assessments
+package utils
 
 import me.shadaj.scalapy.py
 import me.shadaj.scalapy.py.SeqConverters

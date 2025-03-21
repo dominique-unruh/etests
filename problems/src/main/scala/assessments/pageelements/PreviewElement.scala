@@ -1,6 +1,8 @@
-package assessments
+package assessments.pageelements
 
+import assessments.{Assessment, ElementAction, ElementName, PageElement}
 import play.api.libs.json.{JsObject, JsString, JsValue}
+import utils.IndentedInterpolator
 
 /** Example of a preview that just repeats the text from the corresponding input element. */
 class PreviewElement(val name: ElementName, val observed: ElementName) extends PageElement {

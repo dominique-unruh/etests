@@ -1,4 +1,6 @@
-package assessments
+package assessments.pageelements
+
+import assessments.{ElementName, PageElement}
 
 /** Simple text input element. */
 class InputElement(val name: ElementName,

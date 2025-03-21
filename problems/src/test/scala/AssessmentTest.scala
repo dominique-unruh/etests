@@ -1,13 +1,15 @@
 import scala.language.experimental.genericNumberLiterals
-import dynexite.Dynexite
+import externalsystems.Dynexite
 import assessments.ExceptionContext.initialExceptionContext
+import assessments.pageelements.MultipleChoice
 import assessments.stack.StackMath.{Bool, Funcall, Integer, Operation, Ops, Variable}
-import assessments.{Assessment, Context, ElementName, ExceptionContext, ExceptionWithContext, Grader, MultipleChoice, OldGrader, Points, Python, SyntaxError, TextInput, UserError}
+import assessments.{Assessment, Context, ElementName, ExceptionContext, ExceptionWithContext, Grader, Points, SyntaxError, TextInput, UserError}
 import exam.PQC_Exam_2
 import fastparse.Parsed
 import me.shadaj.scalapy
 import me.shadaj.scalapy.py
 import org.scalatest.funsuite.AnyFunSuiteLike
+import utils.Python
 
 import java.nio.file.{Files, Path, Paths}
 import scala.collection.mutable
