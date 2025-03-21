@@ -24,12 +24,15 @@ sealed trait StackMath {
   def toSympy: SympyExpr = {
     def toSympy(stack: StackMath): py.Dynamic = stack match {
       case Funcall("mod", x, y) => toSympy(x).__mod__(toSympy(y))
+      case Funcall("sqrt", x) => sympy.sqrt(toSympy(x))
       case Funcall(name, arguments*) =>
         sympy.Function(name).apply(arguments.map(toSympy) *).as[py.Dynamic]
       case Operation(Ops.power, x, y) => toSympy(x).__pow__(toSympy(y))
       case Operation(Ops.equal, x, y) => sympy.Eq(toSympy(x), toSympy(y)).as[py.Dynamic]
       case Operation(Ops.plus, x, y) => toSympy(x) + toSympy(y)
       case Operation(Ops.minus, x, y) => toSympy(x) - toSympy(y)
+      case Operation(Ops.times, x, y) => toSympy(x) * toSympy(y)
+      case Operation(Ops.divide, x, y) => toSympy(x) / toSympy(y)
       case Operation(name, arguments*) => throw UserError(s"Unsupported operation $name with ${arguments.length} arguments")
       case Variable(name) => sympy.Symbol(name).as[py.Dynamic]
       case Integer(int) => sympy.Integer(int.toString).as[py.Dynamic]

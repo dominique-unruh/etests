@@ -2,7 +2,8 @@ import scala.language.experimental.genericNumberLiterals
 import Dynexite.Dynexite
 import assessments.ExceptionContext.initialExceptionContext
 import assessments.stack.StackMath.{Bool, Funcall, Integer, Operation, Ops, Variable}
-import assessments.{Assessment, Context, ElementName, ExceptionContext, ExceptionWithContext, Grader, MultipleChoice, Points, Python, SyntaxError, TextInput, UserError}
+import assessments.{Assessment, Context, ElementName, ExceptionContext, ExceptionWithContext, Grader, MultipleChoice, OldGrader, Points, Python, SyntaxError, TextInput, UserError}
+import exam.PQC_Exam_2
 import fastparse.Parsed
 import me.shadaj.scalapy
 import me.shadaj.scalapy.py
@@ -17,14 +18,14 @@ class AssessmentTest extends AnyFunSuiteLike {
 
 object AssessmentTest {
     def main(args: Array[String]): Unit = {
-        val assessmentsPath = Path.of("/home/unruh/r/assessments/data/exam-2-pqc/")
+//        val assessmentsPath = Path.of("/home/unruh/r/assessments/data/exam-2-pqc/")
         //    val resultsPath = "/home/unruh/cloud/qis/lectures/pqc-2024/exam1/dynexite-download-detailed-results.json"
         val resultsPath = "/home/unruh/cloud/qis/lectures/pqc-2024/exam2/dynexite-exam-results.json"
 
         val results = Dynexite.parseExamResults(Path.of(resultsPath))
-        val assessmentPaths = Files.list(assessmentsPath).toScala(Seq).sorted()
-        val assessments = for (path <- assessmentPaths) yield
-            Assessment.fromMarkdownFile(path)
+//        val assessmentPaths = Files.list(assessmentsPath).toScala(Seq).sorted()
+        val assessments = for (assessment <- PQC_Exam_2) yield
+            assessment.assessment
 
         for (learner <- results.learners) {
 //            println(learner.identifier)
@@ -109,9 +110,12 @@ object AssessmentTest {
             println("With grader")
             assert(graders.size == 1, graders)
             val grader = graders.head
-            points = grader.grade(answers.map { (k, v) => (ElementName(k), v) })
+            val (tmpPoints, comments) = grader.grade(answers.map { (k, v) => (ElementName(k), v) })
+            points = tmpPoints
             maxPoints = grader.points
             println((points, maxPoints))
+            for (comment <- comments)
+                println("* "+comment)
         } else {
             println("Without grader")
             for ((name, element_) <- assessment.pageElements) {

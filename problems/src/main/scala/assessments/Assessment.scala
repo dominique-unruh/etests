@@ -13,9 +13,9 @@ import java.nio.file.{Files, Path}
 import scala.collection.mutable.ListBuffer
 import scala.util.{Random, Using}
 
-class Assessment private (val name: String,
-                          val htmlTemplate: String,
-                          val pageElements: SeqMap[ElementName, PageElement]) {
+class Assessment (val name: String,
+                  val htmlTemplate: String,
+                  val pageElements: SeqMap[ElementName, PageElement]) {
   checkValid()
 
   private def checkValid(): Unit = {

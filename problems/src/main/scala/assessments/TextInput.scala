@@ -1,10 +1,11 @@
 package assessments
 
 final class TextInput(val name: ElementName,
-                      val correct: Seq[String],
-                      val partiallyCorrect: Map[String, Points],
-                      val wrong: Seq[String],
-                      val points: Points)
+                      val reference: String,
+                      val correct: Seq[String] = Nil,
+                      val partiallyCorrect: Map[String, Points] = Map.empty,
+                      val wrong: Seq[String] = Nil,
+                      val points: Points = 1)
   extends PageElement {
   assert(points > 0)
 

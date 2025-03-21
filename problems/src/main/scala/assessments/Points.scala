@@ -6,7 +6,9 @@ import scala.util.FromDigits
 class Points private (private val numerator: BigInt, private val denominator: BigInt) {
   assert(denominator > 0)
 
-  override def toString: String = s"$numerator/$denominator"
+  def fractionString: String = s"$numerator/$denominator"
+  def decimalFractionString: String = (BigDecimal(numerator)/BigDecimal(denominator)).toString
+  override def toString: String = decimalFractionString
 
   def <(other: Points): Boolean =
     numerator * other.denominator < other.numerator * denominator
@@ -14,6 +16,7 @@ class Points private (private val numerator: BigInt, private val denominator: Bi
   def +(other: Points): Points = Points(
     numerator * other.denominator + other.numerator * denominator,
     denominator * other.denominator)
+  def *(other: Points): Points = Points(numerator * other.numerator, denominator * other.denominator)
 
   override def equals(other: Any): Boolean = other match
     case other: Points => (numerator == other.numerator) && (denominator == other.denominator)

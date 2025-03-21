@@ -93,7 +93,8 @@ object StackParser {
 
   def bool_expr[$: P]: P[StackMath] = P(or_like)
 
-  def expr[$: P]: P[StackMath] = bool_expr | num_expr
+  def expr[$: P]: P[StackMath] = num_expr
+//  def expr[$: P]: P[StackMath] = bool_expr | num_expr
 
   def parseWith[A](input: String, parser: fastparse.ParsingRun[?] ?=> fastparse.ParsingRun[A]): A =
     import fastparse.*

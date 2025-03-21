@@ -19,13 +19,14 @@ lazy val webapp = (project in file("webapp"))
 
 lazy val problems = (project in file("problems"))
   .settings(
-      libraryDependencies += "org.scala-lang" %% "scala3-compiler" % scalaVersion.value,
-      libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.18" % Test,
-      libraryDependencies += "org.commonmark" % "commonmark" % "0.22.0",
-      //    libraryDependencies += "com.github.benoitlouy" %% "indent" % "0.8.0",
-      libraryDependencies += "org.playframework" %% "play-json" % "3.0.4",
-      libraryDependencies += "dev.scalapy" %% "scalapy-core" % "0.5.3",
-      libraryDependencies += "com.eed3si9n.eval" % "eval" % "0.3.0" cross CrossVersion.full,
-      libraryDependencies += "com.lihaoyi" %% "upickle" % "4.1.0",
-      libraryDependencies += "com.lihaoyi" %% "fastparse" % "3.1.1",
+        libraryDependencies += "org.scala-lang" %% "scala3-compiler" % scalaVersion.value,
+        libraryDependencies += "com.lihaoyi" %% "sourcecode" % "0.4.2",
+        libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.18" % Test,
+        libraryDependencies += "org.commonmark" % "commonmark" % "0.22.0",
+        //    libraryDependencies += "com.github.benoitlouy" %% "indent" % "0.8.0",
+        libraryDependencies += "org.playframework" %% "play-json" % "3.0.4",
+        libraryDependencies += "dev.scalapy" %% "scalapy-core" % "0.5.3",
+        libraryDependencies += "com.eed3si9n.eval" % "eval" % "0.3.0" cross CrossVersion.full,
+        libraryDependencies += "com.lihaoyi" %% "upickle" % "4.1.0",
+        libraryDependencies += "com.lihaoyi" %% "fastparse" % "3.1.1",
   )
