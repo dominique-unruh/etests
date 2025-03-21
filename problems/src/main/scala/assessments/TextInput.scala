@@ -1,5 +1,7 @@
 package assessments
 
+import assessments.pageelements.PageElement
+
 final class TextInput(val name: ElementName,
                       val reference: String,
                       val correct: Seq[String] = Nil,

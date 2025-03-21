@@ -29,4 +29,5 @@ lazy val problems = (project in file("problems"))
         libraryDependencies += "com.eed3si9n.eval" % "eval" % "0.3.0" cross CrossVersion.full,
         libraryDependencies += "com.lihaoyi" %% "upickle" % "4.1.0",
         libraryDependencies += "com.lihaoyi" %% "fastparse" % "3.1.1",
+        libraryDependencies += "org.apache.commons" % "commons-text" % "1.13.0"
   )

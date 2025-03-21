@@ -1,14 +1,16 @@
 package assessments.pageelements
 
 import MathPreviewElement.mathtextToLatex
-import assessments.{Assessment, ElementAction, ElementName, PageElement}
+import assessments.{Assessment, ElementName}
 import me.shadaj.scalapy.py
 import me.shadaj.scalapy.py.PyQuote
 import play.api.libs.json.{JsObject, JsString, JsValue}
 import utils.IndentedInterpolator
 
 /** Example of a preview that interprets the input as LaTeX math */
-class MathPreviewElement(val name: ElementName, val observed: ElementName) extends PageElement {
+class MathPreviewElement(val name: ElementName,
+                         val observed: ElementName,
+                         val latexRenderer: String => String) extends PageElement {
   override def renderHtml: String =
     ind"""<div style="font-weight: bold; border: solid 1 1 1 1;" id="${name.jsElementId}">Preview...</div><script>
          |  function ${name.jsElementCallbackName}(json) {
@@ -25,7 +27,7 @@ class MathPreviewElement(val name: ElementName, val observed: ElementName) exten
   override def otherAction(assessment: Assessment, element: PageElement, data: Any, payload: JsValue): IterableOnce[ElementAction] = {
     if (element.name == observed) {
       val content = payload.asInstanceOf[JsObject].value("content").asInstanceOf[JsString].value
-      val text = "\\[" + mathtextToLatex(content) + "\\]"
+      val text = "\\[" + latexRenderer(content) + "\\]"
       Seq(ElementAction(name, JsObject(Seq("preview" -> JsString(text)))))
     } else
       Seq.empty

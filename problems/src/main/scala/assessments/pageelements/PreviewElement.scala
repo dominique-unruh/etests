@@ -1,6 +1,6 @@
 package assessments.pageelements
 
-import assessments.{Assessment, ElementAction, ElementName, PageElement}
+import assessments.{Assessment, ElementName}
 import play.api.libs.json.{JsObject, JsString, JsValue}
 import utils.IndentedInterpolator
 
@@ -16,7 +16,10 @@ class PreviewElement(val name: ElementName, val observed: ElementName) extends P
          |</script>"""
 
   override def otherAction(assessment: Assessment, element: PageElement, data: Any, payload: JsValue): IterableOnce[ElementAction] = {
-    val content = payload.asInstanceOf[JsObject].value("content").asInstanceOf[JsString]
-    Seq(ElementAction(observed, JsObject(Seq("preview" -> content))))
+    if (element.name == observed) {
+      val content = payload.asInstanceOf[JsObject].value("content").asInstanceOf[JsString].value
+      Seq(ElementAction(name, JsObject(Seq("preview" -> JsString(content)))))
+    } else
+      Seq.empty
   }
 }

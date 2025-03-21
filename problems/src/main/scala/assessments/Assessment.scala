@@ -1,6 +1,7 @@
 package assessments
 
 import assessments.Assessment.templateRegex
+import assessments.pageelements.{ElementAction, PageElement}
 import com.eed3si9n.eval.Eval
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
@@ -55,33 +56,6 @@ class UserError(message: String) extends Exception(message)
 class SyntaxError(message: String) extends UserError(message)
 
 object Assessment {
-  private val tagFindingRegex: Regex = """(?s)\{\{(.*?)}}""".r
-
-  def fromMarkdownFile(file: Path): Assessment =
-    fromMarkdown(file.getFileName.toString, Files.readString(file))
-
-  def fromMarkdown(name: String, markdown: String): Assessment = {
-    val seen = mutable.HashSet[ElementName]()
-//    val elements = ListBuffer[(ElementName, PageElement)]()
-    val elements = SeqMap.newBuilder[ElementName, PageElement]
-
-    def substitute(matsch: Regex.Match) = {
-      val pageElement = PageElement.parsePageElement(matsch.group(1))
-      val name = pageElement.name
-      if (seen.contains(name))
-        throw new SyntaxError(s"Duplicate page element name `$name`")
-      seen.add(name)
-      elements.addOne((name, pageElement))
-      s"$tagStart$name$tagEnd"
-    }
-
-    val substituted = tagFindingRegex.replaceAllIn(markdown, substitute)
-    val htmlTemplate: String = markdownRenderer.render(markdownParser.parse(substituted))
-    new Assessment(name = name, htmlTemplate = htmlTemplate, pageElements = elements.result())
-  }
-
-  private val markdownParser = Parser.builder.build
-  private val markdownRenderer = HtmlRenderer.builder.build
   val tagStart = '\uFFFA'
   val tagEnd = '\uFFFB'
   private val templateRegex = s"""$tagStart([0-9a-zA-Z._]+)$tagEnd""".r

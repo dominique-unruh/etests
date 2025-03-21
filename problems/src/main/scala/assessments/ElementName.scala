@@ -9,6 +9,7 @@ final case class ElementName private(names: Seq[String]) {
     assert(newNames.nonEmpty)
     new ElementName(newNames)
   }
+  def last = names.last
 }
 
 object ElementName {

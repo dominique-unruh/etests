@@ -1,7 +1,7 @@
 import scala.language.experimental.genericNumberLiterals
 import externalsystems.Dynexite
 import assessments.ExceptionContext.initialExceptionContext
-import assessments.pageelements.MultipleChoice
+import assessments.pageelements.{AnswerElement, MultipleChoice}
 import assessments.stack.StackMath.{Bool, Funcall, Integer, Operation, Ops, Variable}
 import assessments.{Assessment, Context, ElementName, ExceptionContext, ExceptionWithContext, Grader, Points, SyntaxError, TextInput, UserError}
 import exam.PQC_Exam_2
@@ -20,29 +20,24 @@ class AssessmentTest extends AnyFunSuiteLike {
 
 object AssessmentTest {
     def main(args: Array[String]): Unit = {
-//        val assessmentsPath = Path.of("/home/unruh/r/assessments/data/exam-2-pqc/")
-        //    val resultsPath = "/home/unruh/cloud/qis/lectures/pqc-2024/exam1/dynexite-download-detailed-results.json"
         val resultsPath = "/home/unruh/cloud/qis/lectures/pqc-2024/exam2/dynexite-exam-results.json"
 
         val results = Dynexite.parseExamResults(Path.of(resultsPath))
-//        val assessmentPaths = Files.list(assessmentsPath).toScala(Seq).sorted()
         val assessments = for (assessment <- PQC_Exam_2) yield
             assessment.assessment
 
         for (learner <- results.learners) {
-//            println(learner.identifier)
             assert(learner.attempts.length <= 1)
             for (attempt <- learner.attempts) {
-//                assert(attempt.items.length == assessments.length) // TODO
                 for ((item, assessment) <- attempt.items.zip(assessments)) {
                     given ExceptionContext = initialExceptionContext(s"Grading for learner ${learner.learnerId}", learner)
-                    grade(assessment, item)
+                    grade(learner.identifier, assessment, item)
                 }
             }
         }
     }
 
-    def grade(assessment: Assessment, item: Dynexite.Item)(using exceptionContext: ExceptionContext): Unit = {
+    def grade(studentRegistration: String, assessment: Assessment, item: Dynexite.Item)(using exceptionContext: ExceptionContext): Unit = {
         given ExceptionContext = exceptionContext.add(s"Correcing assessment ${assessment.name}", assessment, item)
         val blocks = item.blocks
         assert(blocks.nonEmpty)
@@ -51,10 +46,11 @@ object AssessmentTest {
 
         blockType match {
             case Dynexite.BlockType.classification => gradeClassification(assessment, item)
-            case Dynexite.BlockType.stack => gradeStack(assessment, item)
+            case Dynexite.BlockType.stack => gradeStack(studentRegistration, assessment, item)
         }
     }
 
+    // TODO remove
     def gradeClassification(assessment: Assessment, item: Dynexite.Item): Unit = {
         var points: Points = 0
         var maxPoints: Points = 0
@@ -72,75 +68,73 @@ object AssessmentTest {
                 val Seq((answerTag, _)) = element.options.to(Seq).filter((k, v) => v == answer)
                 val isCorrect = answerTag == element.correct
                 if (isCorrect) points += element.points
-//                println(s"$answer -> $answerTag / ${element.correct}")
-//                println(s"EP ${element.points} $isCorrect")
-//                println(s"P ${points}")
             }
         }
-        // 1.45 + 1.45 + 1.4 = 4.3
-//        println("-------")
-//        println(item.blocks.map(_.answers))
-//        println(answers)
         assert(item.earnedPoints == points, (item.earnedPoints, points))
         assert(item.maxPoints == maxPoints, (item.maxPoints, maxPoints))
     }
 
-    def gradeStack(assessment: Assessment, item: Dynexite.Item)(implicit exceptionContext: ExceptionContext): Unit = {
+    def getDynexiteAnswers(studentRegistration: String, item: Dynexite.Item, assessment: Assessment)
+                          (implicit exceptionContext: ExceptionContext):
+                    (Map[ElementName, String], Points, Points) = {
         var points: Points = 0
-        var maxPoints: Points = 0
-        val answers = {
-            val builder = mutable.HashMap[String,String]()
-            for (block0 <- item.blocks;
-                 block = block0.asInstanceOf[Dynexite.StackBlock];
-                 (k,v) <- block.answers) {
-                assert(!builder.contains(k))
-                builder.put(k,v)
-            }
-            builder.to(Map)
+        var reachable: Points = 0
+
+        val expectedAnswerNames: mutable.ArrayDeque[ElementName] =
+            (for (case (name, pageElement: AnswerElement[?]) <- assessment.pageElements)
+                yield name)
+              .to(mutable.ArrayDeque)
+
+        val answers = mutable.Map[ElementName,String]()
+
+        for (block <- item.blocks) {
+            reachable += block.maxPoints
+            points += block.earnedPoints
+
+            block match
+                case block: Dynexite.ClassificationBlock =>
+                    ???
+                case block: Dynexite.StackBlock =>
+                    val expected = {
+                        val builder = mutable.Map[String, ElementName]()
+                        for (_ <- block.answers) {
+                            val name = expectedAnswerNames.removeHead()
+                            val lastName = name.last
+                            assert(!builder.contains(lastName))
+                            builder.update(lastName, name)
+                        }
+                        builder.toMap
+                    }
+                    assert(block.answers.keySet == expected.keySet)
+                    for ((name, value) <- block.answers) {
+                        val elementName = expected(name)
+                        assert(!answers.contains(elementName))
+                        answers.update(elementName, value)
+                    }
         }
 
-        if (!answers.keySet.subsetOf(assessment.pageElements.keys.toSet.map(_.toString)))
-            throw ExceptionWithContext(s"Got answers in Dynexite for non-existing problems: ${answers.keySet.removedAll(assessment.pageElements.keys.map(_.toString)).mkString(", ")}",
-                answers, assessment.pageElements.keys)
-//        assert(answers.keySet.subsetOf(assessment.pageElements.keys.toSet.map(_.toString)), (answers, assessment.pageElements.keys))
+        (answers.toMap, points, reachable)
+    }
 
-        val graders = assessment.pageElements.collect {
-            case (_, grader: Grader) => grader
-        }
 
-        if (graders.nonEmpty) {
-            println("With grader")
-            assert(graders.size == 1, graders)
-            val grader = graders.head
-            val (tmpPoints, comments) = grader.grade(answers.map { (k, v) => (ElementName(k), v) })
-            points = tmpPoints
-            maxPoints = grader.points
-            println((points, maxPoints))
-            for (comment <- comments)
-                println("* "+comment)
-        } else {
-            println("Without grader")
-            for ((name, element_) <- assessment.pageElements) {
-                val element = element_.asInstanceOf[TextInput]
-                maxPoints += element.points
-                answers.get(element.name.toString) match {
-                    case Some(answer) =>
-                        if (element.correct.contains(answer))
-                            points += element.points
-                        else if (element.wrong.contains(answer)) {}
-                        else if (element.partiallyCorrect.contains(answer))
-                            points += element.partiallyCorrect(answer)
-                        else
-                            throw RuntimeException(s"Unexpected answer \"$answer\" to \"${element.name}\"")
-                    case None =>
-                }
-            }
-        }
-        // 1.45 + 1.45 + 1.4 = 4.3
-        //        println("-------")
-        //        println(answers)
-        assert(item.earnedPoints == points, (item.earnedPoints, points))
-        assert(item.maxPoints == maxPoints, (item.maxPoints, maxPoints))
+    def gradeStack(studentRegistration: String, assessment: Assessment, item: Dynexite.Item)(implicit exceptionContext: ExceptionContext): Unit = {
+        val (answers, dynexitePoints, dynexiteReachable) = getDynexiteAnswers(studentRegistration, item, assessment)
+        val graders = (for (case (_, grader: Grader) <- assessment.pageElements) yield grader).toSeq;
+        assert(graders.size == 1, graders)
+        val grader = graders.head
+
+        val (points, comments) = grader.grade(answers.map { (k, v) => (k, v) })
+        val reachable = grader.points;
+
+        println(s"\nREPORT (assessment ${assessment.name}, student $studentRegistration)")
+        println(s"Points: $points / $reachable")
+        println(s"Dynexite: $dynexitePoints / $dynexiteReachable")
+        assert(points == dynexitePoints)
+        assert(reachable == dynexiteReachable)
+        println("COMMENTS:")
+        for (comment <- comments)
+            println("* "+comment)
+        println("\n\n")
     }
 }
 

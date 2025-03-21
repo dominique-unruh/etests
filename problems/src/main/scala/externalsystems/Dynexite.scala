@@ -26,7 +26,7 @@ object Dynexite {
   }
 
   @upickle.implicits.allowUnknownKeys(false)
-  final case class Learner(learnerId: String, identifier: Int, attempts: List[Attempt]) derives up.Reader
+  final case class Learner(learnerId: String, identifier: String, attempts: List[Attempt]) derives up.Reader
 
   @upickle.implicits.allowUnknownKeys(false)
   final case class Attempt(attemptId: String,

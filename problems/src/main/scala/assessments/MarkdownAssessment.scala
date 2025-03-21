@@ -1,6 +1,7 @@
 package assessments
 
 import assessments.MarkdownAssessment.{markdownParser, markdownRenderer, tagEnd, tagFindingRegex, tagStart}
+import assessments.pageelements.PageElement
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
 
