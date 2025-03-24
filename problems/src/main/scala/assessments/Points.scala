@@ -17,6 +17,10 @@ class Points private (private val numerator: BigInt, private val denominator: Bi
     numerator * other.denominator + other.numerator * denominator,
     denominator * other.denominator)
   def *(other: Points): Points = Points(numerator * other.numerator, denominator * other.denominator)
+  def /(other: Points): Points = {
+    assert(other.denominator != 0)
+    Points(numerator * other.denominator, denominator * other.numerator)
+  }
 
   override def equals(other: Any): Boolean = other match
     case other: Points => (numerator == other.numerator) && (denominator == other.denominator)

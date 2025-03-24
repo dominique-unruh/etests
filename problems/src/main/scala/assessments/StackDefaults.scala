@@ -1,15 +1,22 @@
 package assessments
 
-import assessments.pageelements.{InputElement, MathPreviewElement, PageElement}
+import assessments.pageelements.{InputElement, MathPreviewElement, MultipleChoice, PageElement}
 import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
 import assessments.stack.SympyExpr
+import exam.Commenter
 
 import scala.collection.mutable
 
 object StackDefaults {
+  private def elementName(name: sourcecode.Name) =
+    ElementName(name.value.replace('$', '.'))
+  
   def input(reference: String)(using name: sourcecode.Name): InputElement =
-    new InputElement(ElementName(name.value), reference)
+    new InputElement(elementName(name), reference)
+
+  def multi(options: Seq[String], reference: String)(using name: sourcecode.Name): MultipleChoice =
+    new MultipleChoice(name=elementName(name), options=options, reference=reference)
 
   extension (str: String) {
     def sympy: SympyExpr = parse(str).toSympy
@@ -33,7 +40,7 @@ object StackDefaults {
     MathPreviewElement(ElementName(name.value), observed.name, stackMathRender)
 
   def checkEq(x: => PageElement, y: => SympyExpr)
-             (using answers: Map[ElementName, String], comments: mutable.Builder[String, Seq[String]]): Boolean =
+             (using answers: Map[ElementName, String], comments: Commenter): Boolean =
     try {
       checkEquality(x.sympy, y)
     } catch

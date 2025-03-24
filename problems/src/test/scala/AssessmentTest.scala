@@ -4,7 +4,7 @@ import assessments.ExceptionContext.initialExceptionContext
 import assessments.pageelements.{AnswerElement, MultipleChoice}
 import assessments.stack.StackMath.{Bool, Funcall, Integer, Operation, Ops, Variable}
 import assessments.{Assessment, Context, ElementName, ExceptionContext, ExceptionWithContext, Grader, Points, SyntaxError, TextInput, UserError}
-import exam.PQC_Exam_2
+import exam.PqcExam2
 import fastparse.Parsed
 import me.shadaj.scalapy
 import me.shadaj.scalapy.py
@@ -23,15 +23,20 @@ object AssessmentTest {
         val resultsPath = "/home/unruh/cloud/qis/lectures/pqc-2024/exam2/dynexite-exam-results.json"
 
         val results = Dynexite.parseExamResults(Path.of(resultsPath))
-        val assessments = for (assessment <- PQC_Exam_2) yield
-            assessment.assessment
+        val assessments = PqcExam2.questions
 
         for (learner <- results.learners) {
+            given ExceptionContext = initialExceptionContext(s"Grading for learner ${learner.learnerId}", learner)
             assert(learner.attempts.length <= 1)
             for (attempt <- learner.attempts) {
+                assert(attempt.items.length == assessments.length, (attempt.items.length, assessments.length))
                 for ((item, assessment) <- attempt.items.zip(assessments)) {
-                    given ExceptionContext = initialExceptionContext(s"Grading for learner ${learner.learnerId}", learner)
-                    grade(learner.identifier, assessment, item)
+                    if (assessment == null)
+                        println("WARNING: Missing assessment")
+                    else {
+                        given ExceptionContext = initialExceptionContext(s"Grading assessment ${assessment.name}", assessment)
+                        grade(learner.identifier, assessment, item)
+                    }
                 }
             }
         }
@@ -41,16 +46,14 @@ object AssessmentTest {
         given ExceptionContext = exceptionContext.add(s"Correcing assessment ${assessment.name}", assessment, item)
         val blocks = item.blocks
         assert(blocks.nonEmpty)
-        val blockType = blocks.head.`type`
-        for (block <- blocks) assert(block.`type` == blockType)
+//        val blockType = blocks.head.`type`
+//        for (block <- blocks) assert(block.`type` == blockType)
 
-        blockType match {
-            case Dynexite.BlockType.classification => gradeClassification(assessment, item)
-            case Dynexite.BlockType.stack => gradeStack(studentRegistration, assessment, item)
-        }
+        grade2(studentRegistration, assessment, item)
     }
 
     // TODO remove
+/*
     def gradeClassification(assessment: Assessment, item: Dynexite.Item): Unit = {
         var points: Points = 0
         var maxPoints: Points = 0
@@ -66,13 +69,14 @@ object AssessmentTest {
             maxPoints += element.points
             if (answer != null) {
                 val Seq((answerTag, _)) = element.options.to(Seq).filter((k, v) => v == answer)
-                val isCorrect = answerTag == element.correct
+                val isCorrect = answerTag == element.reference
                 if (isCorrect) points += element.points
             }
         }
         assert(item.earnedPoints == points, (item.earnedPoints, points))
         assert(item.maxPoints == maxPoints, (item.maxPoints, maxPoints))
     }
+*/
 
     def getDynexiteAnswers(studentRegistration: String, item: Dynexite.Item, assessment: Assessment)
                           (implicit exceptionContext: ExceptionContext):
@@ -93,7 +97,12 @@ object AssessmentTest {
 
             block match
                 case block: Dynexite.ClassificationBlock =>
-                    ???
+                    val answerNames = expectedAnswerNames.take(block.answers.length)
+                    expectedAnswerNames.remove(0, block.answers.length)
+                    for ((name, value) <- answerNames.zip(block.answers)) {
+                        assert(!answers.contains(name))
+                        answers.update(name, value)
+                    }
                 case block: Dynexite.StackBlock =>
                     val expected = {
                         val builder = mutable.Map[String, ElementName]()
@@ -113,11 +122,15 @@ object AssessmentTest {
                     }
         }
 
+        assert(expectedAnswerNames.isEmpty,
+            (expectedAnswerNames, item.blocks.map(_.answers)))
+
         (answers.toMap, points, reachable)
     }
 
 
-    def gradeStack(studentRegistration: String, assessment: Assessment, item: Dynexite.Item)(implicit exceptionContext: ExceptionContext): Unit = {
+    // TODO inline
+    def grade2(studentRegistration: String, assessment: Assessment, item: Dynexite.Item)(implicit exceptionContext: ExceptionContext): Unit = {
         val (answers, dynexitePoints, dynexiteReachable) = getDynexiteAnswers(studentRegistration, item, assessment)
         val graders = (for (case (_, grader: Grader) <- assessment.pageElements) yield grader).toSeq;
         assert(graders.size == 1, graders)
@@ -129,12 +142,12 @@ object AssessmentTest {
         println(s"\nREPORT (assessment ${assessment.name}, student $studentRegistration)")
         println(s"Points: $points / $reachable")
         println(s"Dynexite: $dynexitePoints / $dynexiteReachable")
-        assert(points == dynexitePoints)
-        assert(reachable == dynexiteReachable)
         println("COMMENTS:")
         for (comment <- comments)
             println("* "+comment)
         println("\n\n")
+        assert(points == dynexitePoints)
+        assert(reachable == dynexiteReachable)
     }
 }
 

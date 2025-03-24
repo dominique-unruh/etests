@@ -21,7 +21,7 @@ class Assessment (val name: String,
 
   private def checkValid(): Unit = {
     for ((name,element) <- pageElements)
-      assert(element.name == name)
+      assert(element.name == name, (element.name, name))
   }
 
   def renderHtml(): String = {

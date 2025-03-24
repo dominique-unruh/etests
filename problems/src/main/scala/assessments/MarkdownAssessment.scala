@@ -1,7 +1,9 @@
 package assessments
 
-import assessments.MarkdownAssessment.{markdownParser, markdownRenderer, tagEnd, tagFindingRegex, tagStart}
+import assessments.Assessment.{tagEnd, tagStart}
+import assessments.MarkdownAssessment.{markdownParser, markdownRenderer, tagFindingRegex}
 import assessments.pageelements.PageElement
+import exam.HardAssumptions
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
 
@@ -18,32 +20,63 @@ abstract class MarkdownAssessment {
     override lazy val points: Points = MarkdownAssessment.this.points
   }
 
+  private def findMethod(elementName: ElementName) = {
+/*
+    var obj = this
+    println(getClass.getName)
+    if (obj.getClass.getName.endsWith("tions$"))
+      val quantum = obj.getClass.getField("quantum").get(obj)
+      println(quantum)
+      println(obj.asInstanceOf[HardAssumptions.type].quantum)
+      println(getClass.getFields.toSeq)
+//    for (name <- elementName.names.dropRight(1))
+//      ???
+*/
+    this.getClass.getMethod(elementName.toString.replace('.','$')).invoke(this)
+  }
 
   final lazy val assessment: Assessment = {
     given ExceptionContext = ExceptionContext.initialExceptionContext(s"Markdown assessment $name")
     val seen = mutable.HashSet[ElementName]()
     //    val elements = ListBuffer[(ElementName, PageElement)]()
     val elements = SeqMap.newBuilder[ElementName, PageElement]
+    var elementPath = ElementPath.empty
 
-    def substitute(matsch: Regex.Match) = {
-      val name = ElementName(matsch.group(1).strip())
-
+    def addPageElement(name: String) = {
+      val elementName = ElementName(elementPath, name)
       val pageElement: PageElement =
         try
-          this.getClass.getMethod(name.toString).invoke(this) match
+          findMethod(elementName) match
             case pageElement: PageElement => pageElement
-            case result => throw ExceptionWithContext(s"Page element $name referenced in markdown assessment ${this.name}, but the corresponding method returns a ${result.getClass}", result)
+            case result =>
+              throw ExceptionWithContext(s"Page element $name referenced in markdown assessment ${this.name}, but the corresponding method returns a ${result.getClass}", result)
         catch
           case _: NoSuchMethodException =>
-            for (m <- getClass.getMethods)
-              println(m)
-            throw ExceptionWithContext(s"Page element $name referenced in markdown assessment ${this.name}, but no corresponding method found")
+//            for (m <- getClass.getMethods)
+//              println(m)
+            throw ExceptionWithContext(s"Page element $elementName referenced in markdown assessment ${this.name}, but no corresponding method found")
 
-      if (seen.contains(name))
+      if (seen.contains(elementName))
         throw new SyntaxError(s"Duplicate page element name `$name`")
-      seen.add(name)
-      elements.addOne((name, pageElement))
-      s"$tagStart$name$tagEnd"
+      seen.add(elementName)
+      elements.addOne((elementName, pageElement))
+      elementName
+    }
+
+    def substitute(matsch: Regex.Match) = {
+      matsch.group(1).strip() match {
+        case MarkdownAssessment.endTagRegex(tag) =>
+          if (!elementPath.lastOption.contains(tag))
+            throw ExceptionWithContext(s"Closing tag $tag found but the path of the current group is \"$elementPath\"")
+          elementPath = elementPath.removeLast
+          s"<!-- Path $elementPath -->"
+        case MarkdownAssessment.startTagRegex(tag) =>
+          elementPath += tag
+          s"<!-- Path $elementPath -->"
+        case name =>
+          val elementName = addPageElement(name)
+          Regex.quoteReplacement(s"$tagStart$elementName$tagEnd")
+      }
     }
 
     elements.addOne(ElementName("grader"), grader)
@@ -56,9 +89,9 @@ abstract class MarkdownAssessment {
 }
 
 object MarkdownAssessment {
-  private val tagStart = '\uFFFA'
-  private val tagEnd = '\uFFFB'
   private val tagFindingRegex: Regex = """(?s)\{\{(.*?)}}""".r
+  private val startTagRegex: Regex = """<(.*?)>""".r
+  private val endTagRegex: Regex = """</(.*?)>""".r
   private val markdownParser = Parser.builder.build
   private val markdownRenderer = HtmlRenderer.builder.build
 }
