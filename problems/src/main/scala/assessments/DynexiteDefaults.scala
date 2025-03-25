@@ -4,7 +4,6 @@ import assessments.pageelements.*
 import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
 import assessments.stack.SympyExpr
-import exam.Commenter
 
 import scala.collection.mutable
 
