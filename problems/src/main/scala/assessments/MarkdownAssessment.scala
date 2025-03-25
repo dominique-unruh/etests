@@ -14,10 +14,10 @@ abstract class MarkdownAssessment {
   val name: String = getClass.getName
   val markdown: String
   def grade(answers: Map[ElementName, String]): (Points, Seq[String])
-  val points: Points
+  val reachablePoints: Points
   val grader: Grader = new Grader(ElementName("grader")) {
     override def grade(answers: Map[ElementName, String]): (Points, Seq[String]) = MarkdownAssessment.this.grade(answers)
-    override lazy val points: Points = MarkdownAssessment.this.points
+    override lazy val points: Points = MarkdownAssessment.this.reachablePoints
   }
 
   private def findMethod(elementName: ElementName) = {
