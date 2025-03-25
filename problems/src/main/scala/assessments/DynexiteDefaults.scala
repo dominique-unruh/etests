@@ -1,6 +1,6 @@
 package assessments
 
-import assessments.pageelements.{AnswerElement, InputElement, MathPreviewElement, MultipleChoice, PageElement}
+import assessments.pageelements.*
 import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
 import assessments.stack.SympyExpr
@@ -8,7 +8,7 @@ import exam.Commenter
 
 import scala.collection.mutable
 
-object StackDefaults {
+object DynexiteDefaults {
   private def elementName(name: sourcecode.Name) =
     ElementName(name.value.replace('$', '.'))
 
