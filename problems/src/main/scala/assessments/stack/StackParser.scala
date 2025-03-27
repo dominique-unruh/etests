@@ -104,5 +104,5 @@ object StackParser {
       case failure: Parsed.Failure => throw SyntaxError(failure.msg)
     }
 
-  def parse(input: String): StackMath = parseWith(input, expr)
+  def parse(input: String): StackMath = parseWith(input, comparison | expr)
 }

@@ -18,11 +18,14 @@ object DynexiteDefaults {
     new MultipleChoice(name=elementName(name), options=options, reference=reference)
 
   extension (str: String) {
-    def sympy: SympyExpr = 
-      try
+    def sympy: SympyExpr = {
+      if (str == "" || str == null)
+        SympyExpr.errorTerm("empty")
+      else try
         parse(str).toSympy
       catch
         case e: SyntaxError => SympyExpr.errorTerm(e.getMessage)
+    }
   }
 
   extension (pe: PageElement) {

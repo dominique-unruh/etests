@@ -15,6 +15,7 @@ import utils.Python
 import java.nio.file.{Files, Path, Paths}
 import scala.collection.mutable
 import scala.jdk.StreamConverters.*
+import scala.math.abs
 
 class AssessmentTest extends AnyFunSuiteLike {
 }
@@ -178,8 +179,9 @@ object AssessmentTest {
         for (comment <- comments)
             println("* "+comment)
         println("\n\n")
-          
-        assert(points == dynexitePoints, (points, dynexitePoints))
+
+        // Allowing some error in this check since Dynexite doesn't do exact arithmetic
+        assert((points - dynexitePoints).abs <= 0.005, (points, dynexitePoints))
         assert(reachable == dynexiteReachable)
     }
 }

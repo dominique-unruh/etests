@@ -3,6 +3,9 @@ package assessments
 import java.math.MathContext
 import scala.util.FromDigits
 
+/** Implementation of rational numbers.
+ * 
+ * Internal invariant: denominator > 0; numberator and denominator are relatively prime; if numerator=0, then denominator=1 */
 class Points private (private val numerator: BigInt, private val denominator: BigInt) {
   assert(denominator > 0)
 
@@ -13,13 +16,23 @@ class Points private (private val numerator: BigInt, private val denominator: Bi
   def <(other: Points): Boolean =
     numerator * other.denominator < other.numerator * denominator
   def >(other: Points): Boolean = other < this
+  def <=(other: Points): Boolean =
+    numerator * other.denominator <= other.numerator * denominator
+  def >=(other: Points): Boolean = other <= this
   def +(other: Points): Points = Points(
     numerator * other.denominator + other.numerator * denominator,
+    denominator * other.denominator)
+  def -(other: Points): Points = Points(
+    numerator * other.denominator - other.numerator * denominator,
     denominator * other.denominator)
   def *(other: Points): Points = Points(numerator * other.numerator, denominator * other.denominator)
   def /(other: Points): Points = {
     assert(other.denominator != 0)
     Points(numerator * other.denominator, denominator * other.numerator)
+  }
+  def abs: Points = {
+    // Bypassing normalization by direct constructor call because this is already normalized
+    new Points(numerator.abs, denominator)
   }
 
   override def equals(other: Any): Boolean = other match

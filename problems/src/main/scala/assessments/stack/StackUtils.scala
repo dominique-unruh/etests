@@ -8,9 +8,9 @@ import me.shadaj.scalapy.py.{PyQuote, PythonException, SeqConverters}
 import utils.Python
 
 import scala.annotation.targetName
-import scala.runtime.FunctionXXL
 
-final case class SympyExpr(python: py.Dynamic) {
+final class SympyExpr(val python: py.Dynamic) extends AnyVal {
+  override def toString: String = python.toString
   def apply(args: SympyExpr*): SympyExpr = SympyExpr(python(args.map(_.python)*))
   def latex(): String = sympy.latex(python).as[String]
   def equalsTrue(): Boolean = _equalsTrue(python).as[Boolean]
