@@ -5,8 +5,6 @@ import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
 import assessments.stack.{SympyAssumption, SympyExpr}
 
-import scala.collection.mutable
-
 object DynexiteDefaults {
   private def elementName(name: sourcecode.Name) =
     ElementName(name.value.replace('$', '.'))
@@ -31,13 +29,14 @@ object DynexiteDefaults {
   extension (pe: PageElement) {
     def stringValue(using valueMap: Map[ElementName, String]): String = valueMap.getOrElse(pe.name, "")
     def sympy(using valueMap: Map[ElementName, String]): SympyExpr = stringValue.sympy
+    def latex(using valueMap: Map[ElementName, String]): String = sympy.latex
   }
 
   private def stackMathRender(string: String): String =
     if (string == "")
       ""
     else try
-      string.sympy.latex()
+      string.sympy.latex
     catch
       case e: Exception =>
         s"\\text{${e.getMessage}}" // TODO Should be escaped

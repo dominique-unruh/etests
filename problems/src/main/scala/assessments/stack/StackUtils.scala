@@ -12,11 +12,12 @@ import scala.annotation.targetName
 final class SympyExpr(val python: py.Dynamic) extends AnyVal {
   override def toString: String = python.toString
   def apply(args: SympyExpr*): SympyExpr = SympyExpr(python(args.map(_.python)*))
-  def latex(): String = sympy.latex(python).as[String]
+  def latex: String = sympy.latex(python).as[String]
   def equalsTrue(): Boolean = _equalsTrue(python).as[Boolean]
   def +(other: SympyExpr): SympyExpr = SympyExpr(python + other.python)
   def -(other: SympyExpr): SympyExpr = SympyExpr(python - other.python)
   def %(other: SympyExpr): SympyExpr = SympyExpr(python % other.python)
+  def **(other: SympyExpr): SympyExpr = SympyExpr(python.__pow__(other.python))
   def substitute(map: (SympyExpr, SympyExpr)*): SympyExpr = {
     val mapPython = map.map((k,v) => (k.python, v.python)).toPythonCopy
     val result = python.subs(mapPython)
