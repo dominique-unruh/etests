@@ -2,7 +2,7 @@ package assessments.stack
 
 import StackMath.*
 import assessments.UserError
-import assessments.stack.SympyExpr.{_equalsTrue, function, sympy}
+import assessments.stack.SympyExpr.{_equalsTrue, function, get_functions, get_symbols, sympy}
 import me.shadaj.scalapy.py
 import me.shadaj.scalapy.py.{PyQuote, PythonException, SeqConverters}
 import utils.Python
@@ -33,8 +33,10 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
 
   /** Replaces all invocations of a function f.
    *
+   * Specifically, every occurrence of `f(x1,...,xn)` is replaced by the result of evaluating `replacement(Seq(x1,...,xn))`.
+   *
    * @param name Name of the function f
-   * @param replacement TODO
+   * @param replacement Function taking the arguments of f and returning the replacement term
    * */
   def replaceFunctionSeq(name: String, replacement: Seq[SympyExpr] => SympyExpr): SympyExpr = {
     def repl(args: Seq[py.Dynamic]): py.Dynamic = replacement(args.map(p => new SympyExpr(p))).python
@@ -46,16 +48,19 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
       case e: PythonException =>
         throw new RuntimeException(s"Python error when replacing $name in $this: ${e.getMessage}")
   }
+  /** Like [[replaceFunctionSeq]], but replaces only occurrences of `f` with no arguments. */
   def replaceFunction(name: String, replacement: () => SympyExpr): SympyExpr =
     replaceFunctionSeq(name, {
       case Seq() => replacement()
       case args => function(name)(args*)
     })
+  /** Like [[replaceFunctionSeq]], but replaces only occurrences of `f` with exactly 1 argument. */
   def replaceFunction(name: String, replacement: SympyExpr => SympyExpr): SympyExpr =
     replaceFunctionSeq(name, {
       case Seq(x) => replacement(x)
       case args => function(name)(args*)
     })
+  /** Like [[replaceFunctionSeq]], but replaces only occurrences of `f` with exactly 2 arguments. */
   def replaceFunction(name: String, replacement: (SympyExpr,SympyExpr) => SympyExpr): SympyExpr =
     replaceFunctionSeq(name, {
       case Seq(x, y) => replacement(x, y)
@@ -64,17 +69,11 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
 
   /** All symbols occurring in the expression. Does not include functions, nor predefined constants like pi. */
   def symbols: Set[String] = {
-    // TODO as static variable
-    val get_symbols = Python.defineFunction("get_symbols",
-      "def get_symbols(e): import sympy; return list(map(lambda x: x.name, e.atoms(sympy.Symbol)))")
     get_symbols(python).as[Seq[String]].toSet
   }
 
   /** All functions occurring in the expression. Does not include predefined functions like Add, Mod. */
   def functions: Set[String] = {
-    // TODO as static variable
-    val get_functions = Python.defineFunction("get_functions",
-      "def get_functions(e): import sympy; return list(map(lambda f: f.func.name, filter(lambda f: isinstance(f.func,sympy.core.function.UndefinedFunction), e.atoms(sympy.Function))))")
     get_functions(python).as[Seq[String]].toSet
   }
 
@@ -83,6 +82,11 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
 
 object SympyExpr {
   lazy val sympy: py.Module = py.Module("sympy")
+
+  private val get_symbols = Python.defineFunction("get_symbols",
+    "def get_symbols(e): import sympy; return list(map(lambda x: x.name, e.atoms(sympy.Symbol)))")
+  private val get_functions = Python.defineFunction("get_functions",
+    "def get_functions(e): import sympy; return list(map(lambda f: f.func.name, filter(lambda f: isinstance(f.func,sympy.core.function.UndefinedFunction), e.atoms(sympy.Function))))")
 
   private lazy val _equalsTrue = py"lambda x: x==True"
   def symbol(name: String): SympyExpr = SympyExpr(sympy.Symbol(name))

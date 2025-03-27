@@ -11,9 +11,10 @@ class ElementPath protected (val names: Seq[String]) {
 }
 
 object ElementPath {
+  private val validElementNameRegex = "[a-zA-Z][a-zA-Z0-9_]*".r.anchored
+  
   private[assessments] def assertValidElementPath(names: Seq[String]): Unit = {
-    assert(names.forall(_.nonEmpty))
-    // TODO: assert letters 0-9a-zA-Z_ in names
+    assert(names.forall(name => validElementNameRegex.matches(name)))
   }
 
   def apply(name: String): ElementPath= {

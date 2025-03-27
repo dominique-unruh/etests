@@ -12,7 +12,6 @@ lazy val webapp = (project in file("webapp"))
   .settings(
       libraryDependencies += guice,
       libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test,
-      //    libraryDependencies += "org.commonmark" % "commonmark" % "0.22.0", // TODO remove
   )
   .enablePlugins(PlayScala)
   .dependsOn(problems)
