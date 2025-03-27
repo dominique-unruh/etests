@@ -2,7 +2,7 @@ package assessments.stack
 
 import assessments.UserError
 import assessments.stack.StackMath.{Bool, Funcall, Integer, Operation, Ops, Variable}
-import assessments.stack.StackUtils.sympy
+import assessments.stack.SympyExpr.sympy
 import me.shadaj.scalapy.py
 
 sealed trait StackMath {

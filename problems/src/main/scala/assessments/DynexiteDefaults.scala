@@ -3,7 +3,7 @@ package assessments
 import assessments.pageelements.*
 import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
-import assessments.stack.SympyExpr
+import assessments.stack.{SympyAssumption, SympyExpr}
 
 import scala.collection.mutable
 
@@ -18,7 +18,11 @@ object DynexiteDefaults {
     new MultipleChoice(name=elementName(name), options=options, reference=reference)
 
   extension (str: String) {
-    def sympy: SympyExpr = parse(str).toSympy
+    def sympy: SympyExpr = 
+      try
+        parse(str).toSympy
+      catch
+        case e: SyntaxError => SympyExpr.errorTerm(e.getMessage)
   }
 
   extension (pe: PageElement) {
@@ -38,10 +42,14 @@ object DynexiteDefaults {
   def preview(observed: PageElement)(using name: sourcecode.Name) =
     MathPreviewElement(ElementName(name.value), observed.name, stackMathRender)
 
-  def checkEq(x: => PageElement, y: => SympyExpr)
+  def checkEq(x: => PageElement | SympyExpr, y: => PageElement | SympyExpr, assumption: SympyAssumption = SympyAssumption.positive)
              (using answers: Map[ElementName, String], comments: Commenter): Boolean =
     try {
-      checkEquality(x.sympy, y)
+      def toSympy(value: PageElement | SympyExpr) = value match {
+        case x: PageElement => x.sympy
+        case x: SympyExpr => x
+      }
+      checkEquality(toSympy(x), toSympy(y), assumption=assumption)
     } catch
       case e : SyntaxError => comments += e.getMessage; false
 
