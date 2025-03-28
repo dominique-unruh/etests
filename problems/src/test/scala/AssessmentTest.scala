@@ -1,13 +1,19 @@
 import scala.language.experimental.genericNumberLiterals
-import externalsystems.Dynexite
+import externalsystems.{Dynexite, DynexiteGrader}
 import assessments.ExceptionContext.initialExceptionContext
 import assessments.pageelements.AnswerElement
 import assessments.{Assessment, ElementName, ExceptionContext, ExceptionWithContext, Grader, Points}
+import com.github.tototoshi.csv.{CSVFormat, CSVReader, CSVWriter, DefaultCSVFormat, Quoting}
 import exam.PqcExam2
 import externalsystems.Dynexite.{ClassificationBlock, StackBlock}
+import externalsystems.DynexiteGrader.getDynexiteAnswers
+import org.apache.commons.io.FileUtils
+import org.log4s.getLogger
 import org.scalatest.funsuite.AnyFunSuiteLike
 
-import java.nio.file.Path
+import java.io.FileWriter
+import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Path}
 import java.nio.file.Path.*
 import scala.collection.mutable
 
@@ -15,135 +21,63 @@ class AssessmentTest extends AnyFunSuiteLike {
 }
 
 object AssessmentTest {
+    given rwthOnlineCSVFormat: CSVFormat = new DefaultCSVFormat {
+        override val delimiter: Char = ';'
+        override val lineTerminator: String = "\n"
+    }
+
+    def loadRWTHData(path: Path) = {
+        val reader = CSVReader.open(path.toFile, "utf8")
+        val content = reader.allWithHeaders()
+        content
+    }
+
+
     def main(args: Array[String]): Unit = {
         val resultsPath = "/home/unruh/cloud/qis/lectures/pqc-2024/exam2/dynexite-exam-results.json"
+        val examsPath = Path.of("/home/unruh/cloud/qis/lectures/pqc-2024/exam2/dynexite-archive-of-answers.zip")
+        val targetDir = Path.of("/home/unruh/cloud/qis/lectures/pqc-2024/exam2/corrected1")
+
+        val rwthData = loadRWTHData(Path.of("/home/unruh/cloud/qis/lectures/pqc-2024/exam2/rwthonline-result-table-for-filling.csv"))
+
 
         val results = Dynexite.parseExamResults(of(resultsPath))
-        val assessments = PqcExam2.questions
+        val exam = PqcExam2
 
-        for (learner <- results.learners) {
-            given ExceptionContext = initialExceptionContext(s"Grading for learner ${learner.learnerId}", learner)
-            assert(learner.attempts.length <= 1)
-            for (attempt <- learner.attempts) {
-                assert(attempt.items.length == assessments.length, (attempt.items.length, assessments.length))
-                for ((item, assessment) <- attempt.items.zip(assessments)) {
-                    if (assessment == null) {
-                        throw AssertionError("Assessment is null")
-//                        println("WARNING: Missing assessment")
-                    } else {
-                        given ExceptionContext = initialExceptionContext(s"Grading assessment ${assessment.name}", assessment)
-                        grade(learner.identifier, assessment, item)
-                    }
-                }
-            }
-        }
-    }
+        if (Files.exists(targetDir))
+            FileUtils.deleteDirectory(targetDir.toFile)
+        Files.createDirectory(targetDir)
 
-    def grade(studentRegistration: String, assessment: Assessment, item: Dynexite.Item)(using exceptionContext: ExceptionContext): Unit = {
-        given ExceptionContext = exceptionContext.add(s"Correcting assessment ${assessment.name}", assessment, item)
-        val blocks = item.blocks
-        assert(blocks.nonEmpty)
+        val mails =  CSVWriter.open(targetDir.resolve("mails.csv").toFile)
+        mails.writeRow(Seq("first","last","regno","email","pdf","txt"))
 
-        val (answers, dynexitePoints, dynexiteReachable) = getDynexiteAnswers(item, assessment)
-        val graders = (for (case (_, grader: Grader) <- assessment.pageElements) yield grader).toSeq;
-        assert(graders.size == 1, graders)
-        val grader = graders.head
+        for (learner <- results.learners
+             if learner.attempts.nonEmpty) {
+            println("\n\n\n")
+            val result = DynexiteGrader.gradeLearner(learner, exam.questions)
+            val pdf = DynexiteGrader.getAnswerPDF(examsPath, learner.identifier)
+            Files.write(targetDir.resolve(s"${learner.identifier}.pdf"), pdf)
+            Files.write(targetDir.resolve(s"${learner.identifier}.txt"), result.report.getBytes(StandardCharsets.UTF_8))
+//            println(result)
 
-        val (points, comments) = grader.grade(answers.map { (k, v) => (k, v) })
-        val reachable = grader.points;
+            val Seq(rwthEntry) = rwthData.filter(e => e("REGISTRATION_NUMBER") == learner.identifier)
 
-        println(s"\nREPORT (assessment ${assessment.name}, student $studentRegistration)")
-        println(s"Points: $points / $reachable")
-        println(s"Dynexite: $dynexitePoints / $dynexiteReachable")
-        println("COMMENTS:")
-        for (comment <- comments)
-            println("* "+comment)
-        println("\n\n")
-
-        // Allowing some error in this check since Dynexite doesn't do exact arithmetic
-        assert((points - dynexitePoints).abs <= 0.005, (points, dynexitePoints))
-        assert(reachable == dynexiteReachable)
-    }
-
-
-    def getDynexiteAnswersStack(item: Dynexite.Item, assessment: Assessment)
-                               (implicit exceptionContext: ExceptionContext):
-    (Map[ElementName, String], Points, Points) = {
-        var points: Points = 0
-        var reachable: Points = 0
-
-        val expectedNames = {
-            val builder = mutable.Map[String, ElementName]()
-            for (case (name, _: AnswerElement[String]) <- assessment.pageElements) {
-                val lastName = name.last
-                assert(!builder.contains(lastName), (builder, lastName, assessment.pageElements))
-                builder.update(lastName, name)
-            }
-            builder.toMap
+            mails.writeRow(Seq(
+                rwthEntry("FIRST_NAME_OF_STUDENT"),
+                rwthEntry("FAMILY_NAME_OF_STUDENT"),
+                learner.identifier,
+                rwthEntry("EMAIL_ADDRESS"),
+                s"${learner.identifier}.pdf",
+                s"${learner.identifier}.txt",
+                ))
         }
 
-        val answers = mutable.Map[ElementName,String]()
-
-        for (block <- item.blocks) {
-            reachable += block.maxPoints
-            points += block.earnedPoints;
-
-            for ((name, value) <- block.asInstanceOf[StackBlock].answers) {
-                val elementName = expectedNames(name)
-                assert(!answers.contains(elementName))
-                answers.update(elementName, value)
-            }
-        };
-
-        (answers.toMap, points, reachable)
+        mails.close()
     }
 
-    def getDynexiteAnswersClassification(item: Dynexite.Item, assessment: Assessment)
-                               (implicit exceptionContext: ExceptionContext):
-    (Map[ElementName, String], Points, Points) = {
-        var points: Points = 0
-        var reachable: Points = 0
 
-        val dynexiteAnswers =
-            for (block <- item.blocks;
-                answer <- block.asInstanceOf[ClassificationBlock].answers)
-                yield answer
 
-        val assessmentNames = (for (case (name, _: AnswerElement[?]) <- assessment.pageElements)
-            yield name).toSeq;
-
-        assert(dynexiteAnswers.length == assessmentNames.length, (dynexiteAnswers, assessmentNames))
-
-        val answers = mutable.Map[ElementName,String]()
-
-        for (block <- item.blocks) {
-            reachable += block.maxPoints
-            points += block.earnedPoints;
-        };
-        
-        for ((name,answer) <- assessmentNames.zip(dynexiteAnswers)) {
-                assert(!answers.contains(name), (answers, name, assessmentNames))
-                answers.update(name, answer)
-        };
-
-        (answers.toMap, points, reachable)
-    }
-
-    def getDynexiteAnswers(item: Dynexite.Item, assessment: Assessment)
-                          (implicit exceptionContext: ExceptionContext):
-                    (Map[ElementName, String], Points, Points) = {
-        item.blocks match {
-            case Seq() => (Map.empty, 0, 0)
-            case Seq(_: StackBlock, _*) =>
-                assert(item.blocks.forall(_.isInstanceOf[StackBlock]))
-                getDynexiteAnswersStack(item, assessment)
-            case Seq(_: ClassificationBlock, _*) =>
-                assert(item.blocks.forall(_.isInstanceOf[ClassificationBlock]))
-                getDynexiteAnswersClassification(item, assessment)
-            case Seq(block, _*) =>
-                throw ExceptionWithContext(s"Dynexite data contained a solution block of unsupported type ${block.getClass.getName}")
-        }
-    }
+    private val logger = getLogger
 }
 
 

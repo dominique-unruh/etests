@@ -1,6 +1,8 @@
 package assessments
 
 import java.math.MathContext
+import java.math.RoundingMode
+import scala.math.BigDecimal
 import scala.util.FromDigits
 
 /** Implementation of rational numbers.
@@ -11,7 +13,9 @@ class Points private (private val numerator: BigInt, private val denominator: Bi
 
   def fractionString: String = s"$numerator/$denominator"
   def decimalFractionString: String = (BigDecimal(numerator)/BigDecimal(denominator)).toString
-  override def toString: String = decimalFractionString
+  def decimalFractionString(precision: Int): String = (BigDecimal(numerator)/BigDecimal(denominator))
+    .round(MathContext(precision, RoundingMode.DOWN)).toString
+  override def toString: String = decimalFractionString(3)
 
   def <(other: Points): Boolean =
     numerator * other.denominator < other.numerator * denominator

@@ -9,6 +9,7 @@ class ExceptionWithContext(message: String, extraData: Any*)(implicit context: E
   }
 }
 
+// TODO: Look whether org.apache.commons.lang3.exception.ExceptionContext is useful instead
 class ExceptionContext private (val messages: List[(String, Seq[Any])]) {
   def add(message: String, extraData: Any*) =
     ExceptionContext((message, extraData) :: messages)
