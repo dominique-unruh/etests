@@ -38,7 +38,10 @@ object AssessmentTest {
             FileUtils.deleteDirectory(targetDir.toFile)
         Files.createDirectory(targetDir)
 
-        import RWTHOnlineGrades.given
+        given CSVFormat = new DefaultCSVFormat {
+            override val delimiter: Char = ';'
+            override val lineTerminator: String = "\n"
+        }
         val mails =  CSVWriter.open(targetDir.resolve("mails.csv").toFile)
         mails.writeRow(Seq("first","last","regno","email","pdf","txt"))
 
@@ -62,9 +65,13 @@ object AssessmentTest {
                 s"${learner.identifier}.pdf",
                 s"${learner.identifier}.txt",
                 ))
+
+            rwthEntry.grade = result.grade
+            rwthEntry.remark = result.shortReport
         }
 
         mails.close()
+        rwthData.save(Path.of("/home/unruh/cloud/qis/lectures/pqc-2024/exam2/rwthonline-result-table-for-upload.csv"))
     }
 
 

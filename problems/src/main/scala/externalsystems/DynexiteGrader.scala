@@ -17,7 +17,8 @@ import scala.jdk.CollectionConverters.IteratorHasAsScala
 import scala.util.control.Breaks.{break, breakable}
 
 object DynexiteGrader {
-  case class Result(points: Points, reachable: Points, report: String)
+  case class Result(points: Points, reachable: Points, report: String, shortReport: String, grade: String)
+  case class QuestionResult(points: Points, reachable: Points, report: String)
 
   def getAnswerPDF(archive: Path, registrationNumber: String): Array[Byte] = {
     val zip = new ZipFile(archive.toFile)
@@ -79,10 +80,13 @@ object DynexiteGrader {
       s"The problems here are not in the same order as in the PDF, sorry."
     reports.insert(0, header)
 
-    Result(totalPoints, totalReachable, reports.mkString("\n\n"))
+    val shortReport = s"$totalPoints points out of $totalReachable"
+    
+    Result(points=totalPoints, reachable=totalReachable, grade=grade, 
+      report=reports.mkString("\n\n"), shortReport = shortReport)
   }
 
-  def gradeQuestion(registrationNumber: String, assessment: Assessment, item: Dynexite.Item)(using exceptionContext: ExceptionContext): Result = {
+  def gradeQuestion(registrationNumber: String, assessment: Assessment, item: Dynexite.Item)(using exceptionContext: ExceptionContext): QuestionResult = {
     logger.debug(s"Grading problem: ${assessment.name}")
 
     given ExceptionContext = exceptionContext.add(s"Correcting assessment ${assessment.name}", assessment, item)
@@ -117,7 +121,7 @@ object DynexiteGrader {
 //    assert((points - dynexitePoints).abs <= 0.005, (points, dynexitePoints))
     assert(reachable == dynexiteReachable)
 
-    Result(points, reachable, report.mkString("\n"))
+    QuestionResult(points=points, reachable=reachable, report=report.mkString("\n"))
   }
 
   private def getDynexiteAnswersStack(item: Dynexite.Item, assessment: Assessment)
