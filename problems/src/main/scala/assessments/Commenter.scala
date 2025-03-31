@@ -8,4 +8,5 @@ final class Commenter {
   @targetName("addComment")
   def +=(comment: String): Unit = builder += comment
   def comments: Seq[String] = builder.result()
+  def clear(): Unit = builder.clear()
 }

@@ -4,7 +4,7 @@ import assessments.ExceptionContext.initialExceptionContext
 
 import scala.language.experimental.genericNumberLiterals
 import assessments.pageelements.AnswerElement
-import assessments.{Assessment, ElementName, ExceptionContext, ExceptionWithContext, Grader, Points}
+import assessments.{Assessment, ElementName, ExceptionContext, ExceptionWithContext, Grader, GradingContext, Points}
 import externalsystems.Dynexite.{ClassificationBlock, StackBlock}
 import org.log4s.getLogger
 
@@ -52,7 +52,7 @@ object DynexiteGrader {
   def gradeLearner(learner: Dynexite.Learner, examQuestions: Seq[Assessment]): Result = {
     given ExceptionContext = initialExceptionContext(s"Grading for learner ${learner.identifier}", learner)
 
-    logger.debug(s"Grading learner ${learner.learnerId}")
+    logger.debug(s"Grading learner ${learner.learnerId}, ${learner.identifier}")
     assert(learner.attempts.length == 1)
 
     val reports = ListBuffer[String]()
@@ -63,7 +63,7 @@ object DynexiteGrader {
       assert(attempt.items.length == examQuestions.length, (attempt.items.length, examQuestions.length))
       for ((item, assessment) <- attempt.items.zip(examQuestions)) {
         given ExceptionContext = initialExceptionContext(s"Grading assessment ${assessment.name}", assessment)
-        val result = gradeQuestion(assessment, item)
+        val result = gradeQuestion(registrationNumber = learner.identifier, assessment = assessment, item = item)
         logger.debug(s"Result: $result")
         reports += result.report
         totalPoints += result.points
@@ -82,7 +82,7 @@ object DynexiteGrader {
     Result(totalPoints, totalReachable, reports.mkString("\n\n"))
   }
 
-  def gradeQuestion(assessment: Assessment, item: Dynexite.Item)(using exceptionContext: ExceptionContext): Result = {
+  def gradeQuestion(registrationNumber: String, assessment: Assessment, item: Dynexite.Item)(using exceptionContext: ExceptionContext): Result = {
     logger.debug(s"Grading problem: ${assessment.name}")
 
     given ExceptionContext = exceptionContext.add(s"Correcting assessment ${assessment.name}", assessment, item)
@@ -94,7 +94,10 @@ object DynexiteGrader {
     assert(graders.size == 1, graders)
     val grader = graders.head
 
-    val (points, comments) = grader.grade(answers.map { (k, v) => (k, v) })
+    val (points, comments) = grader.grade(GradingContext(
+      answers = answers.map { (k, v) => (k, v) },
+      registrationNumber = registrationNumber
+    ))
 
     logger.debug("Comments: " + comments)
 

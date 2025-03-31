@@ -4,8 +4,13 @@ import assessments.pageelements.*
 import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
 import assessments.stack.{SympyAssumption, SympyExpr}
+//import scalacache.caffeine.CaffeineCache
+//import scalacache.{Cache, caching}
+//import scalacache.modes.sync._
 
 object DynexiteDefaults {
+//  given sympyCache: Cache[SympyExpr] = CaffeineCache[SympyExpr]
+
   private def elementName(name: sourcecode.Name) =
     ElementName(name.value.replace('$', '.'))
 
@@ -20,6 +25,7 @@ object DynexiteDefaults {
       if (str == "" || str == null)
         SympyExpr.errorTerm("empty")
       else try
+//        caching("sympySource", str)(None) { parse(str).toSympy }
         parse(str).toSympy
       catch
         case e: SyntaxError => SympyExpr.errorTerm(e.getMessage)
@@ -27,9 +33,9 @@ object DynexiteDefaults {
   }
 
   extension (pe: PageElement) {
-    def stringValue(using valueMap: Map[ElementName, String]): String = valueMap.getOrElse(pe.name, "")
-    def sympy(using valueMap: Map[ElementName, String]): SympyExpr = stringValue.sympy
-    def latex(using valueMap: Map[ElementName, String]): String = sympy.latex
+    def stringValue(using gradingContext: GradingContext): String = gradingContext.answers.getOrElse(pe.name, "")
+    def sympy(using gradingContext: GradingContext): SympyExpr = stringValue.sympy
+    def latex(using gradingContext: GradingContext): String = sympy.latex
   }
 
   private def stackMathRender(string: String): String =
@@ -45,7 +51,7 @@ object DynexiteDefaults {
     MathPreviewElement(ElementName(name.value), observed.name, stackMathRender)
 
   def checkEq(x: => PageElement | SympyExpr, y: => PageElement | SympyExpr, assumption: SympyAssumption = SympyAssumption.positive)
-             (using answers: Map[ElementName, String], comments: Commenter): Boolean =
+             (using gradingContext: GradingContext, comments: Commenter): Boolean =
     try {
       def toSympy(value: PageElement | SympyExpr) = value match {
         case x: PageElement => x.sympy
@@ -58,7 +64,7 @@ object DynexiteDefaults {
 
   def gradeInputGroup(inputs: Seq[(AnswerElement[String], String)],
                       pointsPerOption: Points = null, pointsTotal: Points = null)
-                     (using commenter: Commenter, valueMap: Map[ElementName, String]): Points = {
+                     (using commenter: Commenter, gradingContext: GradingContext): Points = {
     assert(inputs.nonEmpty)
     assert(pointsPerOption != null || pointsTotal != null)
     if (pointsPerOption != null && pointsTotal != null)

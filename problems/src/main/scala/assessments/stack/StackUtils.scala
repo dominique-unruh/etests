@@ -16,6 +16,8 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
   def equalsTrue(): Boolean = _equalsTrue(python).as[Boolean]
   def +(other: SympyExpr): SympyExpr = SympyExpr(python + other.python)
   def -(other: SympyExpr): SympyExpr = SympyExpr(python - other.python)
+  def *(other: SympyExpr): SympyExpr = SympyExpr(python * other.python)
+  def /(other: SympyExpr): SympyExpr = SympyExpr(python / other.python)
   def %(other: SympyExpr): SympyExpr = SympyExpr(python % other.python)
   def **(other: SympyExpr): SympyExpr = SympyExpr(python.__pow__(other.python))
   def substitute(map: (SympyExpr, SympyExpr)*): SympyExpr = {
@@ -92,6 +94,9 @@ object SympyExpr {
   def symbol(name: String): SympyExpr = SympyExpr(sympy.Symbol(name))
   def function(name: String): SympyExpr = SympyExpr(sympy.Function(name))
   def integer(int: Int): SympyExpr = SympyExpr(sympy.Integer(int))
+  def fraction(numerator: Int, denominator: Int): SympyExpr =
+    assert(denominator != 0)
+    integer(numerator) / integer(denominator)
 
   def Eq(a: SympyExpr, b: SympyExpr) = SympyExpr(sympy.Eq(a.python, b.python))
 
@@ -102,6 +107,7 @@ object SympyExpr {
 }
 
 object StackUtils {
+  // TODO memoize. But this needs first a hashable SympyExpr or something
   def checkEquality(x: SympyExpr, y: SympyExpr, assumption: SympyAssumption = SympyAssumption.positive): Boolean = {
     val result = assumption.addToSympyExpr(SympyExpr.Eq(x, y)).expand.simplify
     result.equalsTrue()

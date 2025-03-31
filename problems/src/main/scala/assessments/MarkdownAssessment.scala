@@ -13,10 +13,10 @@ import scala.util.matching.Regex
 abstract class MarkdownAssessment {
   val name: String = getClass.getName
   val markdown: String
-  def grade(answers: Map[ElementName, String]): (Points, Seq[String])
+  def grade(gradingContext: GradingContext): (Points, Seq[String])
   val reachablePoints: Points
   val grader: Grader = new Grader(ElementName("grader")) {
-    override def grade(answers: Map[ElementName, String]): (Points, Seq[String]) = MarkdownAssessment.this.grade(answers)
+    override def grade(gradingContext: GradingContext): (Points, Seq[String]) = MarkdownAssessment.this.grade(gradingContext)
     override lazy val points: Points = MarkdownAssessment.this.reachablePoints
   }
 
