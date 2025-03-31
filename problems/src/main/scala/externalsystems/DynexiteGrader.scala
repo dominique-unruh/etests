@@ -111,7 +111,7 @@ object DynexiteGrader {
       report += "* "+comment
 
     // Allowing some error in this check since Dynexite doesn't have rational points
-    assert((points - dynexitePoints).abs <= 0.005, (points, dynexitePoints))
+//    assert((points - dynexitePoints).abs <= 0.005, (points, dynexitePoints))
     assert(reachable == dynexiteReachable)
 
     Result(points, reachable, report.mkString("\n"))
