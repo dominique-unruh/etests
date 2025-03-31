@@ -1,5 +1,5 @@
 import scala.language.experimental.genericNumberLiterals
-import externalsystems.{Dynexite, DynexiteGrader}
+import externalsystems.{Dynexite, DynexiteGrader, RWTHOnlineGrades}
 import assessments.ExceptionContext.initialExceptionContext
 import assessments.pageelements.AnswerElement
 import assessments.{Assessment, ElementName, ExceptionContext, ExceptionWithContext, Grader, Points}
@@ -21,16 +21,6 @@ class AssessmentTest extends AnyFunSuiteLike {
 }
 
 object AssessmentTest {
-    given rwthOnlineCSVFormat: CSVFormat = new DefaultCSVFormat {
-        override val delimiter: Char = ';'
-        override val lineTerminator: String = "\n"
-    }
-
-    def loadRWTHData(path: Path) = {
-        val reader = CSVReader.open(path.toFile, "utf8")
-        val content = reader.allWithHeaders()
-        content
-    }
 
 
     def main(args: Array[String]): Unit = {
@@ -38,7 +28,7 @@ object AssessmentTest {
         val examsPath = Path.of("/home/unruh/cloud/qis/lectures/pqc-2024/exam2/dynexite-archive-of-answers.zip")
         val targetDir = Path.of("/home/unruh/cloud/qis/lectures/pqc-2024/exam2/corrected1")
 
-        val rwthData = loadRWTHData(Path.of("/home/unruh/cloud/qis/lectures/pqc-2024/exam2/rwthonline-result-table-for-filling.csv"))
+        val rwthData = RWTHOnlineGrades.load(Path.of("/home/unruh/cloud/qis/lectures/pqc-2024/exam2/rwthonline-result-table-for-filling.csv"))
 
 
         val results = Dynexite.parseExamResults(of(resultsPath))
@@ -48,6 +38,7 @@ object AssessmentTest {
             FileUtils.deleteDirectory(targetDir.toFile)
         Files.createDirectory(targetDir)
 
+        import RWTHOnlineGrades.given
         val mails =  CSVWriter.open(targetDir.resolve("mails.csv").toFile)
         mails.writeRow(Seq("first","last","regno","email","pdf","txt"))
 
@@ -60,13 +51,14 @@ object AssessmentTest {
             Files.write(targetDir.resolve(s"${learner.identifier}.txt"), result.report.getBytes(StandardCharsets.UTF_8))
 //            println(result)
 
-            val Seq(rwthEntry) = rwthData.filter(e => e("REGISTRATION_NUMBER") == learner.identifier)
+//            val Seq(rwthEntry) = rwthData.filter(e => e("REGISTRATION_NUMBER") == learner.identifier)
+            val rwthEntry = rwthData(learner.identifier)
 
             mails.writeRow(Seq(
-                rwthEntry("FIRST_NAME_OF_STUDENT"),
-                rwthEntry("FAMILY_NAME_OF_STUDENT"),
+                rwthEntry.firstName,
+                rwthEntry.familyName,
                 learner.identifier,
-                rwthEntry("EMAIL_ADDRESS"),
+                rwthEntry.email,
                 s"${learner.identifier}.pdf",
                 s"${learner.identifier}.txt",
                 ))
