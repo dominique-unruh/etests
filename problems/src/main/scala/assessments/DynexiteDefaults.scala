@@ -62,7 +62,7 @@ object DynexiteDefaults {
       case e : SyntaxError => comments += e.getMessage; false
 
 
-  def gradeInputGroup(inputs: Seq[(AnswerElement[String], String)],
+  def gradeInputGroup(inputs: Seq[(AnswerElement, String)],
                       pointsPerOption: Points = null, pointsTotal: Points = null)
                      (using commenter: Commenter, gradingContext: GradingContext): Points = {
     assert(inputs.nonEmpty)

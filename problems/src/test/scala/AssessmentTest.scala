@@ -48,7 +48,7 @@ object AssessmentTest {
         for (learner <- results.learners
              if learner.attempts.nonEmpty) {
             println("\n\n\n")
-            val result = DynexiteGrader.gradeLearner(learner, exam.questions)
+            val result = DynexiteGrader.gradeLearner(learner, exam.questions.map(_.assessment))
             val pdf = DynexiteGrader.getAnswerPDF(examsPath, learner.identifier)
             Files.write(targetDir.resolve(s"${learner.identifier}.pdf"), pdf)
             Files.write(targetDir.resolve(s"${learner.identifier}.txt"), result.report.getBytes(StandardCharsets.UTF_8))
@@ -73,8 +73,6 @@ object AssessmentTest {
         mails.close()
         rwthData.save(Path.of("/home/unruh/cloud/qis/lectures/pqc-2024/exam2/rwthonline-result-table-for-upload.csv"))
     }
-
-
 
     private val logger = getLogger
 }

@@ -132,7 +132,7 @@ object DynexiteGrader {
 
     val expectedNames = {
       val builder = mutable.Map[String, ElementName]()
-      for (case (name, _: AnswerElement[String]) <- assessment.pageElements) {
+      for (case (name, _: AnswerElement) <- assessment.pageElements) {
         val lastName = name.last
         assert(!builder.contains(lastName), (builder, lastName, assessment.pageElements))
         builder.update(lastName, name)
@@ -167,7 +167,7 @@ object DynexiteGrader {
            answer <- block.asInstanceOf[ClassificationBlock].answers)
       yield answer
 
-    val assessmentNames = (for (case (name, _: AnswerElement[?]) <- assessment.pageElements)
+    val assessmentNames = (for (case (name, _: AnswerElement) <- assessment.pageElements)
       yield name).toSeq;
 
     assert(dynexiteAnswers.length == assessmentNames.length, (dynexiteAnswers, assessmentNames))

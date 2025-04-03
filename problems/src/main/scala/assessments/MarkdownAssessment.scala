@@ -2,7 +2,7 @@ package assessments
 
 import assessments.Assessment.{tagEnd, tagStart}
 import assessments.MarkdownAssessment.{markdownParser, markdownRenderer, tagFindingRegex}
-import assessments.pageelements.PageElement
+import assessments.pageelements.{AnswerElement, PageElement}
 import exam.HardAssumptions
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
@@ -85,6 +85,41 @@ abstract class MarkdownAssessment {
     val htmlTemplate: String = markdownRenderer.render(markdownParser.parse(substituted))
 
     Assessment(name, htmlTemplate, elements.result())
+  }
+
+  def testSolution(expected: Points = reachablePoints, changes: Seq[(PageElement, String)] = Seq.empty): AssessmentTest = new AssessmentTest {
+    override def runTest()(using exceptionContext: ExceptionContext): Unit = {
+      println(s"Testing $name with ${if (changes.nonEmpty) "modified " else ""} reference solution.")
+      val originalReference = for (case (name, answerElement: AnswerElement) <- assessment.pageElements)
+        yield name -> answerElement.reference
+      val changedReference = mutable.Map(originalReference.toSeq *)
+      for ((pageElement, value) <- changes)
+        val name = pageElement.name
+        if (!changedReference.contains(name))
+          throw ExceptionWithContext(s"Unknown answer element $name", pageElement, name, value, changedReference)
+        if (changedReference(name) == value)
+          throw ExceptionWithContext(s"Answer element $name was updated to unchanged value $value", name, value, changedReference)
+        changedReference.addOne(name -> value)
+
+      println(s"Reference solution: ${changedReference.map((k, v) => s"$k -> $v").mkString(", ")}")
+      val gradingContext = GradingContext(answers = changedReference.toMap, registrationNumber = "TEST")
+      val (points, comment) = grader.grade(gradingContext)
+      println(s"Resulting comments:\n${comment.map(comment => "* " + comment).mkString("\n")}")
+      println(s"Resulting number of points: $points (expected points: $expected)")
+      assert(points == expected)
+    }
+  }
+
+  /** Run selftests of this assessment */
+  def runTests()(using exceptionContext: ExceptionContext): Unit = {
+    testSolution().runTest()
+
+    for (method <- this.getClass.getMethods
+         if method.getParameterCount == 0
+         if classOf[AssessmentTest].isAssignableFrom(method.getReturnType))
+      println(s"""Running test ${method.getName}:""")
+      val test = method.invoke(this).asInstanceOf[AssessmentTest]
+      test.runTest()
   }
 }
 

@@ -17,4 +17,5 @@ class ExceptionContext private (val messages: List[(String, Seq[Any])]) {
 
 object ExceptionContext {
   def initialExceptionContext(message: String, extraData: Any*) = ExceptionContext(List((message, extraData)))
+  def addToExceptionContext(message: String, extraData: Any*)(using exceptionContext: ExceptionContext): ExceptionContext = exceptionContext.add(message, extraData)
 }
