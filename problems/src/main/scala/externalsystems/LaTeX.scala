@@ -1,5 +1,6 @@
 package externalsystems
 
+import externalsystems.Docker.runInDocker
 import utils.{IndentedInterpolator, Utils}
 
 import java.awt.image.BufferedImage
@@ -14,54 +15,7 @@ import javax.swing.{ImageIcon, JLabel, JOptionPane}
 
 object LaTeX {
   case class ConversionResult(success: Boolean, outputPath: Option[String], error: Option[String])
-
-  case class DockerResult(exitCode: Int, files: Map[String, Array[Byte]]) {
-    def fileString(name: String, charset: Charset = StandardCharsets.UTF_8): Option[String] = files.get(name).map(new String(_, charset))
-  }
-
-  def runInDocker(image: String,
-                  command: Seq[String],
-                  files: Map[String, Array[Byte] | String],
-                  requestedOutputs: Seq[String]): DockerResult = {
-    // TODO cache
-    val tempDir = Utils.getTempDir.toNIO
-
-    println(s"Pulling docker image $image")
-
-    Seq("docker", "pull", "--", image).!!
-
-    for ((file, content) <- files) {
-      val byteContent = content match
-        case content: String => content.getBytes(StandardCharsets.UTF_8)
-        case content: Array[Byte] => content
-      Files.write(tempDir.resolve(file), byteContent)
-    }
-
-    val dockerCommand = Seq(
-      "docker", "run", "--rm",
-      "-v", s"$tempDir:/workdir",
-      "-w", "/workdir",
-      image) ++ command
-
-    println(s"Running Docker command: ${dockerCommand.mkString(" ")}")
-
-    Seq("ls", "-lh", tempDir.toString).!
-
-    val exitCode = dockerCommand.!
-
-    Seq("ls", "-lh", tempDir.toString).!
-
-    val resultFiles = Map.from(requestedOutputs.flatMap { name =>
-        val file = tempDir.resolve(name)
-        if (Files.exists(file))
-          Some((name, Files.readAllBytes(file)))
-        else
-          None
-      })
-
-    DockerResult(exitCode = exitCode, files = resultFiles)
-  }
-
+  
   def tikzToPNG(tikzCode: String): Array[Byte] = {
     // TODO Configurable preamble
     val latex =
