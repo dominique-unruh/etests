@@ -13,6 +13,7 @@ import play.api.libs.json.JsValue
 import java.nio.file.{Files, Path}
 import scala.collection.mutable.ListBuffer
 import scala.util.{Random, Using}
+import scala.xml._
 
 class Assessment (val name: String,
                   val htmlTemplate: String,
@@ -49,6 +50,11 @@ class Assessment (val name: String,
          if otherElement ne element)
       reactions ++= otherElement.otherAction(this, element, data, payload)
     reactions.toSeq
+  }
+
+  lazy val moodleXML: Elem = {
+    val xml = <test>bla</test>
+    xml
   }
 }
 

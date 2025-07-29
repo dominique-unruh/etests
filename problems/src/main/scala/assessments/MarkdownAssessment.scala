@@ -3,7 +3,7 @@ package assessments
 import assessments.Assessment.{tagEnd, tagStart}
 import assessments.MarkdownAssessment.{markdownParser, markdownRenderer, tagFindingRegex}
 import assessments.pageelements.{AnswerElement, PageElement}
-import exam.HardAssumptions
+import exam.y2024.pqc2.HardAssumptions
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
 

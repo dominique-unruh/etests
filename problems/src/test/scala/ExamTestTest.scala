@@ -1,5 +1,5 @@
 import assessments.ExceptionContext
-import exam.PqcExam2
+import exam.y2024.pqc2.PqcExam2
 
 object ExamTestTest {
   def main(args: Array[String]): Unit = {

@@ -4,7 +4,7 @@ import assessments.ExceptionContext.initialExceptionContext
 import assessments.pageelements.AnswerElement
 import assessments.{Assessment, ElementName, ExceptionContext, ExceptionWithContext, Grader, Points}
 import com.github.tototoshi.csv.{CSVFormat, CSVReader, CSVWriter, DefaultCSVFormat, Quoting}
-import exam.PqcExam2
+import exam.y2024.pqc2.PqcExam2
 import externalsystems.Dynexite.{ClassificationBlock, StackBlock}
 import externalsystems.DynexiteGrader.getDynexiteAnswers
 import org.apache.commons.io.FileUtils
