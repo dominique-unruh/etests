@@ -1,0 +1,40 @@
+package utils
+
+import utils.Tag.Tagged
+
+class Tag[+Owner, Value](final val name: String) {
+  def ->(value: Value) : Tagged[Owner, Value] = Tagged(this, value)
+}
+
+object Tag {
+  class Tags[-Owner] private (private val map: Map[Tag[?, ?], Any]) extends AnyVal {
+    def getOrElse[Value](tag: Tag[Owner, Value], default: => Value): Value =
+      map.getOrElse(tag, default).asInstanceOf[Value]
+  }
+  case class Tagged[+Owner, Value](val tag: Tag[Owner, Value], val value: Value)
+
+  object Tags {
+    def apply[Owner](tags: Tagged[Owner, ?]*): Tags[Owner] = {
+      val builder = mkBuilder[Owner]
+      for (tagged <- tags)
+        builder += tagged
+      builder.result()
+    }
+
+    def empty[Owner] = new Tags[Owner](Map.empty)
+
+    def mkBuilder[Owner] = new Builder[Owner]()
+
+    class Builder[Owner] private[Tag] () {
+      private val builder = Map.newBuilder[Tag[?, ?], Any]
+
+      def +=[Value](tagged: Tagged[Owner, Value]) : Unit =
+        this += (tagged.tag, tagged.value)
+
+      def +=[Value](tagValue: (Tag[Owner, Value], Value)) : Unit =
+        builder += tagValue
+
+      def result() = new Tags(builder.result())
+    }
+  }
+}

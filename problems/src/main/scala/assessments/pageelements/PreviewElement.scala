@@ -2,7 +2,8 @@ package assessments.pageelements
 
 import assessments.{Assessment, ElementName}
 import play.api.libs.json.{JsObject, JsString, JsValue}
-import utils.IndentedInterpolator
+import utils.Tag.Tags
+import utils.{IndentedInterpolator, Tag}
 
 /** Example of a preview that just repeats the text from the corresponding input element. */
 class PreviewElement(val name: ElementName, val observed: ElementName) extends PageElement {
@@ -14,6 +15,8 @@ class PreviewElement(val name: ElementName, val observed: ElementName) extends P
          |    console.log($$("#${name.jsElementId}"));
          |    document.getElementById("${name.jsElementId}").textContent = json.preview; }
          |</script>"""
+
+  override val tags: Tag.Tags[PreviewElement.this.type] = Tags.empty
 
   override def otherAction(assessment: Assessment, element: PageElement, data: Any, payload: JsValue): IterableOnce[ElementAction] = {
     if (element.name == observed) {

@@ -63,12 +63,13 @@ object LaTeX {
   }
 
   def tikzToPNG(tikzCode: String): Array[Byte] = {
-
+    // TODO Configurable preamble
     val latex =
       ind"""\\documentclass[tikz,border=2mm]{standalone}
            |\\usepackage{tikz}
            |\\usetikzlibrary{arrows,shapes,positioning,shadows,trees,patterns,decorations}
            |\\usepackage{amsmath,amssymb}
+           |\\usepackage{quantikz}
            |
            |\\begin{document}
            |$tikzCode
@@ -81,8 +82,9 @@ object LaTeX {
         |echo "Starting LaTeX compilation..."
         |pdflatex -interaction=batchmode latex.tex
         |echo "LaTeX compilation successful"
-        |convert latex.pdf result.png &> convert.log
-        |echo "Conversion completed successfully""".stripMargin
+        |magick -density 300 latex.pdf result.png &> convert.log
+        |echo "Conversion completed successfully"
+        |""".stripMargin
 
     val dockerResult = runInDocker(
       image = "aergus/latex:latest",

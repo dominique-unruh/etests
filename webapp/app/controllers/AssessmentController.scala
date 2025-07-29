@@ -68,7 +68,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
   private val exampleAssessment: Assessment = PqcExam2.questions.head.assessment
 
   def assessment(): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
-    val body = exampleAssessment.renderHtml()
+    val body = exampleAssessment.renderHtml
     val html = views.html.assessment("Example", Html(body))
     Ok(html)
   }

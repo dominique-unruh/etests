@@ -1,5 +1,9 @@
 package externalsystems
 
+import assessments.Assessment
+import assessments.pageelements.{InputElement, PageElement}
+import utils.Tag
+
 import java.util.Base64
 import scala.xml.*
 
@@ -7,7 +11,7 @@ object MoodleStack {
 
   case class Input(name: String,
                    reference: String,
-                   allowWords: Iterable[String]) {
+                   allowWords: Iterable[String] = Seq.empty) {
     assert(name.nonEmpty)
     assert(reference.nonEmpty)
     assert(allowWords.forall(_.nonEmpty)) // TODO: Also: ASCII letters? No-spaces?
@@ -34,9 +38,9 @@ object MoodleStack {
   }
 
   case class Question(name: String, questionText: String,
-                      questionVariables: String,
+                      questionVariables: String = "",
                       files: Map[String, Array[Byte]] = Map.empty,
-                      inputs: List[Input]) {
+                      inputs: Seq[Input]) {
     def xml: Elem = {
       val filesXML = files map { (name, content) =>
         val base64 = Base64.getEncoder.encodeToString(content)
@@ -123,8 +127,35 @@ object MoodleStack {
   case class Quiz(questions: Question*) {
     def xml: Elem = <quiz>{questions.map{_.xml}}</quiz>
     def prettyXml: String =
-      """<?xml version="1.0" encoding="UTF-8"?>\n""" + PrettyPrinter(80, 2).format(xml)
+      """<?xml version="1.0" encoding="UTF-8"?>""" + "\n" + PrettyPrinter(80, 2).format(xml)
   }
 
+  def assessmentToQuestion(assessment: Assessment): Question = {
+    val inputs = Seq.newBuilder[Input]
+    val questionText1 = assessment.renderHtml {
+      case pageElement: InputElement =>
+        val name = pageElement.name.toString
+        val input = Input(
+          name = name,
+          reference = pageElement.reference,
+          allowWords = pageElement.tags.getOrElse(moodleAllowWords, Seq.empty))
+        inputs += input
+        s"[[input:$name]] [[validation:$name]]"
+    }
 
+    // TODO: Proper HTML processing
+    val questionText = """<img src="""".r.replaceAllIn(questionText1,
+      m => s"${m.group(0)}@@PLUGINFILE@@/"
+    )
+
+    Question(name = assessment.name,
+      questionText = questionText,
+      inputs = inputs.result,
+      files = assessment.associatedFiles.view.mapValues(_._2).toMap,
+      questionVariables = assessment.tags.getOrElse(moodleQuestionVariables, "")
+    )
+  }
+
+  object moodleAllowWords extends Tag[InputElement, Seq[String]]("moodleAllowWords")
+  object moodleQuestionVariables extends Tag[Assessment, String]("moodleQuestionVariables")
 }

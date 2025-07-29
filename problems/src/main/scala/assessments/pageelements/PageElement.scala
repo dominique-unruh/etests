@@ -6,15 +6,18 @@ import com.eed3si9n.eval.Eval
 import me.shadaj.scalapy.py
 import me.shadaj.scalapy.py.PyQuote
 import play.api.libs.json.{JsObject, JsString, JsValue}
+import utils.Tag
+import utils.Tag.Tags
 
 import scala.util.Using
 
 /** Potentially interactive elements on an assessment page. */
-trait PageElement {
+trait PageElement { self =>
   val name: ElementName
   def renderHtml: String
   def action(assessment: Assessment, payload: JsValue): (IterableOnce[ElementAction], Any) = (Seq.empty, ())
   def otherAction(assessment: Assessment, element: PageElement, data: Any, payload: JsValue): IterableOnce[ElementAction] = Seq.empty
+  val tags: Tag.Tags[self.type]
 }
 
 object PageElement {

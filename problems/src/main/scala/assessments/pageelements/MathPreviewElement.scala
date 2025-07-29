@@ -5,12 +5,14 @@ import assessments.{Assessment, ElementName}
 import me.shadaj.scalapy.py
 import me.shadaj.scalapy.py.PyQuote
 import play.api.libs.json.{JsObject, JsString, JsValue}
-import utils.IndentedInterpolator
+import utils.Tag.Tags
+import utils.{IndentedInterpolator, Tag}
 
 /** Example of a preview that interprets the input as LaTeX math */
 class MathPreviewElement(val name: ElementName,
                          val observed: ElementName,
                          val latexRenderer: String => String) extends PageElement {
+  override val tags: Tag.Tags[MathPreviewElement.this.type] = Tags.empty
   override def renderHtml: String =
     ind"""<div style="font-weight: bold; border: solid 1 1 1 1;" id="${name.jsElementId}">Preview...</div><script>
          |  function ${name.jsElementCallbackName}(json) {

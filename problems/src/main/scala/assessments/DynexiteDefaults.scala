@@ -4,6 +4,7 @@ import assessments.pageelements.*
 import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
 import assessments.stack.{SympyAssumption, SympyExpr}
+import utils.Tag.Tags
 //import scalacache.caffeine.CaffeineCache
 //import scalacache.{Cache, caching}
 //import scalacache.modes.sync._
@@ -14,8 +15,8 @@ object DynexiteDefaults {
   private def elementName(name: sourcecode.Name) =
     ElementName(name.value.replace('$', '.'))
 
-  def input(reference: String)(using name: sourcecode.Name): InputElement =
-    new InputElement(elementName(name), reference)
+  def input(reference: String, tags: Tags[InputElement] = Tags.empty)(using name: sourcecode.Name): InputElement =
+    new InputElement(elementName(name), reference, tags)
 
   def multi(options: Seq[String], reference: String)(using name: sourcecode.Name): MultipleChoice =
     new MultipleChoice(name=elementName(name), options=options, reference=reference)
