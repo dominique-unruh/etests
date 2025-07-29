@@ -40,6 +40,7 @@ implicit class IndentedInterpolator(val sc: StringContext) extends AnyVal {
       var first = true
       for (line <- part.linesWithSeparators) {
         val stripped = stripPipe(line)
+          .replace("\\\\", "\\") // TODO very adhoc!
         result ++= stripped
         if (first)
           indent += stripped.length
