@@ -2,6 +2,8 @@ package externalsystems
 
 import assessments.Assessment
 import assessments.pageelements.{InputElement, PageElement}
+import exam.y2025.iqc1.CnotConstruction.Image
+import org.apache.commons.text.StringEscapeUtils
 import utils.Tag
 
 import java.util.Base64
@@ -135,27 +137,27 @@ object MoodleStack {
 
   def assessmentToQuestion(assessment: Assessment): Question = {
     val inputs = Seq.newBuilder[Input]
-    val questionText1 = assessment.renderHtml {
-      case pageElement: InputElement =>
-        val name = pageElement.name.toString
-        val input = Input(
-          name = name,
-          reference = pageElement.reference,
-          allowWords = pageElement.tags(moodleAllowWords),
-          extraOptions = pageElement.tags(moodleExtraOptions))
-        inputs += input
-        s"[[input:$name]] [[validation:$name]]"
+    val (questionText, associatedFiles) = assessment.renderHtml { (element, associatedFiles) =>
+      element match {
+        case pageElement: InputElement =>
+          val name = pageElement.name.toString
+          val input = Input(
+            name = name,
+            reference = pageElement.reference,
+            allowWords = pageElement.tags(moodleAllowWords),
+            extraOptions = pageElement.tags(moodleExtraOptions))
+          inputs += input
+          s"[[input:$name]] [[validation:$name]]"
+        case Image(png, basename) =>
+          val name = associatedFiles.add(basename = basename, extension = "png", mimeType = "image/png", content = png)
+          s"""<img src="@@PLUGINFILE@@/${StringEscapeUtils.escapeHtml4(name)}"/>"""
+      }
     }
-
-    // TODO: Proper HTML processing
-    val questionText = """<img src="""".r.replaceAllIn(questionText1,
-      m => s"${m.group(0)}@@PLUGINFILE@@/"
-    )
 
     Question(name = assessment.name,
       questionText = questionText,
       inputs = inputs.result,
-      files = assessment.associatedFiles.view.mapValues(_._2).toMap,
+      files = associatedFiles.view.mapValues(_._2).toMap,
       questionVariables = assessment.tags(moodleQuestionVariables)
     )
   }

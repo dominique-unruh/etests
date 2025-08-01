@@ -4,7 +4,6 @@ import assessments.ExceptionContext.initialExceptionContext
 import assessments.pageelements.AnswerElement
 import assessments.{Assessment, ElementName, ExceptionContext, ExceptionWithContext, Grader, Points}
 import com.github.tototoshi.csv.{CSVFormat, CSVReader, CSVWriter, DefaultCSVFormat, Quoting}
-import exam.y2024.pqc2.PqcExam2
 import externalsystems.Dynexite.{ClassificationBlock, StackBlock}
 import externalsystems.DynexiteGrader.getDynexiteAnswers
 import org.apache.commons.io.FileUtils
@@ -24,6 +23,7 @@ object AssessmentTest {
 
 
     def main(args: Array[String]): Unit = {
+        /*
         val resultsPath = "/home/unruh/cloud/qis/lectures/pqc-2024/exam2/dynexite-exam-results.json"
         val examsPath = Path.of("/home/unruh/cloud/qis/lectures/pqc-2024/exam2/dynexite-archive-of-answers.zip")
         val targetDir = Path.of("/home/unruh/cloud/qis/lectures/pqc-2024/exam2/corrected1")
@@ -72,6 +72,9 @@ object AssessmentTest {
 
         mails.close()
         rwthData.save(Path.of("/home/unruh/cloud/qis/lectures/pqc-2024/exam2/rwthonline-result-table-for-upload.csv"))
+        
+   
+         */
     }
 
     private val logger = getLogger

@@ -1,6 +1,7 @@
 package controllers
 
 import assessments.pageelements.ElementAction
+
 import javax.inject.*
 import play.api.*
 import play.api.mvc.*
@@ -9,7 +10,6 @@ import java.nio.file.{Files, Path}
 import javax.script.{ScriptEngine, ScriptEngineManager}
 import scala.util.matching.Regex
 import assessments.{Assessment, ElementName, ExceptionContext}
-import exam.y2024.pqc2.PqcExam2
 import play.api.libs.json.{JsArray, JsBoolean, JsObject, JsString, JsValue}
 import play.mvc.BodyParser.Json
 import play.twirl.api.Html

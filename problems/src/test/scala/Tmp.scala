@@ -1,3 +1,7 @@
+import org.commonmark.node.Node
+import org.commonmark.parser.{InlineParser, InlineParserContext, InlineParserFactory, Parser, SourceLines}
+import org.commonmark.renderer.html.HtmlRenderer
+
 object Tmp {
   extension (sc: StringContext) {
     def ts(args: Any*): String = {
@@ -7,9 +11,8 @@ object Tmp {
       "nothing"
     }
   }
-  
+
   def main(args: Array[String]): Unit = {
-    val xx = 123
-    println(ts"hello\nthere$xx")
+
   }
 }

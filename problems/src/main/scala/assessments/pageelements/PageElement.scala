@@ -2,6 +2,7 @@ package assessments.pageelements
 
 import assessments.Assessment.templateRegex
 import assessments.*
+import assessments.MarkdownAssessment.Interpolatable
 import com.eed3si9n.eval.Eval
 import me.shadaj.scalapy.py
 import me.shadaj.scalapy.py.PyQuote
@@ -12,7 +13,7 @@ import utils.Tag.Tags
 import scala.util.Using
 
 /** Potentially interactive elements on an assessment page. */
-trait PageElement { self =>
+trait PageElement extends Interpolatable { self =>
   val name: ElementName
   def renderHtml: String
   def action(assessment: Assessment, payload: JsValue): (IterableOnce[ElementAction], Any) = (Seq.empty, ())

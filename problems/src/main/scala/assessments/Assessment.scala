@@ -1,10 +1,12 @@
 package assessments
 
-import assessments.Assessment.templateRegex
+import assessments.Assessment.FileMapBuilder
+import assessments.MarkdownAssessment.Interpolatable
 import assessments.pageelements.{ElementAction, PageElement}
 import com.eed3si9n.eval.Eval
+import exam.y2025.iqc1.CnotConstruction.Image
+import org.apache.commons.text.StringEscapeUtils
 import org.commonmark.parser.Parser
-import org.commonmark.renderer.html.HtmlRenderer
 
 import scala.collection.{SeqMap, mutable}
 import scala.util.matching.Regex
@@ -17,9 +19,7 @@ import scala.util.{Random, Using}
 import scala.xml.*
 
 class Assessment (val name: String,
-                  val htmlTemplate: String,
-                  /** Files to be served next to the HTML. Map from filename to (mime-type, content). */
-                  val associatedFiles: Map[String, (String, Array[Byte])],
+                  val htmlTemplate: InterpolatedString[Interpolatable],
                   val pageElements: SeqMap[ElementName, PageElement],
                   val tags: Tags[Assessment] = Tags.empty) {
   checkValid()
@@ -29,24 +29,36 @@ class Assessment (val name: String,
       assert(element.name == name, (element.name, name))
   }
 
-  def renderHtml(elementHtml: PageElement => String) : String = {
+  def renderHtml(elementHtml: (Interpolatable, FileMapBuilder) => String) : (String, Map[String, (String, Array[Byte])]) = {
     def substituted = mutable.HashSet[ElementName]()
+    val associatedFiles = new FileMapBuilder
 
-    def substitute(matsch: Regex.Match): String = {
-      val name = ElementName(matsch.group(1))
-      assert(!substituted.contains(name))
-      substituted.add(name)
-      val pageElement = pageElements(name)
-      val html = elementHtml(pageElement)
-      Regex.quoteReplacement(html)
+    def substitute(interpolatable: Interpolatable): String = {
+      interpolatable match {
+        case pageElement: PageElement =>
+          val name = pageElement.name
+          assert(!substituted.contains(name))
+          substituted.add(name)
+        case _ =>
+      }
+      elementHtml(interpolatable, associatedFiles)
     }
 
-    val body = templateRegex.replaceAllIn(htmlTemplate, substitute)
-    body
+//    val body = templateRegex.replaceAllIn(htmlTemplate, substitute)
+    val body = htmlTemplate.mapArgs(substitute).mkString
+    (body, associatedFiles.result())
   }
 
-  def renderHtml: String = {
-    renderHtml(_.renderHtml)
+  def renderHtml: (String, Map[String, (String, Array[Byte])]) = {
+    def render(element: Interpolatable, associatedFiles: FileMapBuilder) = element match {
+      case element: PageElement =>
+        element.renderHtml
+      case Image(png, basename) =>
+        val name = associatedFiles.add(basename = basename, extension = "png", mimeType = "image/png", content = png)
+        s"""<img src="${StringEscapeUtils.escapeHtml4(name)}"/>"""
+    }
+
+    renderHtml(render)
   }
 
   def elementEvent(elementName: ElementName, payload: JsValue): Seq[ElementAction] = {
@@ -68,4 +80,26 @@ object Assessment {
   val tagStart = '\uFFFA'
   val tagEnd = '\uFFFB'
   private val templateRegex = s"""$tagStart([0-9a-zA-Z._]+)$tagEnd""".r
+
+  class FileMapBuilder {
+    private val map = mutable.Map[String, (String, Array[Byte])]()
+    def hasName(name: String): Boolean = map.contains(name)
+    def result(): Map[String, (String, Array[Byte])] = map.toMap
+    def add(basename: String, extension: String, mimeType: String, content: Array[Byte]): String = {
+      def freshName: String = {
+        val name = s"$basename.$extension"
+        if (!hasName(name))
+          return name
+        for (i <- 1 until Int.MaxValue) {
+          val namei = s"$basename$i.$extension"
+          if (!hasName(namei))
+            return namei
+        }
+        assert(false) // Unreachable unless there are Int.MaxValue many files
+      }
+      val name = freshName
+      map.put(name, (mimeType, content))
+      name
+    }
+  }
 }

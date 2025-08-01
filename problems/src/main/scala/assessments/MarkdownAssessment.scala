@@ -3,9 +3,8 @@ package assessments
 import assessments.Assessment.{tagEnd, tagStart}
 import assessments.ExceptionContext.initialExceptionContext
 import assessments.MarkdownAssessment.MarkdownAssessmentRun.extractStack
-import assessments.MarkdownAssessment.{MarkdownAssessmentRun, markdownParser, markdownRenderer, tagFindingRegex}
+import assessments.MarkdownAssessment.{Interpolatable, MarkdownAssessmentRun, markdownParser, markdownRenderer, markdownToHtml, tagFindingRegex}
 import assessments.pageelements.{AnswerElement, PageElement}
-import exam.y2024.pqc2.HardAssumptions
 import externalsystems.{LaTeX, MoodleStack}
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
@@ -17,13 +16,17 @@ import scala.util.matching.Regex
 
 abstract class MarkdownAssessment {
   val name: String = getClass.getName
-  val markdown: String
+  lazy val markdown: InterpolatedString[Interpolatable]
   def grade(gradingContext: GradingContext): (Points, Seq[String])
   val reachablePoints: Points
   val grader: Grader = new Grader(ElementName("grader")) {
     override def grade(gradingContext: GradingContext): (Points, Seq[String]) = MarkdownAssessment.this.grade(gradingContext)
     override lazy val points: Points = MarkdownAssessment.this.reachablePoints
     override val tags: Tag.Tags[this.type] = Tag.Tags.empty
+  }
+  
+  extension (sc: StringContext) {
+    inline def md(args: Interpolatable*): InterpolatedString[Interpolatable] = InterpolatedString(sc.parts, args)
   }
 
   private def findMethod(elementName: ElementName) =
@@ -33,8 +36,8 @@ abstract class MarkdownAssessment {
     given ExceptionContext = ExceptionContext.initialExceptionContext(s"Markdown assessment $name")
     val seen = mutable.HashSet[ElementName]()
     val elements = SeqMap.newBuilder[ElementName, PageElement]
-    val associatedFiles = Map.newBuilder[String, (String,Array[Byte])]
-    var fileCounter = 0
+//    val associatedFiles = Map.newBuilder[String, (String,Array[Byte])]
+//    var fileCounter = 0
     var elementPath = ElementPath.empty
 
     def addPageElement(name: String) = {
@@ -58,7 +61,7 @@ abstract class MarkdownAssessment {
       elementName
     }
 
-    def substitute(matsch: Regex.Match) = {
+/*    def substitute(matsch: Regex.Match) = {
       matsch.group(1).strip() match {
         case MarkdownAssessment.endTagRegex(tag) =>
           if (!elementPath.lastOption.contains(tag))
@@ -81,14 +84,13 @@ abstract class MarkdownAssessment {
         case _ =>
           throw ExceptionWithContext(s"Cannot parse tag: ${matsch.group(0)}")
       }
-    }
+    }*/
 
     elements.addOne(ElementName("grader"), grader)
 
-    val substituted = tagFindingRegex.replaceAllIn(markdown, substitute)
-    val htmlTemplate: String = markdownRenderer.render(markdownParser.parse(substituted))
+    val htmlTemplate = markdown.mapCompleteString(markdownToHtml)
 
-    Assessment(name = name, htmlTemplate = htmlTemplate, associatedFiles = associatedFiles.result,
+    Assessment(name = name, htmlTemplate = htmlTemplate,
       pageElements = elements.result(), tags = tags)
   }
 
@@ -116,7 +118,7 @@ abstract class MarkdownAssessment {
       assert(points == expected)
     }
   }
-  
+
   def testName(): AssessmentTest = new AssessmentTest {
     override def runTest()(using exceptionContext: ExceptionContext): Unit = {
       def cleanup(input: String): String = {
@@ -138,15 +140,15 @@ abstract class MarkdownAssessment {
          if method.getParameterCount == 0
          if classOf[AssessmentTest].isAssignableFrom(method.getReturnType))
       tests += method.getName -> method.invoke(this).asInstanceOf[AssessmentTest]
-      
+
     tests.result()
   }
-  
+
   /** Run selftests of this assessment */
   def runTests()(using exceptionContext: ExceptionContext): Unit = {
     for ((name,test) <- getTests)
       println(s"""Running test $name:""")
-      test.runTest()      
+      test.runTest()
   }
 
   def main(args: Array[String]): Unit = {
@@ -186,8 +188,16 @@ object MarkdownAssessment {
   private val markdownParser = Parser.builder.build
   private val markdownRenderer = HtmlRenderer.builder.build
 
+  private def markdownToHtml(markdown: String): String = {
+    val markdownEscaped = markdown.replace("\\", "\\\\") // commonmark parse treats \( as ( etc. So we quote the \. Could be refinded
+    val parsed = markdownParser.parse(markdownEscaped)
+    markdownRenderer.render(parsed)
+  }
+
   enum MarkdownAssessmentRun {
     case extractStack
     case runTests
   }
+  
+  trait Interpolatable
 }
