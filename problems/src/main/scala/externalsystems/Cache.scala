@@ -10,5 +10,4 @@ object Cache {
 
   private val options = new Options().setCreateIfMissing(true)
   val cache = RocksDB.open(options, ".cache")
-
 }

@@ -1,10 +1,12 @@
 package assessments
 
 import assessments.Assessment.{tagEnd, tagStart}
-import assessments.MarkdownAssessment.{markdownParser, markdownRenderer, tagFindingRegex}
+import assessments.ExceptionContext.initialExceptionContext
+import assessments.MarkdownAssessment.MarkdownAssessmentRun.extractStack
+import assessments.MarkdownAssessment.{MarkdownAssessmentRun, markdownParser, markdownRenderer, tagFindingRegex}
 import assessments.pageelements.{AnswerElement, PageElement}
 import exam.y2024.pqc2.HardAssumptions
-import externalsystems.LaTeX
+import externalsystems.{LaTeX, MoodleStack}
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
 import utils.Tag.Tags
@@ -114,17 +116,64 @@ abstract class MarkdownAssessment {
       assert(points == expected)
     }
   }
+  
+  def testName(): AssessmentTest = new AssessmentTest {
+    override def runTest()(using exceptionContext: ExceptionContext): Unit = {
+      def cleanup(input: String): String = {
+        val words = input.replaceAll("[^\\w\\d]", " ").split("\\s+").filter(_.nonEmpty)
+        words.map(_.toLowerCase.capitalize).mkString
+      }
+      val className = MarkdownAssessment.this.getClass.getSimpleName.stripSuffix("$")
+      if (className.replaceAll("[^\\w\\d]", "").toLowerCase != name.replaceAll("[^\\w\\d]", "").toLowerCase)
+        throw ExceptionWithContext(s"Name ($name) and class name ($className) don't match. Use, e.g., ${cleanup(name)} as the class name, so ${className} (with extra spaces) as name")
+    }
+  }
 
-  /** Run selftests of this assessment */
-  def runTests()(using exceptionContext: ExceptionContext): Unit = {
-    testSolution().runTest()
+  def getTests: Seq[(String, AssessmentTest)] = {
+    val tests = Seq.newBuilder[(String, AssessmentTest)]
+    tests += "testName" -> testName()
+    tests += "testSolution" -> testSolution()
 
     for (method <- this.getClass.getMethods
          if method.getParameterCount == 0
          if classOf[AssessmentTest].isAssignableFrom(method.getReturnType))
-      println(s"""Running test ${method.getName}:""")
-      val test = method.invoke(this).asInstanceOf[AssessmentTest]
-      test.runTest()
+      tests += method.getName -> method.invoke(this).asInstanceOf[AssessmentTest]
+      
+    tests.result()
+  }
+  
+  /** Run selftests of this assessment */
+  def runTests()(using exceptionContext: ExceptionContext): Unit = {
+    for ((name,test) <- getTests)
+      println(s"""Running test $name:""")
+      test.runTest()      
+  }
+
+  def main(args: Array[String]): Unit = {
+    given ExceptionContext = initialExceptionContext(s"Running main for $name")
+    println(s"Running the main method of \"$name\", with run option $runOption.")
+    if (MarkdownAssessmentRun.values.length > 1)
+      println(s"To configure a different action, set MarkdownAssessment.runOption to one of ${(MarkdownAssessmentRun.values.toSet - runOption).mkString(", ")}.")
+
+    runOption match {
+      case MarkdownAssessmentRun.runTests => mainRunTests()
+      case MarkdownAssessmentRun.extractStack => mainExtractStack()
+    }
+  }
+  private val runOption = MarkdownAssessmentRun.extractStack
+
+  def mainRunTests(implicit exceptionContext: ExceptionContext): Unit = {
+    runTests()
+  }
+
+  def mainExtractStack(): Unit = {
+    val question = MoodleStack.assessmentToQuestion(assessment)
+    val quiz = MoodleStack.Quiz(question)
+    val pretty = quiz.prettyXml
+    println(pretty)
+    Utils.copyStringToClipboard(pretty)
+    Thread.sleep(10000)
+    println("Copied to clipboard. You have 10s to paste it.")
   }
 }
 
@@ -136,4 +185,9 @@ object MarkdownAssessment {
   private val latexTag: Regex = """latex:(?s)\s*(.*?)""".r
   private val markdownParser = Parser.builder.build
   private val markdownRenderer = HtmlRenderer.builder.build
+
+  enum MarkdownAssessmentRun {
+    case extractStack
+    case runTests
+  }
 }

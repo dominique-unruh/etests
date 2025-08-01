@@ -11,10 +11,13 @@ object MoodleStack {
 
   case class Input(name: String,
                    reference: String,
-                   allowWords: Iterable[String] = Seq.empty) {
+                   allowWords: Iterable[String] = Seq.empty,
+                   extraOptions: Iterable[String] = Seq.empty,
+                  ) {
     assert(name.nonEmpty)
     assert(reference.nonEmpty)
     assert(allowWords.forall(_.nonEmpty)) // TODO: Also: ASCII letters? No-spaces?
+    assert(extraOptions.forall(_.nonEmpty)) // TODO: Also: ASCII letters? No-spaces?
 
     def xml: Elem =
       <input>
@@ -33,7 +36,7 @@ object MoodleStack {
         <checkanswertype>0</checkanswertype>
         <mustverify>1</mustverify>
         <showvalidation>1</showvalidation>
-        <options></options>
+        <options>{allowWords.mkString(", ")}</options>
       </input>
   }
 
@@ -138,7 +141,8 @@ object MoodleStack {
         val input = Input(
           name = name,
           reference = pageElement.reference,
-          allowWords = pageElement.tags.getOrElse(moodleAllowWords, Seq.empty))
+          allowWords = pageElement.tags(moodleAllowWords),
+          extraOptions = pageElement.tags(moodleExtraOptions))
         inputs += input
         s"[[input:$name]] [[validation:$name]]"
     }
@@ -152,10 +156,13 @@ object MoodleStack {
       questionText = questionText,
       inputs = inputs.result,
       files = assessment.associatedFiles.view.mapValues(_._2).toMap,
-      questionVariables = assessment.tags.getOrElse(moodleQuestionVariables, "")
+      questionVariables = assessment.tags(moodleQuestionVariables)
     )
   }
 
-  object moodleAllowWords extends Tag[InputElement, Seq[String]]("moodleAllowWords")
-  object moodleQuestionVariables extends Tag[Assessment, String]("moodleQuestionVariables")
+  object moodleAllowWords extends Tag[InputElement, Seq[String]](default=Seq.empty)
+  object moodleQuestionVariables extends Tag[Assessment, String](default="")
+  object moodleExtraOptions extends Tag[InputElement, Seq[String]](default=Seq.empty) {
+    val allowEmpty = "allowEmpty"
+  }
 }
