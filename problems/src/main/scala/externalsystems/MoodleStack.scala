@@ -146,7 +146,7 @@ object MoodleStack {
             allowWords = pageElement.tags(moodleAllowWords),
             extraOptions = pageElement.tags(moodleExtraOptions))
           inputs += input
-          if (pageElement.tags(moodleNoValidation))
+          if (pageElement.tags(moodleNoPreview))
             s"[[input:$name]]"
           else
             s"[[input:$name]] [[validation:$name]]"
@@ -173,6 +173,7 @@ object MoodleStack {
   object moodleQuestionVariables extends Tag[Assessment, String](default="")
   object moodleExtraOptions extends Tag[InputElement, Seq[String]](default=Seq.empty) {
     val allowEmpty = "allowEmpty"
+    val simp = "simp"
   }
-  object moodleNoValidation extends Tag[InputElement, Boolean](default=false)
+  object moodleNoPreview extends Tag[InputElement, Boolean](default=false)
 }
