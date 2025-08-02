@@ -18,8 +18,6 @@ object LaTeX {
 
   object Preambles {
     val standard = "\\usepackage[T1]{fontenc}\n\\usepackage[utf8]{inputenc}\n\\usepackage{amsmath,amssymb}"
-    val tikz = s"$standard\n\\usetikzlibrary{arrows,shapes,positioning,shadows,trees,patterns,decorations}"
-    val quantikz = s"$tikz\n\\usepackage{quantikz}"
   }
 
   def latexToPng(latex: String, preamble: String = Preambles.standard): Array[Byte] = {

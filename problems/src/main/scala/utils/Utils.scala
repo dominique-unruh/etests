@@ -39,4 +39,9 @@ object Utils {
   private val stripLeadingEmptyLinesRegex = """(?s)^([ \t]*\n)+""".r
   def stripLeadingEmptyLines(string: String): String =
     stripLeadingEmptyLinesRegex.replaceFirstIn(string, "")
+  private val stripTrailingEmptyLinesRegex = """(?s)(\n[ \t]*)+$""".r
+  def stripTrailingEmptyLines(string: String, keepFinalNewline: Boolean = false): String =
+    stripTrailingEmptyLinesRegex.replaceFirstIn(string, if (keepFinalNewline) "\n" else "")
+  def stripLeadingTrailingEmptyLines(string: String, keepFinalNewline: Boolean = false): String =
+    stripLeadingEmptyLines(stripTrailingEmptyLines(string, keepFinalNewline = keepFinalNewline))
 }

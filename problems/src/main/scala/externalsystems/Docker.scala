@@ -10,6 +10,7 @@ import io.circe.parser.decode
 import java.io.IOException
 import java.nio.charset.{Charset, StandardCharsets}
 import java.nio.file.Files
+import scala.collection.mutable
 
 object Docker {
   case class DockerResult(exitCode: Int, files: Map[String, Array[Byte]]) {
@@ -38,15 +39,20 @@ object Docker {
         decode[DockerResult](new String(cached)).getOrElse(throw IOException("Unparsable cache content"))
   }
 
+  private val pulledInThisSession = mutable.Set[String]()
   private def runInDockerNoCache(image: String,
                     command: Seq[String],
                     files: Map[String, Array[Byte]],
                     requestedOutputs: Seq[String]): DockerResult = {
     val tempDir = Utils.getTempDir.toNIO
 
-    println(s"Pulling docker image $image")
-
-    Seq("docker", "pull", "--", image).!!
+    if (!pulledInThisSession.contains(image)) {
+      println(s"Pulling docker image $image")
+      Seq("docker", "pull", "--", image).!!
+      pulledInThisSession += image
+    } else {
+      println(s"Already pulled docker image $image")
+    }
 
     for ((file, content) <- files) {
       Files.write(tempDir.resolve(file), content)

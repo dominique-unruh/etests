@@ -10,4 +10,10 @@ class UtilsTest extends AnyFunSuiteLike {
     assert(Utils.stripLeadingEmptyLines(text) == expected)
   }
 
+  test("stripTrailingEmptyLines") {
+    val text = "\t\n  \t\n   test\nbla \n\t \n  "
+    val expected = "\t\n  \t\n   test\nbla "
+    assert(Utils.stripTrailingEmptyLines(text) == expected)
+  }
+
 }

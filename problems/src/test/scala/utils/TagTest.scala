@@ -9,7 +9,7 @@ class TagTest extends AnyFunSuiteLike {
   object tag2 extends Tag[Unit, Int](default=11)
 
   test("lookup tag") {
-    val tags = Tags[Unit](tag1 -> 1, tag2 -> 2)
+    val tags = Tags[Unit](tag1 := 1, tag2 := 2)
     assert(tags(tag1) == 1)
     assert(tags(tag2) == 2)
   }
