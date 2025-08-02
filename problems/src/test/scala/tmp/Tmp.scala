@@ -1,6 +1,9 @@
+package tmp
+
 import org.commonmark.node.Node
-import org.commonmark.parser.{InlineParser, InlineParserContext, InlineParserFactory, Parser, SourceLines}
+import org.commonmark.parser.*
 import org.commonmark.renderer.html.HtmlRenderer
+import tmp.Tmp.getClass
 
 object Tmp {
   extension (sc: StringContext) {
@@ -13,6 +16,10 @@ object Tmp {
   }
 
   def main(args: Array[String]): Unit = {
-
+    println(getClass.getName)
+    println(getClass.getSimpleName)
+    println(getClass.getTypeName)
+    println(getClass.getCanonicalName)
+    println(getClass.getPackageName)
   }
 }

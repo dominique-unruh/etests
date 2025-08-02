@@ -65,7 +65,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
 */
 
 //  private val exampleAssessmentMarkdown: String = Files.readString(Path.of("/home/unruh/r/assessments/data/test.md"))
-  private val exampleAssessment: Assessment = PqcExam2.questions.head.assessment
+  private val exampleAssessment: Assessment = ???
 
   def assessment(): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     val body = exampleAssessment.renderHtml

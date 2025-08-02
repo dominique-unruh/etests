@@ -1,7 +1,7 @@
 package externalsystems
 
 import assessments.Assessment
-import assessments.pageelements.{ImageElement, InputElement, PageElement}
+import assessments.pageelements.{ImageElement, InputElement, MathPreviewElement, PageElement, PreviewElement}
 import org.apache.commons.text.StringEscapeUtils
 import utils.Tag
 
@@ -146,10 +146,18 @@ object MoodleStack {
             allowWords = pageElement.tags(moodleAllowWords),
             extraOptions = pageElement.tags(moodleExtraOptions))
           inputs += input
-          s"[[input:$name]] [[validation:$name]]"
+          if (pageElement.tags(moodleNoValidation))
+            s"[[input:$name]]"
+          else
+            s"[[input:$name]] [[validation:$name]]"
+        case preview: MathPreviewElement =>
+          val name = preview.observed.toString
+          s"[[validation:$name]]"
         case ImageElement(png, basename) =>
           val name = associatedFiles.add(basename = basename, extension = "png", mimeType = "image/png", content = png)
           s"""<img src="@@PLUGINFILE@@/${StringEscapeUtils.escapeHtml4(name)}"/>"""
+        case _ =>
+          throw RuntimeException(s"Unknown page element (type ${element.getClass.getName}): $element")
       }
     }
 
@@ -166,4 +174,5 @@ object MoodleStack {
   object moodleExtraOptions extends Tag[InputElement, Seq[String]](default=Seq.empty) {
     val allowEmpty = "allowEmpty"
   }
+  object moodleNoValidation extends Tag[InputElement, Boolean](default=false)
 }

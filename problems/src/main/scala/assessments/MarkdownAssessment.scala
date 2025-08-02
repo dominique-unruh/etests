@@ -4,11 +4,14 @@ import assessments.ExceptionContext.initialExceptionContext
 import assessments.MarkdownAssessment.{MarkdownAssessmentRun, markdownToHtml}
 import assessments.pageelements.{AnswerElement, Element, PageElement}
 import externalsystems.MoodleStack
+import org.apache.commons.text.StringEscapeUtils
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
 import utils.Tag.Tags
 import utils.{Tag, Utils}
 
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import scala.collection.{SeqMap, mutable}
 import scala.util.matching.Regex
 
@@ -34,59 +37,15 @@ abstract class MarkdownAssessment {
     given ExceptionContext = ExceptionContext.initialExceptionContext(s"Markdown assessment $name")
     val seen = mutable.HashSet[ElementName]()
     val elements = SeqMap.newBuilder[ElementName, PageElement]
-//    val associatedFiles = Map.newBuilder[String, (String,Array[Byte])]
-//    var fileCounter = 0
-//    var elementPath = ElementPath.empty
-
-    /*def addPageElement(name: String) = {
-      val elementName = ElementName(elementPath, name)
-      val pageElement: PageElement =
-        try
-          findMethod(elementName) match
-            case pageElement: PageElement => pageElement
-            case result =>
-              throw ExceptionWithContext(s"Page element $name referenced in markdown assessment ${this.name}, but the corresponding method returns a ${result.getClass}", result)
-        catch
-          case _: NoSuchMethodException =>
-//            for (m <- getClass.getMethods)
-//              println(m)
-            throw ExceptionWithContext(s"Page element $elementName referenced in markdown assessment ${this.name}, but no corresponding method found")
-
-      if (seen.contains(elementName))
-        throw new SyntaxError(s"Duplicate page element name `$name`")
-      seen.add(elementName)
-      elements.addOne((elementName, pageElement))
-      elementName
-    }*/
-
-/*    def substitute(matsch: Regex.Match) = {
-      matsch.group(1).strip() match {
-        case MarkdownAssessment.endTagRegex(tag) =>
-          if (!elementPath.lastOption.contains(tag))
-            throw ExceptionWithContext(s"Closing tag $tag found but the path of the current group is \"$elementPath\"")
-          elementPath = elementPath.removeLast
-          s"<!-- Path $elementPath -->"
-        case MarkdownAssessment.startTagRegex(tag) =>
-          elementPath += tag
-          s"<!-- Path $elementPath -->"
-        case MarkdownAssessment.fieldNameRegex(name) =>
-          val elementName = addPageElement(name)
-          Regex.quoteReplacement(s"$tagStart$elementName$tagEnd")
-        case MarkdownAssessment.latexTag(content) =>
-          fileCounter += 1
-          println(content)
-          val png = LaTeX.tikzToPNG(content)
-          val fileName = s"image$fileCounter.png"
-          associatedFiles += fileName -> ("image/png", png)
-          s"""<img src="$fileName"/>"""
-        case _ =>
-          throw ExceptionWithContext(s"Cannot parse tag: ${matsch.group(0)}")
-      }
-    }*/
 
     elements.addOne(ElementName("grader"), grader)
 
-    val htmlTemplate = markdown.mapCompleteString(markdownToHtml)
+    val htmlTemplate = {
+      val date = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+      val clazz = this.getClass.getName.stripSuffix("$")
+      val comment = s"<!-- Exported via Dominique Unruh's assessment tool. Source class ${StringEscapeUtils.escapeHtml4(clazz)}. Date: ${StringEscapeUtils.escapeHtml4(date)} -->\n"
+      markdown.mapCompleteString(s => comment + markdownToHtml(s))
+    }
 
     Assessment(name = name, htmlTemplate = htmlTemplate,
       pageElements = elements.result(), tags = tags)
@@ -94,7 +53,9 @@ abstract class MarkdownAssessment {
 
   val tags: Tags[Assessment] = Tags.empty
 
-  def testSolution(expected: Points = reachablePoints, changes: Seq[(PageElement, String)] = Seq.empty): AssessmentTest = new AssessmentTest {
+  def testSolution(expected: Points = reachablePoints,
+                   changes: Seq[(PageElement, String)] = Seq.empty,
+                   allowNoGraderYet: Boolean = false): AssessmentTest = new AssessmentTest {
     override def runTest()(using exceptionContext: ExceptionContext): Unit = {
       println(s"Testing $name with ${if (changes.nonEmpty) "modified " else ""} reference solution.")
       val originalReference = for (case (name, answerElement: AnswerElement) <- assessment.pageElements)
@@ -110,10 +71,18 @@ abstract class MarkdownAssessment {
 
       println(s"Reference solution: ${changedReference.map((k, v) => s"$k -> $v").mkString(", ")}")
       val gradingContext = GradingContext(answers = changedReference.toMap, registrationNumber = "TEST")
-      val (points, comment) = grader.grade(gradingContext)
-      println(s"Resulting comments:\n${comment.map(comment => "* " + comment).mkString("\n")}")
-      println(s"Resulting number of points: $points (expected points: $expected)")
-      assert(points == expected)
+      try {
+        val (points, comment) = grader.grade(gradingContext)
+        println(s"Resulting comments:\n${comment.map(comment => "* " + comment).mkString("\n")}")
+        println(s"Resulting number of points: $points (expected points: $expected)")
+        assert(points == expected)
+      } catch {
+        case NoGraderYetException =>
+          if (allowNoGraderYet)
+            println("No grader implemented yet. Not testing it.")
+          else
+            throw ExceptionWithContext("Grader not implemented yet.")
+      }
     }
   }
 
@@ -131,8 +100,8 @@ abstract class MarkdownAssessment {
 
   def getTests: Seq[(String, AssessmentTest)] = {
     val tests = Seq.newBuilder[(String, AssessmentTest)]
-    tests += "testName" -> testName()
-    tests += "testSolution" -> testSolution()
+//    tests += "testName" -> testName() // Automatically found below because it has no arguments
+    tests += "testSolution" -> testSolution(allowNoGraderYet = true)
 
     for (method <- this.getClass.getMethods
          if method.getParameterCount == 0
@@ -153,7 +122,7 @@ abstract class MarkdownAssessment {
     given ExceptionContext = initialExceptionContext(s"Running main for $name")
     println(s"Running the main method of \"$name\", with run option $runOption.")
     if (MarkdownAssessmentRun.values.length > 1)
-      println(s"To configure a different action, set MarkdownAssessment.runOption to one of ${(MarkdownAssessmentRun.values.toSet - runOption).mkString(", ")}.")
+      println(s"To configure a different action, set MarkdownAssessment.runOption to one of: ${(MarkdownAssessmentRun.values.toSet - runOption).mkString(", ")}")
 
     runOption match {
       case MarkdownAssessmentRun.runTests => mainRunTests()
@@ -166,7 +135,8 @@ abstract class MarkdownAssessment {
     runTests()
   }
 
-  def mainExtractStack(): Unit = {
+  def mainExtractStack(implicit exceptionContext: ExceptionContext): Unit = {
+    runTests()
     val question = MoodleStack.assessmentToQuestion(assessment)
     val quiz = MoodleStack.Quiz(question)
     val pretty = quiz.prettyXml

@@ -4,7 +4,7 @@ import utils.Tag.Tagged
 
 class Tag[+Owner, Value](explicitName: String = "", val default: Value)(implicit sourceCodeName: sourcecode.Name) {
   val name: String = if (explicitName.nonEmpty) then explicitName else sourceCodeName.value
-  def ->(value: Value) : Tagged[Owner, Value] = Tagged(this, value)
+  def :=(value: Value) : Tagged[Owner, Value] = Tagged(this, value)
 }
 
 object Tag {
@@ -15,6 +15,8 @@ object Tag {
       get(tag).getOrElse(default)
     def apply[Value](tag: Tag[Owner, Value]): Value =
       get(tag).getOrElse(tag.default)
+    def +[Value](tagged: Tagged[Owner, Value]): Tags[Owner] =
+      new Tags(map + (tagged.tag.asInstanceOf[Tag[?, ?]] -> tagged.value))
   }
   case class Tagged[+Owner, Value](val tag: Tag[Owner, Value], val value: Value)
 
@@ -42,4 +44,9 @@ object Tag {
       def result() = new Tags(builder.result())
     }
   }
+
+  given [Owner]: Conversion[Tag[Owner,Boolean], Tagged[Owner,Boolean]] =
+    tag => tag := true
+  extension [Owner, A] (tag: Tag[Owner, Seq[A]])
+    def :=(value: A): Tagged[Owner, Seq[A]] = tag := Seq(value)
 }
