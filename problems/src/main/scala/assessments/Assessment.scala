@@ -1,10 +1,8 @@
 package assessments
 
 import assessments.Assessment.FileMapBuilder
-import assessments.MarkdownAssessment.Interpolatable
-import assessments.pageelements.{ElementAction, PageElement}
+import assessments.pageelements.{Element, ElementAction, ImageElement, PageElement}
 import com.eed3si9n.eval.Eval
-import exam.y2025.iqc1.CnotConstruction.Image
 import org.apache.commons.text.StringEscapeUtils
 import org.commonmark.parser.Parser
 
@@ -19,7 +17,7 @@ import scala.util.{Random, Using}
 import scala.xml.*
 
 class Assessment (val name: String,
-                  val htmlTemplate: InterpolatedString[Interpolatable],
+                  val htmlTemplate: InterpolatedString[Element],
                   val pageElements: SeqMap[ElementName, PageElement],
                   val tags: Tags[Assessment] = Tags.empty) {
   checkValid()
@@ -29,11 +27,11 @@ class Assessment (val name: String,
       assert(element.name == name, (element.name, name))
   }
 
-  def renderHtml(elementHtml: (Interpolatable, FileMapBuilder) => String) : (String, Map[String, (String, Array[Byte])]) = {
+  def renderHtml(elementHtml: (Element, FileMapBuilder) => String) : (String, Map[String, (String, Array[Byte])]) = {
     def substituted = mutable.HashSet[ElementName]()
     val associatedFiles = new FileMapBuilder
 
-    def substitute(interpolatable: Interpolatable): String = {
+    def substitute(interpolatable: Element): String = {
       interpolatable match {
         case pageElement: PageElement =>
           val name = pageElement.name
@@ -50,10 +48,10 @@ class Assessment (val name: String,
   }
 
   def renderHtml: (String, Map[String, (String, Array[Byte])]) = {
-    def render(element: Interpolatable, associatedFiles: FileMapBuilder) = element match {
+    def render(element: Element, associatedFiles: FileMapBuilder) = element match {
       case element: PageElement =>
         element.renderHtml
-      case Image(png, basename) =>
+      case ImageElement(png, basename) =>
         val name = associatedFiles.add(basename = basename, extension = "png", mimeType = "image/png", content = png)
         s"""<img src="${StringEscapeUtils.escapeHtml4(name)}"/>"""
     }
@@ -77,9 +75,9 @@ class UserError(message: String) extends Exception(message)
 class SyntaxError(message: String) extends UserError(message)
 
 object Assessment {
-  val tagStart = '\uFFFA'
-  val tagEnd = '\uFFFB'
-  private val templateRegex = s"""$tagStart([0-9a-zA-Z._]+)$tagEnd""".r
+//  val tagStart = '\uFFFA'
+//  val tagEnd = '\uFFFB'
+//  private val templateRegex = s"""$tagStart([0-9a-zA-Z._]+)$tagEnd""".r
 
   class FileMapBuilder {
     private val map = mutable.Map[String, (String, Array[Byte])]()

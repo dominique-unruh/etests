@@ -33,11 +33,18 @@ object DynexiteDefaults {
     }
   }
 
-  extension (pe: PageElement) {
+  // Not using "extension (pe: PageElement) because that exports additionally methods DynexiteDefault.latex... that may conflict with equally named methods when DynexiteDefaults.* is imported
+  implicit class PageElementMethods(pe: PageElement) {
     def stringValue(using gradingContext: GradingContext): String = gradingContext.answers.getOrElse(pe.name, "")
     def sympy(using gradingContext: GradingContext): SympyExpr = stringValue.sympy
     def latex(using gradingContext: GradingContext): String = sympy.latex
   }
+
+/*  extension (pe: PageElement) {
+    def stringValue(using gradingContext: GradingContext): String = gradingContext.answers.getOrElse(pe.name, "")
+    def sympy(using gradingContext: GradingContext): SympyExpr = stringValue.sympy
+    def latex(using gradingContext: GradingContext): String = sympy.latex
+  }*/
 
   private def stackMathRender(string: String): String =
     if (string == "")

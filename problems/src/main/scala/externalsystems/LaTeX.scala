@@ -15,18 +15,19 @@ import javax.swing.{ImageIcon, JLabel, JOptionPane}
 
 object LaTeX {
   case class ConversionResult(success: Boolean, outputPath: Option[String], error: Option[String])
-  
-  def tikzToPNG(tikzCode: String): Array[Byte] = {
-    // TODO Configurable preamble
-    val latex =
+
+  object Preambles {
+    val standard = "\\usepackage[T1]{fontenc}\n\\usepackage[utf8]{inputenc}\n\\usepackage{amsmath,amssymb}"
+    val tikz = s"$standard\n\\usetikzlibrary{arrows,shapes,positioning,shadows,trees,patterns,decorations}"
+    val quantikz = s"$tikz\n\\usepackage{quantikz}"
+  }
+
+  def latexToPng(latex: String, preamble: String = Preambles.standard): Array[Byte] = {
+    val document =
       ind"""\\documentclass[tikz,border=2mm]{standalone}
-           |\\usepackage{tikz}
-           |\\usetikzlibrary{arrows,shapes,positioning,shadows,trees,patterns,decorations}
-           |\\usepackage{amsmath,amssymb}
-           |\\usepackage{quantikz}
-           |
+           |$preamble
            |\\begin{document}
-           |$tikzCode
+           |$latex
            |\\end{document}"""
 
     val script =
@@ -43,14 +44,14 @@ object LaTeX {
     val dockerResult = runInDocker(
       image = "aergus/latex:latest",
       command = Seq("/bin/bash", "script.sh"),
-      files = Map("script.sh" -> script, "latex.tex" -> latex),
+      files = Map("script.sh" -> script, "latex.tex" -> document),
       requestedOutputs = Seq("result.png", "latex.log", "convert.log")
     )
 
     if (dockerResult.exitCode != 0) {
       (dockerResult.fileString("latex.log"), dockerResult.fileString("convert.log")) match {
-        case (None, None) => throw IOException("Failed to run latex")
-        case (Some(latexLog), None) => throw IOException("Failed to run latex.\n"+latexLog)
+        case (None, None) => throw IOException(s"Failed to run latex.\n$document")
+        case (Some(latexLog), None) => throw IOException(s"Failed to run latex.\n$document\n$latexLog")
         case (_, Some(convertLog)) => throw IOException("Failed to convert PDF to PNG.\n"+convertLog)
       }
     }
@@ -84,7 +85,7 @@ object LaTeX {
                      |  \x
                      |\end{tikzpicture}""".stripMargin
 
-    val result = tikzToPNG(tikzCode)
+    val result = latexToPng(tikzCode)
 
     showPngImage(result)
 

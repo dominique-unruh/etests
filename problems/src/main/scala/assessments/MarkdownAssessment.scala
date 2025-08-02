@@ -1,11 +1,9 @@
 package assessments
 
-import assessments.Assessment.{tagEnd, tagStart}
 import assessments.ExceptionContext.initialExceptionContext
-import assessments.MarkdownAssessment.MarkdownAssessmentRun.extractStack
-import assessments.MarkdownAssessment.{Interpolatable, MarkdownAssessmentRun, markdownParser, markdownRenderer, markdownToHtml, tagFindingRegex}
-import assessments.pageelements.{AnswerElement, PageElement}
-import externalsystems.{LaTeX, MoodleStack}
+import assessments.MarkdownAssessment.{MarkdownAssessmentRun, markdownToHtml}
+import assessments.pageelements.{AnswerElement, Element, PageElement}
+import externalsystems.MoodleStack
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
 import utils.Tag.Tags
@@ -16,7 +14,7 @@ import scala.util.matching.Regex
 
 abstract class MarkdownAssessment {
   val name: String = getClass.getName
-  lazy val markdown: InterpolatedString[Interpolatable]
+  lazy val markdown: InterpolatedString[Element]
   def grade(gradingContext: GradingContext): (Points, Seq[String])
   val reachablePoints: Points
   val grader: Grader = new Grader(ElementName("grader")) {
@@ -26,7 +24,7 @@ abstract class MarkdownAssessment {
   }
   
   extension (sc: StringContext) {
-    inline def md(args: Interpolatable*): InterpolatedString[Interpolatable] = InterpolatedString(sc.parts, args)
+    inline def md(args: Element*): InterpolatedString[Element] = InterpolatedString(sc.parts, args)
   }
 
   private def findMethod(elementName: ElementName) =
@@ -38,9 +36,9 @@ abstract class MarkdownAssessment {
     val elements = SeqMap.newBuilder[ElementName, PageElement]
 //    val associatedFiles = Map.newBuilder[String, (String,Array[Byte])]
 //    var fileCounter = 0
-    var elementPath = ElementPath.empty
+//    var elementPath = ElementPath.empty
 
-    def addPageElement(name: String) = {
+    /*def addPageElement(name: String) = {
       val elementName = ElementName(elementPath, name)
       val pageElement: PageElement =
         try
@@ -59,7 +57,7 @@ abstract class MarkdownAssessment {
       seen.add(elementName)
       elements.addOne((elementName, pageElement))
       elementName
-    }
+    }*/
 
 /*    def substitute(matsch: Regex.Match) = {
       matsch.group(1).strip() match {
@@ -198,6 +196,4 @@ object MarkdownAssessment {
     case extractStack
     case runTests
   }
-  
-  trait Interpolatable
 }

@@ -17,5 +17,4 @@ class StackUtilsTest extends AnyFunSuiteLike {
     val t2 = 0 : SympyExpr
     assert(checkEquality(t1, 0, assumption))
   }
-
 }

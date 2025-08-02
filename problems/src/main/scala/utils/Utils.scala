@@ -35,4 +35,8 @@ object Utils {
     val clipboard: Clipboard = Toolkit.getDefaultToolkit.getSystemClipboard
     clipboard.setContents(stringSelection, null)
   }
+
+  private val stripLeadingEmptyLinesRegex = """(?s)^([ \t]*\n)+""".r
+  def stripLeadingEmptyLines(string: String): String =
+    stripLeadingEmptyLinesRegex.replaceFirstIn(string, "")
 }

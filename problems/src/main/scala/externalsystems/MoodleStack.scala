@@ -1,8 +1,7 @@
 package externalsystems
 
 import assessments.Assessment
-import assessments.pageelements.{InputElement, PageElement}
-import exam.y2025.iqc1.CnotConstruction.Image
+import assessments.pageelements.{ImageElement, InputElement, PageElement}
 import org.apache.commons.text.StringEscapeUtils
 import utils.Tag
 
@@ -38,7 +37,7 @@ object MoodleStack {
         <checkanswertype>0</checkanswertype>
         <mustverify>1</mustverify>
         <showvalidation>1</showvalidation>
-        <options>{allowWords.mkString(", ")}</options>
+        <options>{extraOptions.mkString(", ")}</options>
       </input>
   }
 
@@ -148,7 +147,7 @@ object MoodleStack {
             extraOptions = pageElement.tags(moodleExtraOptions))
           inputs += input
           s"[[input:$name]] [[validation:$name]]"
-        case Image(png, basename) =>
+        case ImageElement(png, basename) =>
           val name = associatedFiles.add(basename = basename, extension = "png", mimeType = "image/png", content = png)
           s"""<img src="@@PLUGINFILE@@/${StringEscapeUtils.escapeHtml4(name)}"/>"""
       }
