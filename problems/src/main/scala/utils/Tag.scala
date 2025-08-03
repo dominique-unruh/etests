@@ -15,8 +15,10 @@ object Tag {
       get(tag).getOrElse(default)
     def apply[Value](tag: Tag[Owner, Value]): Value =
       get(tag).getOrElse(tag.default)
-    def +[Value](tagged: Tagged[Owner, Value]): Tags[Owner] =
+    def +[Value](tagged: Tagged[Owner, Value]): Tags[Owner] = {
+      assert(!map.contains(tagged.tag))
       new Tags(map + (tagged.tag.asInstanceOf[Tag[?, ?]] -> tagged.value))
+    }
   }
   case class Tagged[+Owner, Value](val tag: Tag[Owner, Value], val value: Value)
 
