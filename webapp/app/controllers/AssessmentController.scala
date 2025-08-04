@@ -9,68 +9,78 @@ import play.api.mvc.*
 import java.nio.file.{Files, Path}
 import javax.script.{ScriptEngine, ScriptEngineManager}
 import scala.util.matching.Regex
-import assessments.{Assessment, ElementName, ExceptionContext}
+import assessments.{Assessment, ElementName, ExceptionContext, MarkdownAssessment}
+import exam.y2025.iqc1.CnotConstruction
 import play.api.libs.json.{JsArray, JsBoolean, JsObject, JsString, JsValue}
 import play.mvc.BodyParser.Json
 import play.twirl.api.Html
+import com.typesafe.scalalogging.Logger
+import io.github.classgraph.{ClassGraph, ClassInfoList}
+import org.apache.commons.text.StringEscapeUtils
 import utils.IndentedInterpolator
+
+import scala.jdk.CollectionConverters.CollectionHasAsScala
+import scala.reflect.ClassTag
 
 
 @Singleton
 class AssessmentController @Inject()(val controllerComponents: ControllerComponents) extends BaseController {
+  private val logger = Logger[AssessmentController]
 
-
-/*
-  private def replacer(m: Regex.Match) : String = {
-    val code = m.group(1)
-//    val result = Eval[AnyRef](code)
-//    result.toString
-//    import scala.reflect.runtime.universe as ru
-//    import scala.tools.reflect.ToolBox
-//    val scalaCode = toolbox.parse("""println("Hello world!")""")
-//    val evalMirror = ru.runtimeMirror(this.getClass.getClassLoader)
-
-//    val toolBox = evalMirror.mkToolBox()
-
-
-//    toolBox.eval(scalaCode) //Hello world
-
-    val cl = ClassLoader.getSystemClassLoader
-    val x = getClass.getClassLoader
-    val manager = new javax.script.ScriptEngineManager(application.classloader)
-    val engine = manager.getEngineByName("scala")
-//    manager.getEngineFactories.toString
-//    engine.toString
-
-
-
-    val srt = application.classloader.loadClass("scala.runtime.ScalaRunTime")
-//
-//    srt.toString
-//    engine.eval("1").toString
-
-//    val result = ammonite.Main().runCode("1")
-//    result.toString()
-
-//    val res = Eval().eval("1", Some("Int"))
-//    Eval[String](""" "1" """)
-
-//    val cl = getClass.getClassLoader
-//    val clazz = cl.loadClass("controllers.EvalWrapper")
-//    clazz.newInstance()
-//    clazz.getTypeName
-//    System.getProperty("java.class.path")
-    code.toUpperCase
-  }
-*/
 
 //  private val exampleAssessmentMarkdown: String = Files.readString(Path.of("/home/unruh/r/assessments/data/test.md"))
-  private val exampleAssessment: Assessment = ???
+//  private val exampleAssessment: Assessment = CnotConstruction.assessment
 
-  def assessment(): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
-    val body = exampleAssessment.renderHtml
-    val html = views.html.assessment("Example", Html(body))
-    Ok(html)
+  private lazy val classgraph = new ClassGraph()
+    .enableClassInfo()
+    .acceptPackages("exam")
+    .scan()
+
+  private def packageContent(name: String) = {
+    classgraph.getPackageInfo(name) match {
+      case null => Nil
+      case pkg =>
+        val results = Seq.newBuilder[String]
+        for (clazz <- pkg.getClassInfo.asScala
+             if clazz.extendsSuperclass(classOf[MarkdownAssessment]))
+          results += clazz.getName.stripSuffix("$")
+        results.result()
+    }
+  }
+
+  private def getAssessment(name: String) = {
+    val clazz = Class.forName (name.stripSuffix ("/").replace ('/', '.') + "$")
+    val moduleField = clazz.getField ("MODULE$")
+    val module = moduleField.get (null)
+    logger.debug (module.getClass.toString)
+    module.asInstanceOf[MarkdownAssessment].assessment
+  }
+
+  def assessment(assessmentName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    packageContent(assessmentName) match {
+      case Nil =>
+        val assessment = getAssessment(assessmentName)
+        val (body,files) = assessment.renderHtml
+        val html = views.html.assessment(assessment.name, Html(body))
+        Ok(html)
+      case packageContent =>
+        val html = StringBuilder()
+        html ++= "<ul>\n"
+        for (name <- packageContent) {
+          val escapedName = StringEscapeUtils.escapeHtml4(name)
+          val link = routes.AssessmentController.assessment(name).url
+          html ++= s"""  <li><a href="$link">$escapedName</a></li>\n"""
+        }
+        html ++= "</ul>\n"
+        Ok(Html(html.result()))
+    }
+  }
+
+  def assessmentFile(assessmentName: String, fileName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    val assessment = getAssessment(assessmentName)
+    val (body,files) = assessment.renderHtml
+    val (mime, content) = files(fileName)
+    Ok(content).as(mime)
   }
 
   private def elementActionAsJson(action: ElementAction) =
@@ -79,9 +89,10 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
       "callback" -> JsString(action.element.jsElementCallbackName),
       "data" -> action.data))
 
-  def elementEvent(element: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+  def elementEvent(assessmentName: String, element: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    val assessment = getAssessment(assessmentName)
     val payload = request.body.asJson.get
-    val actions = exampleAssessment.elementEvent(ElementName(element), payload)
+    val actions = assessment.elementEvent(ElementName(element), payload)
     val response: JsValue = JsArray(actions.map(elementActionAsJson))
     Ok(response)
   }

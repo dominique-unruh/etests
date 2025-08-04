@@ -1,17 +1,17 @@
-package externalsystems
+package utils
 
-import externalsystems.Docker.runInDocker
+import Docker.runInDocker
 import utils.{IndentedInterpolator, Utils}
 
 import java.awt.image.BufferedImage
-import java.io.{BufferedWriter, ByteArrayInputStream, File, FileWriter, IOException}
+import java.io.*
 import java.nio.charset.{Charset, StandardCharsets}
 import java.nio.file.{Files, Paths, StandardCopyOption}
-import scala.sys.process.*
-import scala.util.{Failure, Success, Try}
 import java.util.UUID
 import javax.imageio.ImageIO
 import javax.swing.{ImageIcon, JLabel, JOptionPane}
+import scala.sys.process.*
+import scala.util.{Failure, Success, Try}
 
 object LaTeX {
   case class ConversionResult(success: Boolean, outputPath: Option[String], error: Option[String])

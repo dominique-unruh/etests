@@ -13,8 +13,9 @@ ThisBuild / scalaVersion := "3.6.4"
 
 lazy val webapp = (project in file("webapp"))
   .settings(
-      libraryDependencies += guice,
-      libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test,
+    libraryDependencies += guice,
+    libraryDependencies += "io.github.classgraph" % "classgraph" % "4.8.181",
+    libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test,
   )
   .enablePlugins(PlayScala)
   .dependsOn(problems)
@@ -34,12 +35,12 @@ lazy val problems = (project in file("problems"))
     libraryDependencies += "com.lihaoyi" %% "fastparse" % "3.1.1",
     libraryDependencies += "org.apache.commons" % "commons-text" % "1.14.0",
     libraryDependencies += "org.apache.commons" % "commons-io" % "1.3.2",
-    libraryDependencies += "org.log4s" %% "log4s" % "1.10.0",
-    libraryDependencies += "org.slf4j" % "slf4j-simple" % "2.0.17",
+    libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
+    libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.5.18",
     libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "2.0.0",
     libraryDependencies += "com.github.cb372" %% "scalacache-core" % "0.28.0" cross for3Use2_13,
     libraryDependencies += "com.github.cb372" %% "scalacache-caffeine" % "0.28.0" cross for3Use2_13,
-    libraryDependencies += "com.lihaoyi" %% "os-lib" % "0.11.4",
+    libraryDependencies += "com.lihaoyi" %% "os-lib" % "0.11.5",
 //      libraryDependencies += "com.github.cb372" %% "scalacache-core" % "1.0.0-M6",
 //      libraryDependencies += "com.github.cb372" %% "scalacache-ehcache" % "0.28.0" cross for3Use2_13,
 //      libraryDependencies += "org.ehcache" % "ehcache" % "3.10.8"

@@ -1,9 +1,8 @@
 package assessments
 
 import assessments.pageelements.ImageElement
-import externalsystems.LaTeX
-import externalsystems.LaTeX.Preambles
-import utils.Utils
+import utils.LaTeX.Preambles
+import utils.{LaTeX, Utils}
 
 object Common {
   def latexPreamble = raw"""${LaTeX.Preambles.standard}

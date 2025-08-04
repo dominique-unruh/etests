@@ -5,8 +5,8 @@ import assessments.ExceptionContext.initialExceptionContext
 import scala.language.experimental.genericNumberLiterals
 import assessments.pageelements.AnswerElement
 import assessments.{Assessment, ElementName, ExceptionContext, ExceptionWithContext, Grader, GradingContext, Points}
+import com.typesafe.scalalogging.Logger
 import externalsystems.Dynexite.{ClassificationBlock, StackBlock}
-import org.log4s.getLogger
 
 import java.io.FileInputStream
 import java.nio.file.{Files, Path, Paths}
@@ -203,5 +203,5 @@ object DynexiteGrader {
     }
   }
 
-  private val logger = getLogger
+  private val logger = Logger[DynexiteGrader.type]
 }
