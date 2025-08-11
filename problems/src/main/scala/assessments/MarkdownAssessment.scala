@@ -2,11 +2,12 @@ package assessments
 
 import assessments.ExceptionContext.initialExceptionContext
 import assessments.MarkdownAssessment.{MarkdownAssessmentRun, markdownToHtml}
-import assessments.pageelements.{AnswerElement, Element, PageElement}
+import assessments.pageelements.{AnswerElement, Element, ElementAction, PageElement}
 import externalsystems.MoodleStack
 import org.apache.commons.text.StringEscapeUtils
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
+import play.api.libs.json.JsValue
 import utils.Tag.Tags
 import utils.{Tag, Utils}
 
@@ -25,7 +26,7 @@ abstract class MarkdownAssessment {
     override lazy val points: Points = MarkdownAssessment.this.reachablePoints
     override val tags: Tag.Tags[this.type] = Tag.Tags.empty
   }
-  
+
   extension (sc: StringContext) {
     inline def md(args: Element*): InterpolatedString[Element] = InterpolatedString(sc.parts, args)
   }

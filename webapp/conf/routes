@@ -3,9 +3,9 @@
 # https://www.playframework.com/documentation/latest/ScalaRouting
 # ~~~~
 
-GET     /preview/:assessment/          controllers.AssessmentController.assessment(assessment)
-GET     /preview/:assessment/:file     controllers.AssessmentController.assessmentFile(assessment, file)
-POST    /response/:assessment/:element controllers.AssessmentController.elementEvent(assessment, element)
-GET     /routes.js                  controllers.MiscController.javascriptRoutes
+GET     /preview/:assessment/              controllers.AssessmentController.assessment(assessment)
+GET     /preview/:assessment/:file         controllers.AssessmentController.assessmentFile(assessment, file)
+POST    /response/:assessment/update controllers.AssessmentController.updateAction(assessment)
+GET     /routes.js                         controllers.MiscController.javascriptRoutes
 
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)

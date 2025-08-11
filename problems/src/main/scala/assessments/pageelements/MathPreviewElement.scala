@@ -26,13 +26,10 @@ class MathPreviewElement(val name: ElementName,
          |  }
          |</script>"""
 
-  override def otherAction(assessment: Assessment, element: PageElement, data: Any, payload: JsValue): IterableOnce[ElementAction] = {
-    if (element.name == observed) {
-      val content = payload.asInstanceOf[JsObject].value("content").asInstanceOf[JsString].value
-      val text = "\\[" + latexRenderer(content) + "\\]"
-      Seq(ElementAction(name, JsObject(Seq("preview" -> JsString(text)))))
-    } else
-      Seq.empty
+  override def updateAction(assessment: Assessment, state: Map[ElementName, JsValue]): IterableOnce[ElementAction] = {
+    val content = state(observed).asInstanceOf[JsObject].value("content").asInstanceOf[JsString].value
+    val text = "\\[" + latexRenderer(content) + "\\]"
+    Seq(ElementAction(name, JsObject(Seq("preview" -> JsString(text)))))
   }
 }
 

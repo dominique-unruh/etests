@@ -1,5 +1,7 @@
 @import views.html.helper.CSRF
-@(assessmentName: String, title: String, body: Html)(implicit requestHeader: RequestHeader)
+@import play.api.libs.json.Json
+@import play.api.libs.json.JsObject
+@(assessmentName: String, title: String, initialState: JsObject, body: Html)(implicit requestHeader: RequestHeader)
 
 <!DOCTYPE html>
 <html lang="en">
@@ -19,6 +21,7 @@
             };
             let csrfToken = "@(CSRF.getToken.value)";
             let assessmentName = "@(assessmentName)";
+            let state = @Html(initialState.toString);
         </script>
         <script language="JavaScript" src="@routes.Assets.versioned("javascripts/assessment.js")"></script>
     </head>

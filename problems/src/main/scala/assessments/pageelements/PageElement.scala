@@ -19,9 +19,9 @@ class StaticElement extends Element
 trait PageElement extends Element { self =>
   val name: ElementName
   def renderHtml: String
-  def action(assessment: Assessment, payload: JsValue): (IterableOnce[ElementAction], Any) = (Seq.empty, ())
-  def otherAction(assessment: Assessment, element: PageElement, data: Any, payload: JsValue): IterableOnce[ElementAction] = Seq.empty
+  def updateAction(assessment: Assessment, state: Map[ElementName, JsValue]): IterableOnce[ElementAction] = Seq.empty
   val tags: Tag.Tags[self.type]
+  val initialState: JsValue = JsObject(collection.Seq("content" -> JsString("")))
 }
 
 object PageElement {

@@ -1,6 +1,7 @@
 package assessments
 
-import assessments.pageelements.PageElement
+import assessments.pageelements.{ElementAction, PageElement}
+import play.api.libs.json.JsValue
 import utils.Tag.Tags
 
 final class TextInput(val name: ElementName,

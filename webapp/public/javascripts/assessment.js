@@ -5,19 +5,17 @@ function log_error(...data) {
     errorTextarea.textContent += "\n"
 }
 
-/** Invokes the `Assessment.elementEvent` method of the page element `elementName` on the backend.
- * (Via `AssessmentController.elementEvent`.)
- *
- * @param elementName
- * @param json JSON object to pass to `Assessment.elementEvent`
- */
-function elementEvent(elementName, json) {
-    // log_error(elementName, json)
+function updateState(elementName, content) {
     if (elementName == null)
         log_error("In elementEvent, elementName is null (internal eerror).")
+    state[elementName] = content
+    sendState()
+}
+
+function sendState() {
     function failCallback(obj, statusMessage) {
-        log_error("Failed to invoke elementEvent on " + elementName)
-        console.log("Failed AJAX call: ", elementName, json, obj, statusMessage)
+        log_error("Failed to send updated state to server")
+        console.log("Failed AJAX call: ", state, obj, statusMessage)
     }
     function doneCallback(json) {
         for (let action of json) {
@@ -25,8 +23,8 @@ function elementEvent(elementName, json) {
             window[action.callback](action.data)
         }
     }
-    $.ajax(jsRoutes.controllers.AssessmentController.elementEvent(assessmentName, elementName).url,
-        {method: "POST", dataType: 'json', data: JSON.stringify(json), contentType: 'application/json',
+    $.ajax(jsRoutes.controllers.AssessmentController.updateAction(assessmentName).url,
+        {method: "POST", dataType: 'json', data: JSON.stringify(state), contentType: 'application/json',
             headers: {'CSRF-Token': csrfToken}})
         .fail(failCallback)
         .done(doneCallback)

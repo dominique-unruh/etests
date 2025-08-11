@@ -8,7 +8,7 @@ import org.commonmark.parser.Parser
 
 import scala.collection.{SeqMap, mutable}
 import scala.util.matching.Regex
-import play.api.libs.json.JsValue
+import play.api.libs.json.{JsObject, JsValue}
 import utils.Tag.Tags
 
 import java.nio.file.{Files, Path}
@@ -59,16 +59,14 @@ class Assessment (val name: String,
     renderHtml(render)
   }
 
-  def elementEvent(elementName: ElementName, payload: JsValue): Seq[ElementAction] = {
-//    println((pageElements, elementName))
-    val element = pageElements(elementName)
-    val reactions = ListBuffer[ElementAction]()
-    val (reactions1, data) = element.action(this, payload)
-    reactions ++= reactions1
-    for (otherElement <- pageElements.values
-         if otherElement ne element)
-      reactions ++= otherElement.otherAction(this, element, data, payload)
-    reactions.toSeq
+  def updateAction(state: JsObject): Seq[ElementAction] = {
+    // TODO should only recalculate changed things
+    val stateMap = state.value.map { (name, content) => (ElementName(name), content) }.toMap
+    val actions = 
+      for (case element: PageElement <- pageElements.values;
+           action <- element.updateAction(this, stateMap))
+      yield action
+    actions.toSeq
   }
 }
 

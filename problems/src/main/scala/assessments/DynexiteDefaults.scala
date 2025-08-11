@@ -51,7 +51,7 @@ object DynexiteDefaults {
       string.sympy.latex
     catch
       case e: Exception =>
-        s"\\text{${Utils.escapeTeX(e.getMessage)}}"
+        s"\\text{ERROR: ${Utils.escapeTeX(e.toString)}}"
 
   def preview(observed: PageElement)(using name: sourcecode.Name): MathPreviewElement = {
     val name2 = if (name.value == "markdown") // Inlined in the markdown, not a good default

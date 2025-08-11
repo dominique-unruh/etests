@@ -61,7 +61,11 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
       case Nil =>
         val assessment = getAssessment(assessmentName)
         val (body,files) = assessment.renderHtml
-        val html = views.html.assessment(assessmentName, assessment.name, Html(body))
+        val html = views.html.assessment(
+          assessmentName = assessmentName,
+          title = assessment.name,
+          initialState = JsObject(assessment.pageElements.map{ (name, element) => (name.toString, element.initialState) }),
+          body = Html(body))
         Ok(html)
       case packageContent =>
         val html = StringBuilder()
@@ -83,17 +87,18 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     Ok(content).as(mime)
   }
 
+  def updateAction(assessmentName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    // TODO do some caching
+    val assessment = getAssessment(assessmentName)
+    val payload = request.body.asJson.get.asInstanceOf[JsObject]
+    val actions = assessment.updateAction(payload)
+    val response: JsValue = JsArray(actions.map(elementActionAsJson))
+    Ok(response)
+  }
+
   private def elementActionAsJson(action: ElementAction) =
     JsObject(Seq(
       "element" -> JsString(action.element.toString),
       "callback" -> JsString(action.element.jsElementCallbackName),
       "data" -> action.data))
-
-  def elementEvent(assessmentName: String, element: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
-    val assessment = getAssessment(assessmentName)
-    val payload = request.body.asJson.get
-    val actions = assessment.elementEvent(ElementName(element), payload)
-    val response: JsValue = JsArray(actions.map(elementActionAsJson))
-    Ok(response)
-  }
 }
