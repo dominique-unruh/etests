@@ -16,8 +16,9 @@ function log_error(data) {
 function elementEvent(elementName, json) {
     console.log(elementName, json)
     if (elementName == null)
-        log_error("In elementEvent, elementName is null (internal error).")
+        log_error("In elementEvent, elementName is null (internal eerror).")
     function failCallback(obj, statusMessage) {
+        log_error("Failed to invoke elementEvent on " + elementName)
         console.log("Failed AJAX call: ", elementName, json, obj, statusMessage)
     }
     function doneCallback(json) {
