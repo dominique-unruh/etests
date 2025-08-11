@@ -10,10 +10,36 @@ import scala.xml.*
 
 object MoodleStack {
 
-  case class Input(name: String,
+  enum InputType {
+    case algebraic
+    case string
+    case matrix
+  }
+
+  enum InsertStars(val integerValue: Int) {
+    /*
+            <option value="0">Don't insert stars </option>
+            <option value="1" selected="">Insert stars for implied multiplication only</option>
+            <option value="2">Insert stars assuming single-character variable names</option>
+            <option value="3">Insert stars for spaces only</option>
+            <option value="4">Insert stars for implied multiplication and for spaces</option>
+            <option value="5">Insert stars assuming single-character variables, implied and for spaces</option>
+            <option value="6">Insert stars for implied multiplication, spaces, and no user-functions</option>
+            <option value="7">Insert stars for implied multiplication, spaces, no user-functions and assuming single-character var</option>
+     */
+    /** Don't insert stars */
+    case dontInsert extends InsertStars(0)
+    /** Insert stars for implied multiplication only */
+    case impliedMultiplication extends InsertStars(1)
+  }
+
+  /** Represents a Moodle/Stack input field */
+  case class Input(typ: InputType,
+                   name: String,
                    reference: String,
-                   allowWords: Iterable[String] = Seq.empty,
-                   extraOptions: Iterable[String] = Seq.empty,
+                   allowWords: Iterable[String],
+                   extraOptions: Iterable[String],
+                   insertStars: InsertStars,
                   ) {
     assert(name.nonEmpty)
     assert(reference.nonEmpty)
@@ -23,11 +49,11 @@ object MoodleStack {
     def xml: Elem =
       <input>
         <name>{name}</name>
-        <type>algebraic</type>
+        <type>{typ}</type>
         <tans>{reference}</tans>
         <boxsize>15</boxsize>
         <strictsyntax>1</strictsyntax>
-        <insertstars>0</insertstars>
+        <insertstars>{insertStars.integerValue}</insertstars>
         <syntaxhint></syntaxhint>
         <syntaxattribute>0</syntaxattribute>
         <forbidwords></forbidwords>
@@ -141,10 +167,12 @@ object MoodleStack {
         case pageElement: InputElement =>
           val name = pageElement.name.toString
           val input = Input(
+            typ = pageElement.tags(moodleInputType),
             name = name,
             reference = pageElement.reference,
             allowWords = pageElement.tags(moodleAllowWords),
-            extraOptions = pageElement.tags(moodleExtraOptions))
+            extraOptions = pageElement.tags(moodleExtraOptions),
+            insertStars = pageElement.tags(moodleInsertStars))
           inputs += input
           if (pageElement.tags(moodleNoPreview))
             s"[[input:$name]]"
@@ -176,4 +204,7 @@ object MoodleStack {
     val simp = "simp"
   }
   object moodleNoPreview extends Tag[InputElement, Boolean](default=false)
+  /** Which input field type should this be in Moodle/Stack? */
+  object moodleInputType extends Tag[InputElement, InputType](default=InputType.algebraic)
+  object moodleInsertStars extends Tag[InputElement, InsertStars](default=InsertStars.dontInsert)
 }
