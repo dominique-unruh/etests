@@ -44,4 +44,26 @@ object Utils {
     stripTrailingEmptyLinesRegex.replaceFirstIn(string, if (keepFinalNewline) "\n" else "")
   def stripLeadingTrailingEmptyLines(string: String, keepFinalNewline: Boolean = false): String =
     stripLeadingEmptyLines(stripTrailingEmptyLines(string, keepFinalNewline = keepFinalNewline))
+
+
+  private val escapeTeXMap = Map(
+    '\\' -> "\\textbackslash{}",
+    '{' -> "\\{",
+    '}' -> "\\}",
+    '$' -> "\\$",
+    '&' -> "\\&",
+    '%' -> "\\%",
+    '#' -> "\\#",
+    '^' -> "\\textasciicircum{}",
+    '_' -> "\\_",
+    '~' -> "\\textasciitilde{}"
+  )
+  def escapeTeX(string: String): String = {
+    // Based on Claude AI
+    val sb = new StringBuilder()
+    string.foreach { c =>
+      sb.append(escapeTeXMap.getOrElse(c, c.toString))
+    }
+    sb.toString()
+  }
 }

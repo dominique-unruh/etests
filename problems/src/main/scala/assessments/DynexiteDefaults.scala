@@ -5,6 +5,7 @@ import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
 import assessments.stack.{SympyAssumption, SympyExpr}
 import utils.Tag.Tags
+import utils.Utils
 
 object DynexiteDefaults {
 //  given sympyCache: Cache[SympyExpr] = CaffeineCache[SympyExpr]
@@ -50,7 +51,7 @@ object DynexiteDefaults {
       string.sympy.latex
     catch
       case e: Exception =>
-        s"\\text{${e.getMessage}}" // TODO Should be escaped
+        s"\\text{${Utils.escapeTeX(e.getMessage)}}"
 
   def preview(observed: PageElement)(using name: sourcecode.Name): MathPreviewElement = {
     val name2 = if (name.value == "markdown") // Inlined in the markdown, not a good default

@@ -2,17 +2,20 @@ package assessments.stack
 
 import StackMath.*
 import assessments.UserError
-import assessments.stack.SympyExpr.{_equalsTrue, function, get_functions, get_symbols, sympy}
+import assessments.stack.SympyExpr.{ErrorTerm, _equalsTrue, function, get_functions, get_symbols, logger, sympy}
+import com.typesafe.scalalogging.Logger
 import me.shadaj.scalapy.py
 import me.shadaj.scalapy.py.{PyQuote, PythonException, SeqConverters}
-import utils.Python
+import utils.{Python, Utils}
 
 import scala.annotation.targetName
 
 final class SympyExpr(val python: py.Dynamic) extends AnyVal {
   override def toString: String = python.toString
   def apply(args: SympyExpr*): SympyExpr = SympyExpr(python(args.map(_.python)*))
-  def latex: String = sympy.latex(python).as[String]
+  def latex: String = this match
+      case ErrorTerm(message) => s"\\text{ERROR: ${Utils.escapeTeX(message)}}"
+      case _ => sympy.latex(python).as[String]
   def equalsTrue(): Boolean = _equalsTrue(python).as[Boolean]
   def +(other: SympyExpr): SympyExpr = SympyExpr(python + other.python)
   def -(other: SympyExpr): SympyExpr = SympyExpr(python - other.python)
@@ -83,6 +86,7 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
 }
 
 object SympyExpr {
+  private val logger = Logger[SympyExpr]
   lazy val sympy: py.Module = py.Module("sympy")
 
   private val get_symbols = Python.defineFunction("get_symbols",
@@ -104,6 +108,16 @@ object SympyExpr {
 
   def errorTerm(message: String): SympyExpr =
     function("ERROR")(symbol(s"$message"))
+
+  object ErrorTerm {
+    private val extract_error = Python.defineFunction("extract_error",
+      """def extract_error(term): assert term.func.name == "ERROR"; assert len(term.args) == 1; return term.args[0].name""")
+
+    def unapply(expr: SympyExpr): Option[String] =
+      try Some(extract_error(expr.python).as[String])
+      catch
+        case e : me.shadaj.scalapy.py.PythonException => None
+  }
 }
 
 object StackUtils {
