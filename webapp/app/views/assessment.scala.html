@@ -25,10 +25,13 @@
     <body>
         @body
 
+        <hr/>
 
-        <hr/>
-        <hr/>
-        <label for="errors">Errors:</label>
-        <textarea id="errors" readonly style="color: red" cols="80"></textarea>
+        <h3>Grading</h3>
+        <div id="grading"></div>
+
+        <h3>Internal errors</h3>
+        <button onclick="document.getElementById('errors').textContent = ''">Clear</button>
+        <pre id="errors"></pre>
     </body>
 </html>

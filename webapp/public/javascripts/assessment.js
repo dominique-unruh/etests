@@ -1,10 +1,8 @@
-function log_error(data) {
-    console.error(data)
-    // TODO prettier
+function log_error(...data) {
+    console.error(...data)
     errorTextarea = document.getElementById("errors")
-    errorTextarea.value += data.toString()
-    errorTextarea.value += "\n"
-    errorTextarea.setSelectionRange(errorTextarea.value.length, errorTextarea.value.length);
+    errorTextarea.textContent += data.toString()
+    errorTextarea.textContent += "\n"
 }
 
 /** Invokes the `Assessment.elementEvent` method of the page element `elementName` on the backend.
@@ -14,7 +12,7 @@ function log_error(data) {
  * @param json JSON object to pass to `Assessment.elementEvent`
  */
 function elementEvent(elementName, json) {
-    console.log(elementName, json)
+    // log_error(elementName, json)
     if (elementName == null)
         log_error("In elementEvent, elementName is null (internal eerror).")
     function failCallback(obj, statusMessage) {

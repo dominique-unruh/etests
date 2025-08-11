@@ -52,7 +52,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     val clazz = Class.forName (name.stripSuffix ("/").replace ('/', '.') + "$")
     val moduleField = clazz.getField ("MODULE$")
     val module = moduleField.get (null)
-    logger.debug (module.getClass.toString)
+//    logger.debug (module.getClass.toString)
     module.asInstanceOf[MarkdownAssessment].assessment
   }
 

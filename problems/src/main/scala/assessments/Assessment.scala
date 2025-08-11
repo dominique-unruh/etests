@@ -60,7 +60,7 @@ class Assessment (val name: String,
   }
 
   def elementEvent(elementName: ElementName, payload: JsValue): Seq[ElementAction] = {
-    println((pageElements, elementName))
+//    println((pageElements, elementName))
     val element = pageElements(elementName)
     val reactions = ListBuffer[ElementAction]()
     val (reactions1, data) = element.action(this, payload)
