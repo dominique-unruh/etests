@@ -38,13 +38,21 @@ abstract class MarkdownAssessment {
     val seen = mutable.HashSet[ElementName]()
     val elements = SeqMap.newBuilder[ElementName, PageElement]
 
-    elements.addOne(ElementName("grader"), grader)
-
     val htmlTemplate = {
       val date = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
       val clazz = this.getClass.getName.stripSuffix("$")
       val comment = s"<!-- Exported via Dominique Unruh's assessment tool. Source class ${StringEscapeUtils.escapeHtml4(clazz)}. Date: ${StringEscapeUtils.escapeHtml4(date)} -->\n"
       markdown.mapCompleteString(s => comment + markdownToHtml(s))
+    }
+
+    assert(grader.name == ElementName("grader"))
+    elements.addOne(grader.name, grader)
+    seen.add(grader.name)
+
+    for (case element: PageElement <- htmlTemplate.args) {
+      if (!seen.add(element.name))
+        throw ExceptionWithContext(s"Duplicate page element name '${element.name}'")
+      elements.addOne(element.name, element)
     }
 
     Assessment(name = name, htmlTemplate = htmlTemplate,

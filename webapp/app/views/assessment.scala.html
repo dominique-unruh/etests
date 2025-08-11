@@ -1,5 +1,5 @@
 @import views.html.helper.CSRF
-@(title: String, body: Html)(implicit requestHeader: RequestHeader)
+@(assessmentName: String, title: String, body: Html)(implicit requestHeader: RequestHeader)
 
 <!DOCTYPE html>
 <html lang="en">
@@ -18,10 +18,17 @@
                 }
             };
             let csrfToken = "@(CSRF.getToken.value)";
+            let assessmentName = "@(assessmentName)";
         </script>
         <script language="JavaScript" src="@routes.Assets.versioned("javascripts/assessment.js")"></script>
     </head>
     <body>
         @body
+
+
+        <hr/>
+        <hr/>
+        <label for="errors">Errors:</label>
+        <textarea id="errors" readonly style="color: red"></textarea>
     </body>
 </html>

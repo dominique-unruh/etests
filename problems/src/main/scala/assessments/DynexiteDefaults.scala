@@ -5,9 +5,6 @@ import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
 import assessments.stack.{SympyAssumption, SympyExpr}
 import utils.Tag.Tags
-//import scalacache.caffeine.CaffeineCache
-//import scalacache.{Cache, caching}
-//import scalacache.modes.sync._
 
 object DynexiteDefaults {
 //  given sympyCache: Cache[SympyExpr] = CaffeineCache[SympyExpr]
@@ -55,8 +52,13 @@ object DynexiteDefaults {
       case e: Exception =>
         s"\\text{${e.getMessage}}" // TODO Should be escaped
 
-  def preview(observed: PageElement)(using name: sourcecode.Name) =
-    MathPreviewElement(ElementName(name.value), observed.name, stackMathRender)
+  def preview(observed: PageElement)(using name: sourcecode.Name): MathPreviewElement = {
+    val name2 = if (name.value == "markdown") // Inlined in the markdown, not a good default
+      ElementName(observed.name, "preview")
+    else
+      ElementName(name.value)
+    MathPreviewElement(name2, observed.name, stackMathRender)
+  }
 
   def checkEq(x: => PageElement | SympyExpr, y: => PageElement | SympyExpr, assumption: SympyAssumption = SympyAssumption.positive)
              (using gradingContext: GradingContext, comments: Commenter): Boolean =

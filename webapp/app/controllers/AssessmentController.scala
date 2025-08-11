@@ -13,7 +13,7 @@ import assessments.{Assessment, ElementName, ExceptionContext, MarkdownAssessmen
 import exam.y2025.iqc1.CnotConstruction
 import play.api.libs.json.{JsArray, JsBoolean, JsObject, JsString, JsValue}
 import play.mvc.BodyParser.Json
-import play.twirl.api.Html
+import play.twirl.api.{Html, HtmlFormat}
 import com.typesafe.scalalogging.Logger
 import io.github.classgraph.{ClassGraph, ClassInfoList}
 import org.apache.commons.text.StringEscapeUtils
@@ -61,7 +61,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
       case Nil =>
         val assessment = getAssessment(assessmentName)
         val (body,files) = assessment.renderHtml
-        val html = views.html.assessment(assessment.name, Html(body))
+        val html = views.html.assessment(assessmentName, assessment.name, Html(body))
         Ok(html)
       case packageContent =>
         val html = StringBuilder()
