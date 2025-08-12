@@ -1,15 +1,28 @@
 package utils
 
-import os.Path
 import sourcecode.Enclosing
+import os.Path
 
 import java.awt.Toolkit
 import java.awt.datatransfer.{Clipboard, StringSelection}
-import java.nio.file.Files
-import java.util.Base64
+import java.io.{BufferedReader, FileReader}
+import java.nio.file.{Files, Paths}
+import java.util.{Base64, Properties}
+import scala.jdk.CollectionConverters.given
 import scala.collection.mutable
+import scala.util.Using
 
 object Utils {
+  def loadSystemProperties(): Unit = {
+    val path = os.pwd / "java.properties"
+    if (os.exists(path)) {
+      val props = new Properties()
+      Using(path.getInputStream) { stream => props.load(stream) }
+      for ((key, value) <- props.asScala)
+        System.setProperty(key.toString, value.toString)
+    }
+  }
+
   def uniqueMap[K,V](elems: (K,V)*): Map[K, V] =
     val set = new mutable.HashSet[K]
     for (k <- elems.map(_._1))

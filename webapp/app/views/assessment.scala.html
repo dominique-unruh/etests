@@ -2,6 +2,7 @@
 @import play.api.libs.json.Json
 @import play.api.libs.json.JsObject
 @import assessments.ElementName
+@import scala.collection.JavaConverters.mapAsScalaMapConverter
 @(assessmentName: String, title: String, initialState: JsObject, reachablePoints: String, body: Html)(implicit requestHeader: RequestHeader)
 
 <!DOCTYPE html>
@@ -67,6 +68,7 @@
     <body>
         <div class="two-column-container">
             <div class="left-column">
+                <pre>@(System.getProperties.asScala.map(p => s"$p\n"))</pre>
                 <h1>@(title)</h1>
                 @body
             </div>

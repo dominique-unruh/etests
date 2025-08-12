@@ -128,6 +128,7 @@ abstract class MarkdownAssessment {
   }
 
   def main(args: Array[String]): Unit = {
+    Utils.loadSystemProperties()
     given ExceptionContext = initialExceptionContext(s"Running main for $name")
     println(s"Running the main method of \"$name\", with run option $runOption.")
     if (MarkdownAssessmentRun.values.length > 1)
