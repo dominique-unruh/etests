@@ -1,5 +1,7 @@
 package assessments
 
+import assessments.Points.bigInt1
+
 import java.math.MathContext
 import java.math.RoundingMode
 import scala.math.BigDecimal
@@ -11,10 +13,22 @@ import scala.util.FromDigits
 class Points private (private val numerator: BigInt, private val denominator: BigInt) {
   assert(denominator > 0)
 
-  def fractionString: String = s"$numerator/$denominator"
+  def fractionString: String =
+    if (denominator == 1)
+      numerator.toString
+    else
+      s"$numerator/$denominator"
+  def fractionHtml: String =
+    if (denominator == 1)
+      numerator.toString
+    else
+      s"<span><sup>$numerator</sup>&frasl;<sub>$denominator</sub></span>"
+
+  /** Returns the points as a decimal fraction (e.g. 1.23) with high precision (Java defaults) */
   def decimalFractionString: String = (BigDecimal(numerator)/BigDecimal(denominator)).toString
+  /** Returns the points as a decimal fraction (e.g. 1.23) with at most `precision` digits after the period. */
   def decimalFractionString(precision: Int): String = (BigDecimal(numerator)/BigDecimal(denominator))
-    .round(MathContext(precision, RoundingMode.DOWN)).toString
+    .setScale(precision, BigDecimal.RoundingMode.HALF_UP).underlying().stripTrailingZeros().toString
   override def toString: String = decimalFractionString(3)
 
   def <(other: Points): Boolean =
@@ -38,12 +52,21 @@ class Points private (private val numerator: BigInt, private val denominator: Bi
     // Bypassing normalization by direct constructor call because this is already normalized
     new Points(numerator.abs, denominator)
   }
+  /** Checks whether `string` is a precise representation of this point number.
+   * Useful, e.g., to check whether the return value of [[decimalFractionString]] did some rounding or not. */
+  def isPreciseString(string: String): Boolean =
+    this == Points(BigDecimal(string))
 
   override def equals(other: Any): Boolean = other match
     case other: Points => (numerator == other.numerator) && (denominator == other.denominator)
 }
 
 object Points {
+  private val bigInt1 = BigInt(1)
+  private val bigInt0 = BigInt(0)
+  private val bigInt10 = BigInt(10)
+  val one: Points = Points(bigInt1)
+  val zero: Points = Points(bigInt0)
   def apply(numerator: BigInt, denominator: BigInt): Points = {
     var num = numerator
     var den = denominator
@@ -68,8 +91,6 @@ object Points {
   def apply(value: BigDecimal): Points =
     Points(value.bigDecimal.unscaledValue(),
       bigInt10.pow(value.bigDecimal.scale()))
-  private val bigInt1 = BigInt(1)
-  private val bigInt10 = BigInt(10)
   given Conversion[BigInt, Points] with
     def apply(value: BigInt): Points = Points(value)
   given Conversion[Int, Points] with

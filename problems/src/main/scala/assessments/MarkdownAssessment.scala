@@ -21,7 +21,7 @@ abstract class MarkdownAssessment {
   lazy val markdown: InterpolatedString[Element]
   def grade(gradingContext: GradingContext): (Points, Seq[String])
   val reachablePoints: Points
-  val grader: Grader = new Grader(ElementName("grader")) {
+  val grader: Grader = new Grader(ElementName.grader) {
     override def grade(gradingContext: GradingContext): (Points, Seq[String]) = MarkdownAssessment.this.grade(gradingContext)
     override lazy val points: Points = MarkdownAssessment.this.reachablePoints
     override val tags: Tag.Tags[this.type] = Tag.Tags.empty
@@ -46,7 +46,7 @@ abstract class MarkdownAssessment {
       markdown.mapCompleteString(s => comment + markdownToHtml(s))
     }
 
-    assert(grader.name == ElementName("grader"))
+    assert(grader.name == ElementName.grader)
     elements.addOne(grader.name, grader)
     seen.add(grader.name)
 
@@ -56,7 +56,7 @@ abstract class MarkdownAssessment {
       elements.addOne(element.name, element)
     }
 
-    Assessment(name = name, htmlTemplate = htmlTemplate,
+    Assessment(name = name, htmlTemplate = htmlTemplate, reachablePoints = reachablePoints,
       pageElements = elements.result(), tags = tags)
   }
 

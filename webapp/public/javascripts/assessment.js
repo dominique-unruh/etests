@@ -1,8 +1,8 @@
 function log_error(...data) {
     console.error(...data)
     errorTextarea = document.getElementById("errors")
-    errorTextarea.textContent += data.toString()
-    errorTextarea.textContent += "\n"
+    errorTextarea.textContent = data.toString()+"\n"
+    document.getElementById('errors-section').style.display = 'block';
 }
 
 function updateState(elementName, content) {
@@ -20,7 +20,10 @@ function sendState() {
     function doneCallback(json) {
         for (let action of json) {
             console.log("Invoking callback " + action.callback + " with:", action.data)
-            window[action.callback](action.data)
+            if (window[action.callback] == null)
+                log_error("Server invoked nonexisting callback " + action.callback)
+            else
+                window[action.callback](action.data)
         }
     }
     $.ajax(jsRoutes.controllers.AssessmentController.updateAction(assessmentName).url,

@@ -51,4 +51,7 @@ object ElementName {
     ElementPath.assertValidElementPath(names)
     new ElementName(path.names ++ names)
   }
+  
+  val grader: ElementName = ElementName("grader")
+  val errordisplay: ElementName = ElementName("errordisplay")
 }

@@ -19,6 +19,7 @@ import scala.xml.*
 class Assessment (val name: String,
                   val htmlTemplate: InterpolatedString[Element],
                   val pageElements: SeqMap[ElementName, PageElement],
+                  val reachablePoints: Points,
                   val tags: Tags[Assessment] = Tags.empty) {
   checkValid()
 
@@ -62,7 +63,7 @@ class Assessment (val name: String,
   def updateAction(state: JsObject): Seq[ElementAction] = {
     // TODO should only recalculate changed things
     val stateMap = state.value.map { (name, content) => (ElementName(name), content) }.toMap
-    val actions = 
+    val actions =
       for (case element: PageElement <- pageElements.values;
            action <- element.updateAction(this, stateMap))
       yield action

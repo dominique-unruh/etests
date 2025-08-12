@@ -1,7 +1,8 @@
 @import views.html.helper.CSRF
 @import play.api.libs.json.Json
 @import play.api.libs.json.JsObject
-@(assessmentName: String, title: String, initialState: JsObject, body: Html)(implicit requestHeader: RequestHeader)
+@import assessments.ElementName
+@(assessmentName: String, title: String, initialState: JsObject, reachablePoints: String, body: Html)(implicit requestHeader: RequestHeader)
 
 <!DOCTYPE html>
 <html lang="en">
@@ -24,17 +25,74 @@
             let state = @Html(initialState.toString);
         </script>
         <script language="JavaScript" src="@routes.Assets.versioned("javascripts/assessment.js")"></script>
+
+        <style>
+            .two-column-container {
+                display: grid;
+                grid-template-columns: 1fr 400px; /* Left column flexible, right column fixed width */
+                gap: 20px;
+                margin-top: 20px;
+            }
+
+            .left-column {
+                min-width: 0; /* Prevents grid overflow issues */
+            }
+
+            .right-column {
+                background-color: #f8f9fa;
+                padding: 15px;
+                border-left: 2px solid #dee2e6;
+                height: fit-content;
+            }
+
+            /* Make it responsive */
+            @@media (max-width: 768px) {
+            .two-column-container {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            .right-column {
+                border-left: none;
+                border-top: 2px solid #dee2e6;
+            }
+            }
+
+            /* Style for the separator line */
+            .content-separator {
+                grid-column: 1 / -1;
+                margin: 20px 0;
+            }
+        </style>
     </head>
     <body>
-        @body
+        <div class="two-column-container">
+            <div class="left-column">
+                <h1>@(title)</h1>
+                @body
+            </div>
 
-        <hr/>
+            <div class="right-column">
+                <h3>Grading (<span id="grading-points"></span>/@reachablePoints points)</h3>
+                <div id="grading-report"></div>
+                <script>
+                    function @(ElementName.grader.jsElementCallbackName)(json) {
+                        document.getElementById("grading-points").textContent = json['points']
+                        document.getElementById("grading-report").innerHTML = json['report']
+                    }
+                </script>
 
-        <h3>Grading</h3>
-        <div id="grading"></div>
-
-        <h3>Internal errors</h3>
-        <button onclick="document.getElementById('errors').textContent = ''">Clear</button>
-        <pre id="errors"></pre>
+                <div id="errors-section">
+                    <h3>Internal errors</h3>
+                    <button onclick="document.getElementById('errors').textContent = ''; document.getElementById('errors-section').style.display = 'none'">Clear</button>
+                    <pre id="errors" style="color:red; font-weight: bold"></pre>
+                    <script>
+                        function @(ElementName.errordisplay.jsElementCallbackName)(json) {
+                            document.getElementById('errors-section').style.display = 'block';
+                            document.getElementById('errors').textContent = json['message']
+                        }
+                    </script>
+                </div>
+            </div>
+        </div>
     </body>
 </html>

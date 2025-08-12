@@ -10,7 +10,7 @@ import java.nio.file.{Files, Path}
 import javax.script.{ScriptEngine, ScriptEngineManager}
 import scala.util.matching.Regex
 import assessments.{Assessment, ElementName, ExceptionContext, MarkdownAssessment}
-import exam.y2025.iqc1.CnotConstruction
+import exam.y2025.iqc1.{CnotConstruction, Uf}
 import play.api.libs.json.{JsArray, JsBoolean, JsObject, JsString, JsValue}
 import play.mvc.BodyParser.Json
 import play.twirl.api.{Html, HtmlFormat}
@@ -65,6 +65,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
           assessmentName = assessmentName,
           title = assessment.name,
           initialState = JsObject(assessment.pageElements.map{ (name, element) => (name.toString, element.initialState) }),
+          reachablePoints = assessment.reachablePoints.decimalFractionString,
           body = Html(body))
         Ok(html)
       case packageContent =>

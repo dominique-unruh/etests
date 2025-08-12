@@ -16,8 +16,6 @@ class MathPreviewElement(val name: ElementName,
   override def renderHtml: String =
     ind"""<div style="font-weight: bold; border: solid 1 1 1 1;" id="${name.jsElementId}">Preview...</div><script>
          |  function ${name.jsElementCallbackName}(json) {
-         |    console.log(json.preview);
-         |    console.log(("#${name.jsElementId}"));
          |    let span = document.getElementById("${name.jsElementId}");
          |    console.log(span);
          |    MathJax.typesetClear([span]);
