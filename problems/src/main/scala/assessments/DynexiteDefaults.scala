@@ -54,7 +54,7 @@ object DynexiteDefaults {
         s"\\text{ERROR: ${Utils.escapeTeX(e.toString)}}"
 
   def preview(observed: PageElement)(using name: sourcecode.Name): MathPreviewElement = {
-    val name2 = if (name.value == "markdown") // Inlined in the markdown, not a good default
+    val name2 = if (name.value == "question" || name.value == "explanation") // Inlined in the markdown, not a good default
       ElementName(observed.name, "preview")
     else
       ElementName(name.value)

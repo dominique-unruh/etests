@@ -18,7 +18,7 @@ import scala.util.matching.Regex
 
 abstract class MarkdownAssessment {
   val name: String = getClass.getName
-  lazy val markdown: InterpolatedString[Element]
+  lazy val question: InterpolatedString[Element]
   lazy val explanation: InterpolatedString[Element] = md""
 
   def grade(gradingContext: GradingContext): (Points, Seq[String])
@@ -45,7 +45,7 @@ abstract class MarkdownAssessment {
       val date = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
       val clazz = this.getClass.getName.stripSuffix("$")
       val comment = s"<!-- Exported via Dominique Unruh's assessment tool. Source class ${StringEscapeUtils.escapeHtml4(clazz)}. Date: ${StringEscapeUtils.escapeHtml4(date)} -->\n"
-      markdown.mapCompleteString(s => comment + markdownToHtml(s))
+      question.mapCompleteString(s => comment + markdownToHtml(s))
     }
 
     val explanationTemplate = explanation.mapCompleteString(markdownToHtml)
