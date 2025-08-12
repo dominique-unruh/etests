@@ -24,6 +24,7 @@ sealed trait StackMath {
   def toSympy: SympyExpr = {
     def toSympy(stack: StackMath): py.Dynamic = stack match {
       case Funcall("mod", x, y) => toSympy(x).__mod__(toSympy(y))
+      case Funcall("gcd", x, y) => SympyExpr.gcd(toSympy(x), toSympy(y))
       case Funcall("sqrt", x) => sympy.sqrt(toSympy(x))
       case Funcall(name, arguments*) =>
         sympy.Function(name).apply(arguments.map(toSympy) *).as[py.Dynamic]

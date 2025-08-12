@@ -91,7 +91,8 @@ abstract class MarkdownAssessment {
         val (points, comment) = grader.grade(gradingContext)
         println(s"Resulting comments:\n${comment.map(comment => "* " + comment).mkString("\n")}")
         println(s"Resulting number of points: $points (expected points: $expected)")
-        assert(points == expected)
+        if (points != expected)
+          throw ExceptionWithContext("Mismatch with expectation")
       } catch {
         case NoGraderYetException =>
           if (allowNoGraderYet)
