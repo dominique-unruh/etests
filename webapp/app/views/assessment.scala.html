@@ -72,6 +72,8 @@
             </div>
 
             <div class="right-column">
+                <label for="registration">Registration number</label>
+                <input id="registration" oninput="updateState('@(ElementName.registrationNumber)', this.value)"/>
                 <h3>Grading (<span id="grading-points"></span>/@reachablePoints points)</h3>
                 <div id="grading-report"></div>
                 <script>

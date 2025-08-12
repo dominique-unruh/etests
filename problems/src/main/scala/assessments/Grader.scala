@@ -1,6 +1,6 @@
 package assessments
 
-import assessments.pageelements.{ElementAction, PageElement}
+import assessments.pageelements.{AnswerElement, ElementAction, InputElement, PageElement}
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.commons.text.StringEscapeUtils
 import play.api.libs.json.{JsNumber, JsObject, JsString, JsValue}
@@ -11,9 +11,17 @@ abstract class Grader(val name: ElementName) extends PageElement {
   lazy val points: Points
 
   override def updateAction(assessment: Assessment, state: Map[ElementName, JsValue]): IterableOnce[ElementAction] = {
-    val registrationNumber = "NO_STUDENT"
-    val answers = state.map { (element, elementState) => (element, elementState("content").asInstanceOf[JsString].as[String]) }
-    val gradingContext = GradingContext(answers, registrationNumber)
+    val registrationNumber = state.get(ElementName.registrationNumber) match
+      case Some(regno) => regno.asInstanceOf[JsString].value match
+        case "" => "NO_STUDENT"
+        case regno => regno
+      case None => "NO_STUDENT"
+    val answers = for (case element : AnswerElement <- assessment.pageElements.values) yield {
+      state.get(element.name) match
+        case Some(elementState) => element.name -> elementState("content").asInstanceOf[JsString].as[String]
+        case None => element.name -> ""
+    }
+    val gradingContext = GradingContext(answers.toMap, registrationNumber)
     try {
       val (points, reportLines) = grade(gradingContext)
       val report = StringBuilder()
