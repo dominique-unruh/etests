@@ -1,7 +1,7 @@
 package externalsystems
 
 import assessments.ExceptionContext
-import exam.y2025.iqc1.{Factor, Iqc1Exam}
+import exam.y2025.iqc1.{ApplyCNOTLike, Factor, Iqc1Exam}
 import org.scalatest.funsuite.AnyFunSuiteLike
 import utils.Utils
 

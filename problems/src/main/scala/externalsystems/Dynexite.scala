@@ -235,7 +235,7 @@ object Dynexite {
         val item = attempt.items(assessmentIndex)
         val assessmentDynexiteName = assessment.tags.getOrElse(dynexiteQuestionName, assessment.name)
         if (item.name != assessmentDynexiteName)
-          throw ExceptionWithContext(s"Dynexite problem has name ${item.name}, our problem has name $assessmentDynexiteName. Should be equal.")
+          throw ExceptionWithContext(s"Dynexite problem has name '${item.name}', our problem has name '$assessmentDynexiteName'. Should be equal.")
         val answers = getDynexiteAnswers(item = item, assessment = assessment)
         val reachable = answers.reachable
         if (reachable != assessment.reachablePoints)
@@ -285,7 +285,7 @@ object Dynexite {
 
       for ((name, value) <- block.asInstanceOf[StackBlock].answers) {
         val elementName = expectedNames.getOrElse(name,
-          throw ExceptionWithContext(s"$name (answer name from Dynexite/Stack) not in the list of input fields of ${assessment.name} (${expectedNames.mkString(", ")})",
+          throw ExceptionWithContext(s"$name (answer name from Dynexite/Stack) not in the list of input fields of ${assessment.name} (${expectedNames.keys.mkString(", ")})",
             name, assessment, expectedNames)
         )
         assert(!answers.contains(elementName))
