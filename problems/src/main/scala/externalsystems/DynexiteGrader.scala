@@ -6,7 +6,7 @@ import scala.language.experimental.genericNumberLiterals
 import assessments.pageelements.AnswerElement
 import assessments.{Assessment, ElementName, ExceptionContext, ExceptionWithContext, Grader, GradingContext, Points}
 import com.typesafe.scalalogging.Logger
-import externalsystems.Dynexite.{ClassificationBlock, StackBlock}
+import externalsystems.Dynexite.{ClassificationBlock, DynexiteResponses, StackBlock, getDynexiteAnswers}
 
 import java.io.FileInputStream
 import java.nio.file.{Files, Path, Paths}
@@ -123,90 +123,6 @@ object DynexiteGrader {
 
     QuestionResult(points=points, reachable=reachable, report=report.mkString("\n"))
   }
-
-  private def getDynexiteAnswersStack(item: Dynexite.Item, assessment: Assessment)
-                             (implicit exceptionContext: ExceptionContext):
-  DynexiteResponses = {
-    var points: Points = 0
-    var reachable: Points = 0
-
-    val expectedNames = {
-      val builder = mutable.Map[String, ElementName]()
-      for (case (name, _: AnswerElement) <- assessment.pageElements) {
-        val lastName = name.last
-        assert(!builder.contains(lastName), (builder, lastName, assessment.pageElements))
-        builder.update(lastName, name)
-      }
-      builder.toMap
-    }
-
-    val answers = mutable.Map[ElementName, String]()
-
-    for (block <- item.blocks) {
-      reachable += block.maxPoints
-      points += block.earnedPoints
-
-      for ((name, value) <- block.asInstanceOf[StackBlock].answers) {
-        val elementName = expectedNames.getOrElse(name,
-          throw ExceptionWithContext(s"$name (answer name from Dynexite/Stack) not in the list of input fields of ${assessment.name} (${expectedNames.mkString(", ")})",
-            name, assessment, expectedNames)
-        )
-        assert(!answers.contains(elementName))
-        answers.update(elementName, value)
-      }
-    }
-
-    DynexiteResponses(answers.toMap, points, reachable)
-  }
-
-  private def getDynexiteAnswersClassification(item: Dynexite.Item, assessment: Assessment)
-                                      (implicit exceptionContext: ExceptionContext):
-  DynexiteResponses = {
-    var points: Points = 0
-    var reachable: Points = 0
-
-    val dynexiteAnswers =
-      for (block <- item.blocks;
-           answer <- block.asInstanceOf[ClassificationBlock].answers)
-      yield answer
-
-    val assessmentNames = (for (case (name, _: AnswerElement) <- assessment.pageElements)
-      yield name).toSeq;
-
-    assert(dynexiteAnswers.length == assessmentNames.length, (dynexiteAnswers, assessmentNames))
-
-    val answers = mutable.Map[ElementName, String]()
-
-    for (block <- item.blocks) {
-      reachable += block.maxPoints
-      points += block.earnedPoints;
-    };
-
-    for ((name, answer) <- assessmentNames.zip(dynexiteAnswers)) {
-      assert(!answers.contains(name), (answers, name, assessmentNames))
-      answers.update(name, answer)
-    };
-
-    DynexiteResponses(answers.toMap, points, reachable)
-  }
-
-  final case class DynexiteResponses(answers: Map[ElementName, String], points: Points, reachable: Points)
   
-  def getDynexiteAnswers(item: Dynexite.Item, assessment: Assessment)
-                        (implicit exceptionContext: ExceptionContext):
-  DynexiteResponses = {
-    item.blocks match {
-      case Seq() => DynexiteResponses(Map.empty, 0, 0)
-      case Seq(_: StackBlock, _*) =>
-        assert(item.blocks.forall(_.isInstanceOf[StackBlock]))
-        getDynexiteAnswersStack(item, assessment)
-      case Seq(_: ClassificationBlock, _*) =>
-        assert(item.blocks.forall(_.isInstanceOf[ClassificationBlock]))
-        getDynexiteAnswersClassification(item, assessment)
-      case Seq(block, _*) =>
-        throw ExceptionWithContext(s"Dynexite data contained a solution block of unsupported type ${block.getClass.getName}")
-    }
-  }
-
   private val logger = Logger[DynexiteGrader.type]
 }

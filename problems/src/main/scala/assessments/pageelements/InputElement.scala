@@ -1,7 +1,8 @@
 package assessments.pageelements
 
 import assessments.{Assessment, ElementName}
-import play.api.libs.json.JsValue
+import play.api.libs.json.{JsObject, JsString, JsValue}
+import utils.IndentedInterpolator
 import utils.Tag.Tags
 
 /** Simple text input element. */
@@ -9,5 +10,16 @@ class InputElement(val name: ElementName,
                    val reference: String,
                    val tags: Tags[InputElement]) extends AnswerElement {
   override def renderHtml: String =
-    s"""<input type="text" id="${name.jsElementId}" onInput='updateState("$name", {content: this.value})'/>"""
+    ind"""<input type="text" id="${name.jsElementId}" onInput='updateState("$name", {content: this.value})'/><script>
+         |  function ${name.jsElementCallbackName}(json) {
+         |    let input = document.getElementById("${name.jsElementId}");
+         |    console.log(input.value);
+         |    input.value = json.content;
+         |    updateState("$name", {content: json.content});
+         |  }
+         |</script>"""
+  s""""""
+
+  override def setAction(content: String): Seq[ElementAction] =
+    Seq(ElementAction(this.name, JsObject(Seq("content" -> JsString(content)))))
 }

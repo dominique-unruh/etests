@@ -24,9 +24,9 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
   def %(other: SympyExpr): SympyExpr = SympyExpr(python % other.python)
   def **(other: SympyExpr): SympyExpr = SympyExpr(python.__pow__(other.python))
   def gcd(other: SympyExpr): SympyExpr = {
-    println(s"this: $python")
-    println(s"that: ${other.python}")
-    println(s"gcd: ${SympyExpr.gcd(python, other.python)}")
+//    println(s"this: $python")
+//    println(s"that: ${other.python}")
+//    println(s"gcd: ${SympyExpr.gcd(python, other.python)}")
     SympyExpr(SympyExpr.gcd(python, other.python))
   }
   def substitute(map: (SympyExpr, SympyExpr)*): SympyExpr = {

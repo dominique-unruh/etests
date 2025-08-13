@@ -1,6 +1,6 @@
 package controllers
 
-import assessments.pageelements.ElementAction
+import assessments.pageelements.{AnswerElement, ElementAction}
 
 import javax.inject.*
 import play.api.*
@@ -10,15 +10,17 @@ import java.nio.file.{Files, Path}
 import javax.script.{ScriptEngine, ScriptEngineManager}
 import scala.util.matching.Regex
 import assessments.{Assessment, ElementName, ExceptionContext, MarkdownAssessment}
-import exam.y2025.iqc1.{CnotConstruction, Uf}
+import exam.y2025.iqc1.{CnotConstruction, Iqc1Exam, Uf}
 import play.api.libs.json.{JsArray, JsBoolean, JsObject, JsString, JsValue}
 import play.mvc.BodyParser.Json
 import play.twirl.api.{Html, HtmlFormat}
 import com.typesafe.scalalogging.Logger
+import externalsystems.Dynexite
 import io.github.classgraph.{ClassGraph, ClassInfoList}
 import org.apache.commons.text.StringEscapeUtils
 import utils.IndentedInterpolator
 
+import scala.annotation.experimental
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.reflect.ClassTag
 
@@ -80,6 +82,18 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
         html ++= "</ul>\n"
         Ok(Html(html.result()))
     }
+  }
+
+  def loadAnswers(assessmentName: String, registrationNumber: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    val assessment = getAssessment(assessmentName)
+    given ExceptionContext = ExceptionContext.initialExceptionContext("Responding to web-query for student answers from Dynexite exam", assessmentName, registrationNumber)
+    // TODO: Don't hardcode exam!
+    val answers = Dynexite.getDynexiteAnswers(assessment = assessment, exam = Iqc1Exam, registrationNumber = registrationNumber)
+    val actions = JsArray(
+      for ((element, content) <- answers.toSeq;
+           action <- assessment.pageElements(element).asInstanceOf[AnswerElement].setAction(content))
+        yield elementActionAsJson(action))
+    Ok(actions)
   }
 
   def assessmentFile(assessmentName: String, fileName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>

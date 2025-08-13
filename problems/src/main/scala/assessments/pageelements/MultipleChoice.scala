@@ -12,4 +12,6 @@ final class MultipleChoice(val name: ElementName,
   assert(options.contains(reference), (options, reference))
 
   override def renderHtml: String = "[NOT IMPLEMENTED: MultipleChoice HTML]"
+
+  override def setAction(content: String): Seq[ElementAction] = ???
 }

@@ -8,7 +8,6 @@ import utils.Utils
 import scala.annotation.experimental
 import scala.util.control.Breaks.{break, breakable}
 
-@experimental
 class DynexiteTest extends AnyFunSuiteLike {
   Utils.loadSystemProperties()
 

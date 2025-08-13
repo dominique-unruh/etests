@@ -5,6 +5,7 @@
 
 GET     /preview/:assessment/              controllers.AssessmentController.assessment(assessment)
 GET     /preview/:assessment/:file         controllers.AssessmentController.assessmentFile(assessment, file)
+GET     /answers/:assessment/:regno         controllers.AssessmentController.loadAnswers(assessment, regno)
 POST    /response/:assessment/update controllers.AssessmentController.updateAction(assessment)
 GET     /routes.js                         controllers.MiscController.javascriptRoutes
 
