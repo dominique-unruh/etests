@@ -50,6 +50,10 @@ object InterpolatedString {
     is
   }
 
+  def apply[T](string: String) = new InterpolatedString[T](Seq(string), Seq.empty)
+  
+  val empty = InterpolatedString("")
+  
   extension (is: InterpolatedString[String]) {
     def mkString: String = is.parts.zipAll(is.args, "", "").map((p,a) => p+a).mkString
   }

@@ -15,15 +15,19 @@ import scala.util.Using
 
 object Utils {
   private val logger = Logger[Utils.type]
-  
-  def loadSystemProperties(): Unit = {
-    val path = os.pwd / "java.properties"
-    if (os.exists(path)) {
-      logger.debug(s"Loading properties from $path")    
-      val props = new Properties()
-      Using(path.getInputStream) { stream => props.load(stream) }
-      for ((key, value) <- props.asScala)
-        System.setProperty(key.toString, value.toString)
+
+  private var systemPropertiesLoaded = false
+  def loadSystemProperties(): Unit = synchronized {
+    if (!systemPropertiesLoaded) {
+      val path = os.pwd / "java.properties"
+      if (os.exists(path)) {
+        logger.debug(s"Loading properties from $path")
+        val props = new Properties()
+        Using(path.getInputStream) { stream => props.load(stream) }
+        for ((key, value) <- props.asScala)
+          System.setProperty(key, value)
+      }
+      systemPropertiesLoaded = true
     }
   }
 
