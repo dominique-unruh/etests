@@ -2,7 +2,7 @@ package assessments
 
 import assessments.ExceptionContext.initialExceptionContext
 import assessments.MarkdownAssessment.{MarkdownAssessmentRun, markdownToHtml}
-import assessments.pageelements.{AnswerElement, Element, ElementAction, PageElement}
+import assessments.pageelements.{AnswerElement, Element, ElementAction, PageElement, StaticElement}
 import externalsystems.MoodleStack
 import org.apache.commons.text.StringEscapeUtils
 import org.commonmark.parser.Parser
@@ -18,7 +18,9 @@ import scala.util.matching.Regex
 
 abstract class MarkdownAssessment {
   val name: String = getClass.getName
-  lazy val markdown: InterpolatedString[Element]
+  lazy val question: InterpolatedString[Element]
+  lazy val explanation: InterpolatedString[Element] = md""
+
   def grade(gradingContext: GradingContext): (Points, Seq[String])
   val reachablePoints: Points
   val grader: Grader = new Grader(ElementName.grader) {
@@ -39,24 +41,29 @@ abstract class MarkdownAssessment {
     val seen = mutable.HashSet[ElementName]()
     val elements = SeqMap.newBuilder[ElementName, PageElement]
 
-    val htmlTemplate = {
+    val questionTemplate = {
       val date = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
       val clazz = this.getClass.getName.stripSuffix("$")
       val comment = s"<!-- Exported via Dominique Unruh's assessment tool. Source class ${StringEscapeUtils.escapeHtml4(clazz)}. Date: ${StringEscapeUtils.escapeHtml4(date)} -->\n"
-      markdown.mapCompleteString(s => comment + markdownToHtml(s))
+      question.mapCompleteString(s => comment + markdownToHtml(s))
     }
+
+    val explanationTemplate = explanation.mapCompleteString(markdownToHtml)
 
     assert(grader.name == ElementName.grader)
     elements.addOne(grader.name, grader)
     seen.add(grader.name)
 
-    for (case element: PageElement <- htmlTemplate.args) {
+    for (case element: PageElement <- questionTemplate.args) {
       if (!seen.add(element.name))
         throw ExceptionWithContext(s"Duplicate page element name '${element.name}'")
       elements.addOne(element.name, element)
     }
 
-    Assessment(name = name, htmlTemplate = htmlTemplate, reachablePoints = reachablePoints,
+    Assessment(name = name,
+      questionTemplate = questionTemplate,
+      explanationTemplate = explanationTemplate,
+      reachablePoints = reachablePoints,
       pageElements = elements.result(), tags = tags)
   }
 
@@ -84,7 +91,8 @@ abstract class MarkdownAssessment {
         val (points, comment) = grader.grade(gradingContext)
         println(s"Resulting comments:\n${comment.map(comment => "* " + comment).mkString("\n")}")
         println(s"Resulting number of points: $points (expected points: $expected)")
-        assert(points == expected)
+        if (points != expected)
+          throw ExceptionWithContext("Mismatch with expectation")
       } catch {
         case NoGraderYetException =>
           if (allowNoGraderYet)

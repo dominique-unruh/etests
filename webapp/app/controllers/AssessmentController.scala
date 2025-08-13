@@ -60,13 +60,14 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     packageContent(assessmentName) match {
       case Nil =>
         val assessment = getAssessment(assessmentName)
-        val (body,files) = assessment.renderHtml
+        val (body, explanation, files) = assessment.renderHtml
         val html = views.html.assessment(
           assessmentName = assessmentName,
           title = assessment.name,
           initialState = JsObject(assessment.pageElements.map{ (name, element) => (name.toString, element.initialState) }),
           reachablePoints = assessment.reachablePoints.decimalFractionString,
-          body = Html(body))
+          body = Html(body),
+          explanation = Html(explanation))
         Ok(html)
       case packageContent =>
         val html = StringBuilder()
@@ -83,7 +84,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
 
   def assessmentFile(assessmentName: String, fileName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     val assessment = getAssessment(assessmentName)
-    val (body,files) = assessment.renderHtml
+    val (body, explanation, files) = assessment.renderHtml
     val (mime, content) = files(fileName)
     Ok(content).as(mime)
   }

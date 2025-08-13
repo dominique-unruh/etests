@@ -23,6 +23,12 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
   def /(other: SympyExpr): SympyExpr = SympyExpr(python / other.python)
   def %(other: SympyExpr): SympyExpr = SympyExpr(python % other.python)
   def **(other: SympyExpr): SympyExpr = SympyExpr(python.__pow__(other.python))
+  def gcd(other: SympyExpr): SympyExpr = {
+    println(s"this: $python")
+    println(s"that: ${other.python}")
+    println(s"gcd: ${SympyExpr.gcd(python, other.python)}")
+    SympyExpr(SympyExpr.gcd(python, other.python))
+  }
   def substitute(map: (SympyExpr, SympyExpr)*): SympyExpr = {
     val mapPython = map.map((k,v) => (k.python, v.python)).toPythonCopy
     val result = python.subs(mapPython)
@@ -93,6 +99,32 @@ object SympyExpr {
     "def get_symbols(e): import sympy; return list(map(lambda x: x.name, e.atoms(sympy.Symbol)))")
   private val get_functions = Python.defineFunction("get_functions",
     "def get_functions(e): import sympy; return list(map(lambda f: f.func.name, filter(lambda f: isinstance(f.func,sympy.core.function.UndefinedFunction), e.atoms(sympy.Function))))")
+
+  /** Replacement of sympy.gcd which does not work correctly with variables (e.g., `sympy.gcd(x,3) == 1`). */
+  lazy val gcd = Python.defineFunction("gcd", """
+import sympy
+class gcd(sympy.Function):
+    @classmethod
+    def eval(cls, x, y):
+        import sympy
+        if x.is_number and y.is_number and x.is_finite and y.is_finite:
+            return sympy.gcd(x, y)
+
+        if x == 0:
+            return abs(y)
+        if y == 0:
+            return abs(x)
+        if x == y:
+            return abs(x)
+
+        return None
+
+    def _eval_simplify(self, **kwargs):
+        x, y = self.args
+        if x.is_number and y.is_number and x.is_finite and y.is_finite:
+            return gcd(x, y)
+        return self  # Stay unevaluated
+""")
 
   private lazy val _equalsTrue = py"lambda x: x==True"
   def symbol(name: String): SympyExpr = SympyExpr(sympy.Symbol(name))

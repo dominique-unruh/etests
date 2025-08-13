@@ -17,7 +17,8 @@ import scala.util.{Random, Using}
 import scala.xml.*
 
 class Assessment (val name: String,
-                  val htmlTemplate: InterpolatedString[Element],
+                  val questionTemplate: InterpolatedString[Element],
+                  val explanationTemplate: InterpolatedString[Element],
                   val pageElements: SeqMap[ElementName, PageElement],
                   val reachablePoints: Points,
                   val tags: Tags[Assessment] = Tags.empty) {
@@ -28,7 +29,7 @@ class Assessment (val name: String,
       assert(element.name == name, (element.name, name))
   }
 
-  def renderHtml(elementHtml: (Element, FileMapBuilder) => String) : (String, Map[String, (String, Array[Byte])]) = {
+  def renderHtml(elementHtml: (Element, FileMapBuilder) => String) : (String, String, Map[String, (String, Array[Byte])]) = {
     def substituted = mutable.HashSet[ElementName]()
     val associatedFiles = new FileMapBuilder
 
@@ -44,11 +45,13 @@ class Assessment (val name: String,
     }
 
 //    val body = templateRegex.replaceAllIn(htmlTemplate, substitute)
-    val body = htmlTemplate.mapArgs(substitute).mkString
-    (body, associatedFiles.result())
+    val body = questionTemplate.mapArgs(substitute).mkString
+    val explanation = explanationTemplate.mapArgs(substitute).mkString
+
+    (body, explanation, associatedFiles.result())
   }
 
-  def renderHtml: (String, Map[String, (String, Array[Byte])]) = {
+  lazy val renderHtml: (String, String, Map[String, (String, Array[Byte])]) = {
     def render(element: Element, associatedFiles: FileMapBuilder) = element match {
       case element: PageElement =>
         element.renderHtml

@@ -2,8 +2,13 @@
 @import play.api.libs.json.Json
 @import play.api.libs.json.JsObject
 @import assessments.ElementName
-@import scala.collection.JavaConverters.mapAsScalaMapConverter
-@(assessmentName: String, title: String, initialState: JsObject, reachablePoints: String, body: Html)(implicit requestHeader: RequestHeader)
+@import scala.jdk.CollectionConverters.given
+@(assessmentName: String,
+        title: String,
+        initialState: JsObject,
+        reachablePoints: String,
+        body: Html,
+        explanation: Html)(implicit requestHeader: RequestHeader)
 
 <!DOCTYPE html>
 <html lang="en">
@@ -70,12 +75,17 @@
             <div class="left-column">
                 <h1>@(title)</h1>
                 @body
+
+                <div style="background-color: lightgray">
+                    <h1>Explanation</h1>
+                    @explanation
+                </div>
             </div>
 
             <div class="right-column">
                 <label for="registration">Registration number</label>
                 <input id="registration" oninput="updateState('@(ElementName.registrationNumber)', this.value)"/>
-                <h3>Grading (<span id="grading-points"></span>/@reachablePoints points)</h3>
+                <h3><a href="javascript:sendState()">Grading (<span id="grading-points"></span>/@reachablePoints points)</a></h3>
                 <div id="grading-report"></div>
                 <script>
                     function @(ElementName.grader.jsElementCallbackName)(json) {
@@ -84,7 +94,7 @@
                     }
                 </script>
 
-                <div id="errors-section">
+                <div id="errors-section" style="display: none">
                     <h3>Internal errors</h3>
                     <button onclick="document.getElementById('errors').textContent = ''; document.getElementById('errors-section').style.display = 'none'">Clear</button>
                     <pre id="errors" style="color:red; font-weight: bold"></pre>

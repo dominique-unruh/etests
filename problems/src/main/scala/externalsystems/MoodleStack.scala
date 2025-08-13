@@ -162,7 +162,7 @@ object MoodleStack {
 
   def assessmentToQuestion(assessment: Assessment): Question = {
     val inputs = Seq.newBuilder[Input]
-    val (questionText, associatedFiles) = assessment.renderHtml { (element, associatedFiles) =>
+    val (questionText, explanation, associatedFiles) = assessment.renderHtml { (element, associatedFiles) =>
       element match {
         case pageElement: InputElement =>
           val name = pageElement.name.toString

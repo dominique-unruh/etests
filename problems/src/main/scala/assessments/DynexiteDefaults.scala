@@ -54,14 +54,24 @@ object DynexiteDefaults {
         s"\\text{ERROR: ${Utils.escapeTeX(e.toString)}}"
 
   def preview(observed: PageElement)(using name: sourcecode.Name): MathPreviewElement = {
-    val name2 = if (name.value == "markdown") // Inlined in the markdown, not a good default
+    val name2 = if (name.value == "question" || name.value == "explanation") // Inlined in the markdown, not a good default
       ElementName(observed.name, "preview")
     else
       ElementName(name.value)
     MathPreviewElement(name2, observed.name, stackMathRender)
   }
 
-  def checkEq(x: => PageElement | SympyExpr, y: => PageElement | SympyExpr, assumption: SympyAssumption = SympyAssumption.positive)
+  /** Checks for equality of two Sympy expressions (`x==y`?)
+   * Up to mathematical equivalence, as far as can be figured out (somewhat heuristic).
+   * 
+   * @param x Either a sympy expression, or an answer field
+   *          (in which case the sympy expression will automatically be retrieved).
+   * @param y Analogous to `x`
+   * @param assumption Assumption to pass to Sympy (e.g., all variables are positive). 
+   */
+  def checkEq(x: => PageElement | SympyExpr, 
+              y: => PageElement | SympyExpr,
+              assumption: SympyAssumption = SympyAssumption.positive)
              (using gradingContext: GradingContext, comments: Commenter): Boolean =
     try {
       def toSympy(value: PageElement | SympyExpr) = value match {
