@@ -184,6 +184,8 @@ object StackUtils {
     iter(loops, Map.empty)
     results.result()
   }
+  def forall(variables: Set[String])(f: Map[String, StackMath] => Boolean)(implicit mathContext: MathContext): Boolean =
+    enumerate(variables)(f).forall(identity)
 
   def checkEqualityDebug(x: StackMath, y: StackMath)(using MathContext): Seq[(Map[String, StackMath], Boolean)] = {
     val variables: Set[String] = x.variables ++ y.variables
