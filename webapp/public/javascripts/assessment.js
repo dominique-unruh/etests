@@ -12,6 +12,17 @@ function updateState(elementName, content) {
     sendState()
 }
 
+function loadReference() {
+    function failCallback(obj, statusMessage) {
+        log_error("Failed to load reference solution")
+        console.log("Failed AJAX call: ", state, obj, statusMessage)
+    }
+    $.ajax(jsRoutes.controllers.AssessmentController.loadReference(assessmentName).url,
+        {method: "GET", dataType: 'json', headers: {'CSRF-Token': csrfToken}})
+        .fail(failCallback)
+        .done(doActions)
+}
+
 function loadAnswers() {
     function failCallback(obj, statusMessage) {
         log_error("Failed to load student answers")

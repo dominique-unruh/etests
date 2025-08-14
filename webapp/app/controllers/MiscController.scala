@@ -13,6 +13,7 @@ class MiscController @Inject()(val controllerComponents: ControllerComponents) e
       JavaScriptReverseRouter("jsRoutes")(
         routes.javascript.AssessmentController.updateAction,
         routes.javascript.AssessmentController.loadAnswers,
+        routes.javascript.AssessmentController.loadReference,
       )
     ).as(MimeTypes.JAVASCRIPT)
   }

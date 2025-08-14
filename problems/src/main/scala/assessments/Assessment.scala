@@ -1,7 +1,7 @@
 package assessments
 
 import assessments.Assessment.FileMapBuilder
-import assessments.pageelements.{Element, ElementAction, ImageElement, PageElement}
+import assessments.pageelements.{AnswerElement, Element, ElementAction, ImageElement, PageElement}
 import com.eed3si9n.eval.Eval
 import org.apache.commons.text.StringEscapeUtils
 import org.commonmark.parser.Parser
@@ -72,6 +72,10 @@ class Assessment (val name: String,
       yield action
     actions.toSeq
   }
+  
+  def referenceSolution: Map[ElementName, String] =
+    Map.from(for (case (name: ElementName, element: AnswerElement) <- pageElements.iterator)
+      yield name -> element.reference)
 }
 
 class UserError(message: String) extends Exception(message)

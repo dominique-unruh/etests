@@ -187,7 +187,7 @@ object StackUtils {
   def forall(variables: Set[String])(f: Map[String, StackMath] => Boolean)(implicit mathContext: MathContext): Boolean =
     enumerate(variables)(f).forall(identity)
 
-  def checkEqualityDebug(x: StackMath, y: StackMath)(using MathContext): Seq[(Map[String, StackMath], Boolean)] = {
+  def checkEqualityDebug(x: StackMath, y: StackMath, mapRight: SympyExpr => SympyExpr = identity)(using MathContext): Seq[(Map[String, StackMath], Boolean)] = {
     val variables: Set[String] = x.variables ++ y.variables
     enumerate(variables) { subst =>
       val x2 = x.mapVariables(subst).toSympyMC(allowUndefined = false)
@@ -196,6 +196,6 @@ object StackUtils {
     }
   }
 
-  def checkEqualityNew(x: StackMath, y: StackMath)(using MathContext): Boolean =
-    checkEqualityDebug(x, y).forall(_._2)
+  def checkEqualityNew(x: StackMath, y: StackMath, mapRight: SympyExpr => SympyExpr = identity)(using MathContext): Boolean =
+    checkEqualityDebug(x, y, mapRight).forall(_._2)
 }

@@ -84,16 +84,26 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     }
   }
 
+  def loadReference(assessmentName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    val assessment = getAssessment(assessmentName)
+    given ExceptionContext = ExceptionContext.initialExceptionContext("Responding to web-query for reference solution from Dynexite exam",
+      assessmentName)
+    // TODO: Don't hardcode exam!
+    val answers = assessment.referenceSolution
+    Ok(answersToActions(assessment, answers))
+  }
+
+  private def answersToActions(assessment: Assessment, answers: Map[ElementName, String]): JsArray =
+    JsArray(
+      for ((element, content) <- answers.toSeq;
+           action <- assessment.pageElements(element).asInstanceOf[AnswerElement].setAction(content))
+      yield elementActionAsJson(action))
+  
   def loadAnswers(assessmentName: String, registrationNumber: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     val assessment = getAssessment(assessmentName)
     given ExceptionContext = ExceptionContext.initialExceptionContext("Responding to web-query for student answers from Dynexite exam", assessmentName, registrationNumber)
-    // TODO: Don't hardcode exam!
     val answers = Dynexite.getDynexiteAnswers(assessment = assessment, exam = Iqc1Exam, registrationNumber = registrationNumber)
-    val actions = JsArray(
-      for ((element, content) <- answers.toSeq;
-           action <- assessment.pageElements(element).asInstanceOf[AnswerElement].setAction(content))
-        yield elementActionAsJson(action))
-    Ok(actions)
+    Ok(answersToActions(assessment, answers))
   }
 
   def assessmentFile(assessmentName: String, fileName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
