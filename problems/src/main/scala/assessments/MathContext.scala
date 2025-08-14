@@ -17,8 +17,23 @@ case class MathContext private (variables: Map[String, VarOptions],
     val options2 = options.copy(name = name)
     copy(variables = variables + (name -> options2))
   }
+  /** Sets the fixed value of the variable `name` */
   def fixVar(name: String, value: StackMath): MathContext =
     symbol(name, VarOptions(fixedValue = Some(value)))
+  def testValues(name: String, values: StackMath*): MathContext =
+    symbol(name, VarOptions(testValues = values))
+  /** Specifies the behavior of the function or operator `name` by giving an evaluation function. */
+  def sympyFunction(name: String | StackMath.Ops, function: Seq[SympyExpr] => SympyExpr): MathContext =
+    copy(sympyFunctions = sympyFunctions + (name -> function))
+  def sympyFunction(name: String | StackMath.Ops, function: py.Dynamic, argNumber: Int): MathContext = {
+    def wrapperFunction(args: Seq[SympyExpr]) = {
+      if (args.length != argNumber)
+        throw RuntimeException(s"Sympy function $name called with ${args.length} arguments, not $argNumber")
+      SympyExpr(function(args.map(_.python)*))
+    }
+    sympyFunction(name, wrapperFunction)
+  }
+  
 }
 
 object MathContext {

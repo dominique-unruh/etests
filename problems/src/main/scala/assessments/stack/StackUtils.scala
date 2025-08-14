@@ -163,6 +163,7 @@ object StackUtils {
     result.equalsTrue()
   }
 
+  // TODO: Should be an interable, lazily computed
   def enumerate[A](variables: Set[String])(f: Map[String, StackMath] => A)(implicit mathContext: MathContext): Seq[A] = {
     val loops = mathContext.variables.toList map { (varName, options) =>
       if (options.fixedValue.nonEmpty)
