@@ -10,8 +10,10 @@ import upickle.default as up
 import utils.Tag
 
 import java.math.MathContext
+import java.util.zip.ZipFile
 import scala.annotation.experimental
 import scala.collection.mutable
+import scala.jdk.CollectionConverters.given
 
 object Dynexite {
   lazy val resultJsonPath: Path = {
@@ -331,4 +333,18 @@ object Dynexite {
 
 
   object dynexiteQuestionName extends Tag[Assessment, String](default = "")
+
+  def getAnswerPDF(archive: Path = Path.of(System.getProperty("dynexite.results.pdfs")), registrationNumber: String): Array[Byte] = {
+    val zip = new ZipFile(archive.toFile)
+
+    var pdf: Array[Byte] = null
+    for (entry <- zip.entries().asIterator().asScala) {
+//      logger.debug(s"$registrationNumber, $entry")
+      if (entry.getName.startsWith(registrationNumber) && entry.getName.endsWith(".pdf")) {
+        pdf = zip.getInputStream(entry).readAllBytes()
+      }
+    }
+    assert(pdf != null)
+    pdf
+  }
 }

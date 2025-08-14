@@ -20,20 +20,6 @@ object DynexiteGrader {
   case class Result(points: Points, reachable: Points, report: String, shortReport: String, grade: String)
   case class QuestionResult(points: Points, reachable: Points, report: String)
 
-  def getAnswerPDF(archive: Path, registrationNumber: String): Array[Byte] = {
-    val zip = new ZipFile(archive.toFile)
-
-    var pdf: Array[Byte] = null
-    for (entry <- zip.entries().asIterator().asScala) {
-//      logger.debug(s"$registrationNumber, $entry")
-      if (entry.getName.startsWith(registrationNumber) && entry.getName.endsWith(".pdf")) {
-        pdf = zip.getInputStream(entry).readAllBytes()
-      }
-    }
-    assert(pdf != null)
-    pdf
-  }
-
   def pointsToGrade(points: Points, reachable: Points): String = {
     logger.debug(s"Reachable: $reachable")
     assert(reachable == Points(100))
