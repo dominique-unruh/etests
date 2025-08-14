@@ -3,7 +3,7 @@ package assessments
 import assessments.pageelements.*
 import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
-import assessments.stack.{SympyAssumption, SympyExpr}
+import assessments.stack.{StackMath, SympyAssumption, SympyExpr}
 import utils.Tag.Tags
 import utils.Utils
 
@@ -29,6 +29,8 @@ object DynexiteDefaults {
       catch
         case e: SyntaxError => SympyExpr.errorTerm(e.getMessage)
     }
+    def math: StackMath =
+      parse(str)
   }
 
   // Not using "extension (pe: PageElement) because that exports additionally methods DynexiteDefault.latex... that may conflict with equally named methods when DynexiteDefaults.* is imported
@@ -36,6 +38,7 @@ object DynexiteDefaults {
     def stringValue(using gradingContext: GradingContext): String = gradingContext.answers.getOrElse(pe.name, "")
     def sympy(using gradingContext: GradingContext): SympyExpr = stringValue.sympy
     def latex(using gradingContext: GradingContext): String = sympy.latex
+    def math(using gradingContext: GradingContext): StackMath = stringValue.math
   }
 
 /*  extension (pe: PageElement) {
@@ -63,13 +66,13 @@ object DynexiteDefaults {
 
   /** Checks for equality of two Sympy expressions (`x==y`?)
    * Up to mathematical equivalence, as far as can be figured out (somewhat heuristic).
-   * 
+   *
    * @param x Either a sympy expression, or an answer field
    *          (in which case the sympy expression will automatically be retrieved).
    * @param y Analogous to `x`
-   * @param assumption Assumption to pass to Sympy (e.g., all variables are positive). 
+   * @param assumption Assumption to pass to Sympy (e.g., all variables are positive).
    */
-  def checkEq(x: => PageElement | SympyExpr, 
+  def checkEq(x: => PageElement | SympyExpr,
               y: => PageElement | SympyExpr,
               assumption: SympyAssumption = SympyAssumption.positive)
              (using gradingContext: GradingContext, comments: Commenter): Boolean =
@@ -81,8 +84,7 @@ object DynexiteDefaults {
       checkEquality(toSympy(x), toSympy(y), assumption=assumption)
     } catch
       case e : SyntaxError => comments += e.getMessage; false
-
-
+  
   def gradeInputGroup(inputs: Seq[(AnswerElement, String)],
                       pointsPerOption: Points = null, pointsTotal: Points = null)
                      (using commenter: Commenter, gradingContext: GradingContext): Points = {

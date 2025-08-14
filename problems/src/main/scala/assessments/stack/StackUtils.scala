@@ -1,7 +1,7 @@
 package assessments.stack
 
 import StackMath.*
-import assessments.UserError
+import assessments.{MathContext, UserError}
 import assessments.stack.SympyExpr.{ErrorTerm, _equalsTrue, function, get_functions, get_symbols, logger, sympy}
 import com.typesafe.scalalogging.Logger
 import me.shadaj.scalapy.py
@@ -29,6 +29,7 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
 //    println(s"gcd: ${SympyExpr.gcd(python, other.python)}")
     SympyExpr(SympyExpr.gcd(python, other.python))
   }
+  def sqrt: SympyExpr = SympyExpr(sympy.sqrt(python))
   def substitute(map: (SympyExpr, SympyExpr)*): SympyExpr = {
     val mapPython = map.map((k,v) => (k.python, v.python)).toPythonCopy
     val result = python.subs(mapPython)
@@ -101,7 +102,7 @@ object SympyExpr {
     "def get_functions(e): import sympy; return list(map(lambda f: f.func.name, filter(lambda f: isinstance(f.func,sympy.core.function.UndefinedFunction), e.atoms(sympy.Function))))")
 
   /** Replacement of sympy.gcd which does not work correctly with variables (e.g., `sympy.gcd(x,3) == 1`). */
-  lazy val gcd = Python.defineFunction("gcd", """
+  lazy val gcd: py.Dynamic = Python.defineFunction("gcd", """
 import sympy
 class gcd(sympy.Function):
     @classmethod
@@ -150,6 +151,9 @@ class gcd(sympy.Function):
       catch
         case e : me.shadaj.scalapy.py.PythonException => None
   }
+
+  lazy val `true` = SympyExpr(sympy.S.`true`)
+  lazy val `false` = SympyExpr(sympy.S.`false`)
 }
 
 object StackUtils {
@@ -158,4 +162,36 @@ object StackUtils {
     val result = assumption.addToSympyExpr(SympyExpr.Eq(x, y)).expand.simplify
     result.equalsTrue()
   }
+
+  def enumerate[A](variables: Set[String])(f: Map[String, StackMath] => A)(implicit mathContext: MathContext): Seq[A] = {
+    val loops = mathContext.variables.toList map { (varName, options) =>
+      if (options.fixedValue.nonEmpty)
+        (varName, Seq(options.fixedValue.get))
+      else if (options.testValues.nonEmpty)
+        (varName, options.testValues)
+      else
+        ???
+    }
+    val results = Seq.newBuilder[A]
+    def iter(loops: List[(String, Seq[StackMath])], map: Map[String, StackMath]): Unit = loops match
+      case (name, values) :: rest =>
+        for (value <- values)
+          iter(rest, map + (name -> value))
+      case Nil =>
+        results += f(map)
+    iter(loops, Map.empty)
+    results.result()
+  }
+
+  def checkEqualityDebug(x: StackMath, y: StackMath)(using MathContext): Seq[(Map[String, StackMath], Boolean)] = {
+    val variables: Set[String] = x.variables ++ y.variables
+    enumerate(variables) { subst =>
+      val x2 = x.mapVariables(subst).toSympyMC(allowUndefined = false)
+      val y2 = y.mapVariables(subst).toSympyMC(allowUndefined = false)
+      (subst, checkEquality(x2, y2))
+    }
+  }
+
+  def checkEqualityNew(x: StackMath, y: StackMath)(using MathContext): Boolean =
+    checkEqualityDebug(x, y).forall(_._2)
 }

@@ -34,7 +34,7 @@ object Comment {
       case Format.plain => StringEscapeUtils.escapeHtml4(text)
     new Comment(html = html, kind = kind)
   }
-  def warning(text: String): Comment = Comment(text, kind = Kind.warning, format = markdown)
-  def debug(text: String): Comment = Comment(text, kind = Kind.debug, format = markdown)
+  def warning(markdown: String): Comment = Comment(markdown, kind = Kind.warning, format = Format.markdown)
+  def debug(markdown: String): Comment = Comment(markdown, kind = Kind.debug, format = Format.markdown)
 }
 

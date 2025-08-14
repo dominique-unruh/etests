@@ -1,17 +1,64 @@
 package assessments.stack
 
-import assessments.UserError
-import assessments.stack.StackMath.{Bool, Funcall, Integer, Operation, Ops, Variable}
+import assessments.{MathContext, UserError}
+import assessments.stack.StackMath.{Bool, Funcall, Integer, Operation, Ops, Variable, addToStringBuilderCommaSep}
 import assessments.stack.SympyExpr.sympy
 import me.shadaj.scalapy.py
 
 sealed trait StackMath {
+  def variables: Set[String] = {
+    val builder = Set.newBuilder[String]
+    def collect(math: StackMath): Unit = math match
+      case Operation(operator, arguments@_*) => arguments.foreach(collect)
+      case Funcall(name, arguments@_*) => arguments.foreach(collect)
+      case Variable(name) => builder += name
+      case Integer(int) =>
+      case Bool(bool) =>
+    collect(this)
+    builder.result()
+  }
+
+  override def toString: String = {
+    val builder = new StringBuilder
+    addToStringBuilder(builder)
+    builder.result()
+  }
+  def addToStringBuilder(builder: StringBuilder): Unit = this match {
+    case Operation(operator, arguments*) =>
+      builder ++= operator.toString += '('
+      addToStringBuilderCommaSep(builder, arguments)
+      builder += ')'
+    case Funcall(name, arguments*) =>
+      builder ++= name += '('
+      addToStringBuilderCommaSep(builder, arguments)
+      builder += ')'
+    case Variable(name) => builder ++= name
+    case Integer(int) => builder ++= int.toString
+    case Bool(bool) => builder ++= bool.toString
+  }
+
   def mapIdentifiers(f: String => String): StackMath = this match {
     case Operation(operator, arguments@_*) => Operation(operator, arguments.map(_.mapIdentifiers(f))*)
     case Funcall(name, arguments@_*) => Funcall(f(name), arguments.map(_.mapIdentifiers(f))*)
     case Variable(name) => Variable(f(name))
     case Integer(int) => this
     case Bool(bool) => this
+  }
+
+
+  def mapVariables(f: String => Option[StackMath]): StackMath = this match
+    case Operation(operator, arguments*) => Operation(operator, arguments.map(_.mapVariables(f))*)
+    case Funcall(name, arguments*) => Funcall(name, arguments.map(_.mapVariables(f))*)
+    case Variable(name) => f(name).getOrElse(this)
+    case Integer(int) => this
+    case Bool(bool) => this
+
+  def mapVariables(map: Map[String, StackMath]): StackMath = mapVariables(map.get)
+
+  def fixValues(using mathContext: MathContext): StackMath = mapVariables { name =>
+    for (options <- mathContext.variables.get(name);
+         fixedValue <- options.fixedValue)
+      yield fixedValue
   }
 
   def fixUnderscoreInt: StackMath = mapIdentifiers {
@@ -21,6 +68,20 @@ sealed trait StackMath {
 
   def fix: StackMath = fixUnderscoreInt
 
+  def toSympyMC(allowUndefined: Boolean = false)(using mathContext: MathContext): SympyExpr = {
+    def to(math: StackMath): SympyExpr = math match
+      case Operation(operator, arguments@_*) =>
+        mathContext.sympyFunctions(operator)(arguments.map(to))
+      case Funcall(name, arguments@_*) =>
+        mathContext.sympyFunctions(name)(arguments.map(to))
+      case Variable(name) => SympyExpr(sympy.Symbol(name).as[py.Dynamic])
+      case Integer(int) => SympyExpr(sympy.Integer(int.toString).as[py.Dynamic])
+      case Bool(true) => SympyExpr.`true`
+      case Bool(false) => SympyExpr.`false`
+    to(this)
+  }
+
+  @deprecated("Will transition to toSympyMC")
   def toSympy: SympyExpr = {
     def toSympy(stack: StackMath): py.Dynamic = stack match {
       case Funcall("mod", x, y) => toSympy(x).__mod__(toSympy(y))
@@ -44,6 +105,13 @@ sealed trait StackMath {
 }
 
 object StackMath {
+  given Conversion[Int, StackMath] = int => Integer(BigInt(int))
+
+  given Conversion[Long, StackMath] = int => Integer(BigInt(int))
+
+  given Conversion[BigInt, StackMath] = int => Integer(int)
+
+
   private val UnderscoreIntRegex = "(.*[^0-9_])([0-9]+)".r
 
   enum Ops {
@@ -59,4 +127,15 @@ object StackMath {
   case class Variable(name: String) extends StackMath
   case class Integer(int: BigInt) extends StackMath
   case class Bool(bool: Boolean) extends StackMath
+
+  def addToStringBuilderCommaSep(builder: StringBuilder, items: IterableOnce[StackMath]): Unit = {
+    val iterator = items.iterator
+    if (iterator.hasNext) {
+      iterator.next().addToStringBuilder(builder)
+      for (item <- iterator) {
+        builder ++= ", "
+        item.addToStringBuilder(builder)
+      }
+    }
+  }
 }
