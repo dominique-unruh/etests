@@ -106,7 +106,7 @@ object DynexiteGrader {
 
     logger.debug("Comments: " + commenter.comments)
 
-    val reachable = grader.points
+    val reachable = grader.reachablePoints
 
     logger.debug(s"Points: ${commenter.points} / $reachable")
     logger.debug(s"Dynexite: $dynexitePoints / $dynexiteReachable")

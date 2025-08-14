@@ -74,7 +74,11 @@ sealed trait StackMath {
         mathContext.sympyFunctions(operator)(arguments.map(to))
       case Funcall(name, arguments@_*) =>
         mathContext.sympyFunctions(name)(arguments.map(to))
-      case Variable(name) => SympyExpr(sympy.Symbol(name).as[py.Dynamic])
+      case Variable(name) =>
+        if (allowUndefined)
+          SympyExpr(sympy.Symbol(name).as[py.Dynamic])
+        else
+          throw UndefinedVariableException(s"Undefined variable $name in term $this")
       case Integer(int) => SympyExpr(sympy.Integer(int.toString).as[py.Dynamic])
       case Bool(true) => SympyExpr.`true`
       case Bool(false) => SympyExpr.`false`
@@ -139,3 +143,6 @@ object StackMath {
     }
   }
 }
+
+
+case class UndefinedVariableException(message: String) extends Exception(message)
