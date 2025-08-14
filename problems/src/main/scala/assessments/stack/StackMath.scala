@@ -54,6 +54,8 @@ sealed trait StackMath {
     case Bool(bool) => this
 
   def mapVariables(map: Map[String, StackMath]): StackMath = mapVariables(map.get)
+  
+  def mapVariables(subst: (String, StackMath)*): StackMath = mapVariables(Map(subst*))
 
   def fixValues(using mathContext: MathContext): StackMath = mapVariables { name =>
     for (options <- mathContext.variables.get(name);
