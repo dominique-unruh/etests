@@ -1,13 +1,16 @@
 package assessments
 
+import assessments.Comment.Kind
+import assessments.Grader.logger
 import assessments.pageelements.{AnswerElement, ElementAction, InputElement, PageElement}
+import com.typesafe.scalalogging.Logger
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.commons.text.StringEscapeUtils
 import play.api.libs.json.{JsNumber, JsObject, JsString, JsValue}
 
 abstract class Grader(val name: ElementName) extends PageElement {
   override def renderHtml: String = ""
-  def grade(gradingContext: GradingContext): (Points, Seq[String])
+  def grade(gradingContext: GradingContext): (Points, Seq[Comment])
   lazy val points: Points
 
   override def updateAction(assessment: Assessment, state: Map[ElementName, JsValue]): IterableOnce[ElementAction] = {
@@ -23,7 +26,7 @@ abstract class Grader(val name: ElementName) extends PageElement {
     }
     val gradingContext = GradingContext(answers.toMap, registrationNumber)
     try {
-      val (points, reportLines) = grade(gradingContext)
+      val (points, comments) = grade(gradingContext)
       val report = StringBuilder()
       report ++= s"<p>Grading report for ${StringEscapeUtils.escapeHtml4(registrationNumber)}:</p>\n"
       val pointsString = points.decimalFractionString(precision = 2)
@@ -32,8 +35,13 @@ abstract class Grader(val name: ElementName) extends PageElement {
       else
         report ++= s"<p>Points: $pointsString / ${assessment.reachablePoints.decimalFractionString}  (precise number: ${points.fractionHtml})</p>\n"
       report ++= "<ul>\n"
-      for (line <- reportLines)
-        report ++= s"  <li>${StringEscapeUtils.escapeHtml4(line)}</li>\n"
+      for (comment <- comments) {
+        val line = comment.kind match
+          case Kind.feedback => s"  <li>${comment.html}</li>\n"
+          case Kind.debug => s"""  <li style="color:gray">${comment.html}</li>\n"""
+          case Kind.warning => s"""  <li style="color:red">${comment.html}</li>\n"""
+        report ++= line
+      }
       report ++= "</ul>\n"
       Seq(ElementAction(name, JsObject(Map("points" -> JsString(points.decimalFractionString(2)), "report" -> JsString(report.result())))))
     } catch {
@@ -42,4 +50,8 @@ abstract class Grader(val name: ElementName) extends PageElement {
         Seq(ElementAction(ElementName.errordisplay, JsObject(Map("message" -> JsString(message)))))
     }
   }
+}
+
+object Grader {
+  private val logger = Logger[Grader]
 }

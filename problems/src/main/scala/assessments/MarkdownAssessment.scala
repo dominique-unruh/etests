@@ -1,13 +1,14 @@
 package assessments
 
 import assessments.ExceptionContext.initialExceptionContext
-import assessments.MarkdownAssessment.{MarkdownAssessmentRun, markdownToHtml}
+import assessments.MarkdownAssessment.MarkdownAssessmentRun
 import assessments.pageelements.{AnswerElement, Element, ElementAction, PageElement, StaticElement}
 import externalsystems.MoodleStack
 import org.apache.commons.text.StringEscapeUtils
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
 import play.api.libs.json.JsValue
+import utils.Markdown.markdownToHtml
 import utils.Tag.Tags
 import utils.{Tag, Utils}
 
@@ -21,10 +22,10 @@ abstract class MarkdownAssessment {
   lazy val question: InterpolatedString[Element]
   lazy val explanation: InterpolatedString[Element] = md""
 
-  def grade(gradingContext: GradingContext): (Points, Seq[String])
+  def grade(gradingContext: GradingContext): (Points, Seq[Comment])
   val reachablePoints: Points
   val grader: Grader = new Grader(ElementName.grader) {
-    override def grade(gradingContext: GradingContext): (Points, Seq[String]) = MarkdownAssessment.this.grade(gradingContext)
+    override def grade(gradingContext: GradingContext): (Points, Seq[Comment]) = MarkdownAssessment.this.grade(gradingContext)
     override lazy val points: Points = MarkdownAssessment.this.reachablePoints
     override val tags: Tag.Tags[this.type] = Tag.Tags.empty
   }
@@ -171,14 +172,6 @@ object MarkdownAssessment {
   private val endTagRegex: Regex = """</(.*?)>""".r
   private val fieldNameRegex: Regex = """([a-zA-Z_][a-zA-Z0-9_]*)""".r
   private val latexTag: Regex = """latex:(?s)\s*(.*?)""".r
-  private val markdownParser = Parser.builder.build
-  private val markdownRenderer = HtmlRenderer.builder.build
-
-  private def markdownToHtml(markdown: String): String = {
-    val markdownEscaped = markdown.replace("\\", "\\\\") // commonmark parse treats \( as ( etc. So we quote the \. Could be refinded
-    val parsed = markdownParser.parse(markdownEscaped)
-    markdownRenderer.render(parsed)
-  }
 
   enum MarkdownAssessmentRun {
     case extractStack
