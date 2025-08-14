@@ -19,6 +19,7 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
   def equalsTrue(): Boolean = _equalsTrue(python).as[Boolean]
   def +(other: SympyExpr): SympyExpr = SympyExpr(python + other.python)
   def -(other: SympyExpr): SympyExpr = SympyExpr(python - other.python)
+  def unary_- : SympyExpr = SympyExpr(- python)
   def *(other: SympyExpr): SympyExpr = SympyExpr(python * other.python)
   def /(other: SympyExpr): SympyExpr = SympyExpr(python / other.python)
   def %(other: SympyExpr): SympyExpr = SympyExpr(python % other.python)

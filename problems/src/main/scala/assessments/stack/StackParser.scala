@@ -63,7 +63,8 @@ object StackParser {
   def infixl_rep_map[$: P](argument: => P[StackMath], map: (String, Ops)*): P[StackMath] =
     infixl_rep(argument, selector(map *), { (a, o, b) => Operation(o, a, b) })
 
-  def unary_add_like[$: P]: P[StackMath] = mult_like
+  def unary_add_like[$: P]: P[StackMath] =
+    ("-" ~ mult_like).map(Operation(Ops.unaryMinus, _)) | ("+" ~ mult_like).map(Operation(Ops.unaryPlus, _)) | mult_like
 
   def add_like[$: P]: P[StackMath] = P(
     infixl_rep_map(unary_add_like, "+" -> Ops.plus, "-" -> Ops.minus))

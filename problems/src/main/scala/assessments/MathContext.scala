@@ -46,6 +46,8 @@ object MathContext {
     Ops.minus -> { case Seq(x,y) => x - y },
     Ops.times -> { case Seq(x,y) => x * y },
     Ops.divide -> { case Seq(x,y) => x / y },
+    Ops.unaryPlus -> { case Seq(x) => x },
+    Ops.unaryMinus -> { case Seq(x) => - x },
     Ops.equal -> { case Seq(x,y) => SympyExpr(sympy.Eq(x.python, y.python).as[py.Dynamic]) },
   )
 

@@ -99,6 +99,8 @@ sealed trait StackMath {
       case Operation(Ops.minus, x, y) => toSympy(x) - toSympy(y)
       case Operation(Ops.times, x, y) => toSympy(x) * toSympy(y)
       case Operation(Ops.divide, x, y) => toSympy(x) / toSympy(y)
+      case Operation(Ops.unaryMinus, x) => - toSympy(x)
+      case Operation(Ops.unaryPlus, x) => toSympy(x)
       case Operation(name, arguments*) => throw UserError(s"Unsupported operation $name with ${arguments.length} arguments")
       case Variable(name) => sympy.Symbol(name).as[py.Dynamic]
       case Integer(int) => sympy.Integer(int.toString).as[py.Dynamic]
@@ -124,6 +126,7 @@ object StackMath {
     case power
     case plus, minus
     case times, divide
+    case unaryPlus, unaryMinus
   }
 
   case class Operation(operator: Ops, arguments: StackMath*) extends StackMath
