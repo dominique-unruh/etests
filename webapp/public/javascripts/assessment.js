@@ -58,6 +58,23 @@ function sendState() {
         .done(doActions)
 }
 
+function randomStudent() {
+    clearErrors()
+    function failCallback(obj, statusMessage) {
+        log_error("Failed to get random student ID")
+        console.log("Failed AJAX call: ", state, obj, statusMessage)
+    }
+    function successCallback(json) {
+        document.getElementById("registration").value = json['registration']
+        loadAnswers()
+    }
+    $.ajax(jsRoutes.controllers.AssessmentController.randomStudent(assessmentName).url,
+        {method: "GET", dataType: 'json', headers: {'CSRF-Token': csrfToken}})
+        .fail(failCallback)
+        .done(successCallback)
+}
+
+
 function clearErrors() {
     document.getElementById('errors').textContent = ''
     document.getElementById('errors-section').style.display = 'none'

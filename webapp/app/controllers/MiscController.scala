@@ -14,6 +14,7 @@ class MiscController @Inject()(val controllerComponents: ControllerComponents) e
         routes.javascript.AssessmentController.updateAction,
         routes.javascript.AssessmentController.loadAnswers,
         routes.javascript.AssessmentController.loadReference,
+        routes.javascript.AssessmentController.randomStudent,
       )
     ).as(MimeTypes.JAVASCRIPT)
   }

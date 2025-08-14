@@ -23,6 +23,7 @@ import utils.IndentedInterpolator
 import scala.annotation.experimental
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.reflect.ClassTag
+import scala.util.Random
 
 
 @Singleton
@@ -98,7 +99,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
       for ((element, content) <- answers.toSeq;
            action <- assessment.pageElements(element).asInstanceOf[AnswerElement].setAction(content))
       yield elementActionAsJson(action))
-  
+
   def loadAnswers(assessmentName: String, registrationNumber: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     val assessment = getAssessment(assessmentName)
     given ExceptionContext = ExceptionContext.initialExceptionContext("Responding to web-query for student answers from Dynexite exam", assessmentName, registrationNumber)
@@ -127,4 +128,10 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
       "element" -> JsString(action.element.toString),
       "callback" -> JsString(action.element.jsElementCallbackName),
       "data" -> action.data))
+
+  private lazy val learners = Dynexite.resultsByLearner.view.collect({ case (regno, Some(_)) => regno }).toVector
+  def randomStudent(): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    val index = Random.nextInt(learners.length)
+    Ok(JsObject(Map("registration" -> JsString(learners(index)))))
+  }
 }
