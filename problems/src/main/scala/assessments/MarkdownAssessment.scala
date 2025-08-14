@@ -75,7 +75,8 @@ abstract class MarkdownAssessment {
                    changes: Seq[(PageElement, String)] = Seq.empty,
                    allowNoGraderYet: Boolean = false): AssessmentTest = new AssessmentTest {
     override def runTest()(using exceptionContext: ExceptionContext): Unit = {
-      println(s"Testing $name with ${if (changes.nonEmpty) "modified " else ""} reference solution.")
+      given ExceptionContext = ExceptionContext.addToExceptionContext(s"Running a test case")
+      println(s"Testing $name with ${if (changes.nonEmpty) "modified " else ""}reference solution.")
       val originalReference = for (case (name, answerElement: AnswerElement) <- assessment.pageElements)
         yield name -> answerElement.reference
       val changedReference = mutable.Map(originalReference.toSeq *)
@@ -140,7 +141,7 @@ abstract class MarkdownAssessment {
 
   def main(args: Array[String]): Unit = {
     Utils.loadSystemProperties()
-    given ExceptionContext = initialExceptionContext(s"Running main for $name")
+    given ExceptionContext = initialExceptionContext(s"Running main for problem '$name'")
     println(s"Running the main method of \"$name\", with run option $runOption.")
     if (MarkdownAssessmentRun.values.length > 1)
       println(s"To configure a different action, set MarkdownAssessment.runOption to one of: ${(MarkdownAssessmentRun.values.toSet - runOption).mkString(", ")}")

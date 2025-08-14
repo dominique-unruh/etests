@@ -24,12 +24,8 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
   def /(other: SympyExpr): SympyExpr = SympyExpr(python / other.python)
   def %(other: SympyExpr): SympyExpr = SympyExpr(python % other.python)
   def **(other: SympyExpr): SympyExpr = SympyExpr(python.__pow__(other.python))
-  def gcd(other: SympyExpr): SympyExpr = {
-//    println(s"this: $python")
-//    println(s"that: ${other.python}")
-//    println(s"gcd: ${SympyExpr.gcd(python, other.python)}")
-    SympyExpr(SympyExpr.gcd(python, other.python))
-  }
+  def gcd(other: SympyExpr): SympyExpr = SympyExpr(SympyExpr.gcd(python, other.python))
+  def abs: SympyExpr = SympyExpr(sympy.Abs(python))
   def sqrt: SympyExpr = SympyExpr(sympy.sqrt(python))
   def substitute(map: (SympyExpr, SympyExpr)*): SympyExpr = {
     val mapPython = map.map((k,v) => (k.python, v.python)).toPythonCopy
@@ -91,6 +87,10 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
   }
 
   def names: Set[String] = symbols ++ functions
+
+  def algebraicEqual(other: SympyExpr, assumption: SympyAssumption = SympyAssumption.positive): Boolean =
+    val result = assumption.addToSympyExpr(SympyExpr.Eq(this, other)).expand.simplify
+    result.equalsTrue()
 }
 
 object SympyExpr {
@@ -155,14 +155,15 @@ class gcd(sympy.Function):
 
   lazy val `true` = SympyExpr(sympy.S.`true`)
   lazy val `false` = SympyExpr(sympy.S.`false`)
+  lazy val zero: SympyExpr = integer(0)
+  lazy val imaginaryUnit = SympyExpr(sympy.S.ImaginaryUnit)
 }
 
 object StackUtils {
   // TODO memoize. But this needs first a hashable SympyExpr or something
-  def checkEquality(x: SympyExpr, y: SympyExpr, assumption: SympyAssumption = SympyAssumption.positive): Boolean = {
-    val result = assumption.addToSympyExpr(SympyExpr.Eq(x, y)).expand.simplify
-    result.equalsTrue()
-  }
+  @deprecated
+  def checkEquality(x: SympyExpr, y: SympyExpr, assumption: SympyAssumption = SympyAssumption.positive): Boolean =
+    x.algebraicEqual(y, assumption)
 
   // TODO: Should be an interable, lazily computed
   def enumerate[A](variables: Set[String])(f: Map[String, StackMath] => A)(implicit mathContext: MathContext): Seq[A] = {
@@ -187,15 +188,21 @@ object StackUtils {
   def forall(variables: Set[String])(f: Map[String, StackMath] => Boolean)(implicit mathContext: MathContext): Boolean =
     enumerate(variables)(f).forall(identity)
 
-  def checkEqualityDebug(x: StackMath, y: StackMath, mapRight: SympyExpr => SympyExpr = identity)(using MathContext): Seq[(Map[String, StackMath], Boolean)] = {
+  def checkEqualityDebug(x: StackMath, y: StackMath, mapRight: SympyExpr => SympyExpr = identity)(using MathContext) = {
     val variables: Set[String] = x.variables ++ y.variables
     enumerate(variables) { subst =>
       val x2 = x.mapVariables(subst).toSympyMC(allowUndefined = false)
-      val y2 = y.mapVariables(subst).toSympyMC(allowUndefined = false)
-      (subst, checkEquality(x2, y2))
+      val y2 = mapRight(y.mapVariables(subst).toSympyMC(allowUndefined = false))
+      (subst, x2, y2, x2.algebraicEqual(y2))
     }
   }
 
-  def checkEqualityNew(x: StackMath, y: StackMath, mapRight: SympyExpr => SympyExpr = identity)(using MathContext): Boolean =
-    checkEqualityDebug(x, y, mapRight).forall(_._2)
+  def checkEqualityNew(x: StackMath, y: StackMath, mapRight: SympyExpr => SympyExpr = identity)(using MathContext): Boolean = {
+    val variables: Set[String] = x.variables ++ y.variables
+    forall(variables) { subst =>
+      val x2 = x.mapVariables(subst).toSympyMC(allowUndefined = false)
+      val y2 = mapRight(y.mapVariables(subst).toSympyMC(allowUndefined = false))
+      x2.algebraicEqual(y2)
+    }
+  }
 }
