@@ -4,7 +4,7 @@ import assessments.ExceptionContext.initialExceptionContext
 
 import scala.language.experimental.genericNumberLiterals
 import assessments.pageelements.AnswerElement
-import assessments.{Assessment, ElementName, ExceptionContext, ExceptionWithContext, Grader, GradingContext, Points}
+import assessments.{Assessment, Commenter, ElementName, ExceptionContext, ExceptionWithContext, Grader, GradingContext, Points}
 import com.typesafe.scalalogging.Logger
 import externalsystems.Dynexite.{ClassificationBlock, DynexiteResponses, StackBlock, getDynexiteAnswers}
 
@@ -98,31 +98,32 @@ object DynexiteGrader {
     assert(graders.size == 1, graders)
     val grader = graders.head
 
-    val (points, comments) = grader.grade(GradingContext(
+    val commenter = Commenter()
+    grader.grade(GradingContext(
       answers = answers.map { (k, v) => (k, v) },
       registrationNumber = registrationNumber
-    ))
+    ), commenter)
 
-    logger.debug("Comments: " + comments)
+    logger.debug("Comments: " + commenter.comments)
 
     val reachable = grader.points
 
-    logger.debug(s"Points: $points / $reachable")
+    logger.debug(s"Points: ${commenter.points} / $reachable")
     logger.debug(s"Dynexite: $dynexitePoints / $dynexiteReachable")
 
     val report = ListBuffer[String]()
     report += s"Problem: ${assessment.name}"
-    report += s"Points: $points out of $reachable"
+    report += s"Points: ${commenter.points} out of $reachable"
     report += "Comments:"
-    for (comment <- comments)
+    for (comment <- commenter.comments)
       report += "* "+comment
 
     // Allowing some error in this check since Dynexite doesn't have rational points
 //    assert((points - dynexitePoints).abs <= 0.005, (points, dynexitePoints))
     assert(reachable == dynexiteReachable)
 
-    QuestionResult(points=points, reachable=reachable, report=report.mkString("\n"))
+    QuestionResult(points=commenter.points, reachable=reachable, report=report.mkString("\n"))
   }
-  
+
   private val logger = Logger[DynexiteGrader.type]
 }

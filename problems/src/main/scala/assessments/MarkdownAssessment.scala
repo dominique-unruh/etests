@@ -22,10 +22,11 @@ abstract class MarkdownAssessment {
   lazy val question: InterpolatedString[Element]
   lazy val explanation: InterpolatedString[Element] = md""
 
-  def grade(gradingContext: GradingContext): (Points, Seq[Comment])
+  def grade(gradingContext: GradingContext, comments: Commenter): Unit
   val reachablePoints: Points
   val grader: Grader = new Grader(ElementName.grader) {
-    override def grade(gradingContext: GradingContext): (Points, Seq[Comment]) = MarkdownAssessment.this.grade(gradingContext)
+    override def grade(gradingContext: GradingContext, commenter: Commenter): Unit = 
+      MarkdownAssessment.this.grade(gradingContext, commenter)
     override lazy val points: Points = MarkdownAssessment.this.reachablePoints
     override val tags: Tag.Tags[this.type] = Tag.Tags.empty
   }
@@ -89,10 +90,11 @@ abstract class MarkdownAssessment {
       println(s"Reference solution: ${changedReference.map((k, v) => s"$k -> $v").mkString(", ")}")
       val gradingContext = GradingContext(answers = changedReference.toMap, registrationNumber = "TEST")
       try {
-        val (points, comment) = grader.grade(gradingContext)
-        println(s"Resulting comments:\n${comment.map(comment => "* " + comment).mkString("\n")}")
-        println(s"Resulting number of points: $points (expected points: $expected)")
-        if (points != expected)
+        val commenter = Commenter()
+        grader.grade(gradingContext, commenter)
+        println(s"Resulting comments:\n${commenter.comments.map(comment => "* " + comment).mkString("\n")}")
+        println(s"Resulting number of points: ${commenter.points} (expected points: $expected)")
+        if (commenter.points != expected)
           throw ExceptionWithContext("Mismatch with expectation")
       } catch {
         case NoGraderYetException =>
@@ -112,7 +114,7 @@ abstract class MarkdownAssessment {
       }
       val className = MarkdownAssessment.this.getClass.getSimpleName.stripSuffix("$")
       if (className.replaceAll("[^\\w\\d]", "").toLowerCase != name.replaceAll("[^\\w\\d]", "").toLowerCase)
-        throw ExceptionWithContext(s"Name ($name) and class name ($className) don't match. Use, e.g., ${cleanup(name)} as the class name, so ${className} (with extra spaces) as name")
+        throw ExceptionWithContext(s"Name ($name) and class name ($className) don't match. Use, e.g., ${cleanup(name)} as the class name, so $className (with extra spaces) as name")
     }
   }
 

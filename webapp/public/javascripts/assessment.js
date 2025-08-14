@@ -35,6 +35,7 @@ function doActions(json) {
 }
 
 function sendState() {
+    clearErrors()
     function failCallback(obj, statusMessage) {
         log_error("Failed to send updated state to server")
         console.log("Failed AJAX call: ", state, obj, statusMessage)
@@ -44,4 +45,9 @@ function sendState() {
             headers: {'CSRF-Token': csrfToken}})
         .fail(failCallback)
         .done(doActions)
+}
+
+function clearErrors() {
+    document.getElementById('errors').textContent = ''
+    document.getElementById('errors-section').style.display = 'none'
 }

@@ -9,6 +9,7 @@ import scala.annotation.targetName
 import scala.collection.mutable
 
 final class Commenter {
+  var points: Points = 0 
   private val builder = Seq.newBuilder[Comment]
   @targetName("addString")
   def +=(comment: String): Unit = builder += Comment(text = comment, format = markdown, kind = feedback)

@@ -10,7 +10,7 @@ import play.api.libs.json.{JsNumber, JsObject, JsString, JsValue}
 
 abstract class Grader(val name: ElementName) extends PageElement {
   override def renderHtml: String = ""
-  def grade(gradingContext: GradingContext): (Points, Seq[Comment])
+  def grade(gradingContext: GradingContext, commenter: Commenter): Unit
   lazy val points: Points
 
   override def updateAction(assessment: Assessment, state: Map[ElementName, JsValue]): IterableOnce[ElementAction] = {
@@ -26,7 +26,8 @@ abstract class Grader(val name: ElementName) extends PageElement {
     }
     val gradingContext = GradingContext(answers.toMap, registrationNumber)
     try {
-      val (points, comments) = grade(gradingContext)
+      val commenter = Commenter()
+      grade(gradingContext, commenter)
       val report = StringBuilder()
       report ++= s"<p>Grading report for ${StringEscapeUtils.escapeHtml4(registrationNumber)}:</p>\n"
       val pointsString = points.decimalFractionString(precision = 2)
@@ -35,7 +36,7 @@ abstract class Grader(val name: ElementName) extends PageElement {
       else
         report ++= s"<p>Points: $pointsString / ${assessment.reachablePoints.decimalFractionString}  (precise number: ${points.fractionHtml})</p>\n"
       report ++= "<ul>\n"
-      for (comment <- comments) {
+      for (comment <- commenter.comments) {
         val line = comment.kind match
           case Kind.feedback => s"  <li>${comment.html}</li>\n"
           case Kind.debug => s"""  <li style="color:gray">${comment.html}</li>\n"""
