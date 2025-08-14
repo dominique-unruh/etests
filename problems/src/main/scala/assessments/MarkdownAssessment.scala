@@ -27,7 +27,7 @@ abstract class MarkdownAssessment {
   val grader: Grader = new Grader(ElementName.grader) {
     override def grade(gradingContext: GradingContext, commenter: Commenter): Unit = 
       MarkdownAssessment.this.grade(gradingContext, commenter)
-    override lazy val points: Points = MarkdownAssessment.this.reachablePoints
+    override lazy val reachablePoints: Points = MarkdownAssessment.this.reachablePoints
     override val tags: Tag.Tags[this.type] = Tag.Tags.empty
   }
 

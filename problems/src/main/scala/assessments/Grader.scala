@@ -11,7 +11,7 @@ import play.api.libs.json.{JsNumber, JsObject, JsString, JsValue}
 abstract class Grader(val name: ElementName) extends PageElement {
   override def renderHtml: String = ""
   def grade(gradingContext: GradingContext, commenter: Commenter): Unit
-  lazy val points: Points
+  lazy val reachablePoints: Points
 
   override def updateAction(assessment: Assessment, state: Map[ElementName, JsValue]): IterableOnce[ElementAction] = {
     val registrationNumber = state.get(ElementName.registrationNumber) match
@@ -30,11 +30,11 @@ abstract class Grader(val name: ElementName) extends PageElement {
       grade(gradingContext, commenter)
       val report = StringBuilder()
       report ++= s"<p>Grading report for ${StringEscapeUtils.escapeHtml4(registrationNumber)}:</p>\n"
-      val pointsString = points.decimalFractionString(precision = 2)
-      if (points.isPreciseString(pointsString))
+      val pointsString = commenter.points.decimalFractionString(precision = 2)
+      if (commenter.points.isPreciseString(pointsString))
         report ++= s"<p>Points: $pointsString / ${assessment.reachablePoints.decimalFractionString}</p>\n"
       else
-        report ++= s"<p>Points: $pointsString / ${assessment.reachablePoints.decimalFractionString}  (precise number: ${points.fractionHtml})</p>\n"
+        report ++= s"<p>Points: $pointsString / ${assessment.reachablePoints.decimalFractionString}  (precise number: ${commenter.points.fractionHtml})</p>\n"
       report ++= "<ul>\n"
       for (comment <- commenter.comments) {
         val line = comment.kind match
@@ -44,7 +44,7 @@ abstract class Grader(val name: ElementName) extends PageElement {
         report ++= line
       }
       report ++= "</ul>\n"
-      Seq(ElementAction(name, JsObject(Map("points" -> JsString(points.decimalFractionString(2)), "report" -> JsString(report.result())))))
+      Seq(ElementAction(name, JsObject(Map("points" -> JsString(commenter.points.decimalFractionString(2)), "report" -> JsString(report.result())))))
     } catch {
       case e : Throwable =>
         val message = ExceptionUtils.getStackTrace(e)
