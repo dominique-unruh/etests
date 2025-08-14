@@ -134,4 +134,9 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     val index = Random.nextInt(learners.length)
     Ok(JsObject(Map("registration" -> JsString(learners(index)))))
   }
+
+  def dynexitePdf(regno: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    val pdf = Dynexite.getAnswerPDF(registrationNumber = regno)
+    Ok(pdf).as("application/pdf")
+  }
 }

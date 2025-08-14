@@ -79,3 +79,9 @@ function clearErrors() {
     document.getElementById('errors').textContent = ''
     document.getElementById('errors-section').style.display = 'none'
 }
+
+function showDynexitePdf() {
+    let regno = document.getElementById("registration").value
+    let url = jsRoutes.controllers.AssessmentController.dynexitePdf(regno).url
+    window.open(url, "_blank")
+}
