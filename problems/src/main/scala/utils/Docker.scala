@@ -67,7 +67,7 @@ object Docker {
                     command: Seq[String],
                     files: Map[String, Array[Byte]],
                     requestedOutputs: Seq[String]): DockerResult = {
-    val tempDir = Utils.getTempDir.toNIO
+    val tempDir = Utils.getTempDir
 
     if (!pulledInThisSession.contains(image)) {
       println(s"Pulling docker image $image")

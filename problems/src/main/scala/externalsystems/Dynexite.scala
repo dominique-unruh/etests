@@ -7,7 +7,7 @@ import upickle.core.AbortException
 
 import java.nio.file.{Files, Path}
 import upickle.default as up
-import utils.Tag
+import utils.{Tag, Utils}
 
 import java.math.MathContext
 import java.util.zip.ZipFile
@@ -333,15 +333,9 @@ object Dynexite {
 
 
   object dynexiteQuestionName extends Tag[Assessment, String](default = "")
-
-  lazy val dynexitePDFPath: Path = {
-    val property = System.getProperty("dynexite.results.pdfs")
-    if (property == null)
-      throw RuntimeException("Please configure path to the Dynexite PDF zip in java.properties (dynexite.results.pdfs = ...)")
-    Path.of(property)
-  }
-
-  def getAnswerPDF(archive: Path = dynexitePDFPath, registrationNumber: String): Array[Byte] = {
+  
+  def getAnswerPDF(archive: Path = Utils.getSystemPropertyPath("dynexite.results.pdfs", "the Dynexite PDF zip"),
+                   registrationNumber: String): Array[Byte] = {
     val zip = new ZipFile(archive.toFile)
 
     var pdf: Array[Byte] = null

@@ -10,6 +10,7 @@ import scala.collection.{SeqMap, mutable}
 import scala.util.matching.Regex
 import play.api.libs.json.{JsObject, JsValue}
 import utils.Tag.Tags
+import utils.Utils
 
 import java.nio.file.{Files, Path}
 import scala.collection.mutable.ListBuffer
@@ -49,6 +50,21 @@ class Assessment (val name: String,
     val explanation = explanationTemplate.mapArgs(substitute).mkString
 
     (body, explanation, associatedFiles.result())
+  }
+
+  def renderStaticHtml(solution: Map[ElementName, String]): (String, String) = {
+    def render(element: Element, associatedFiles: FileMapBuilder) = element match {
+      case element: PageElement =>
+        element.renderHtml // TODO static
+      case ImageElement(png, basename) =>
+//        val name = associatedFiles.add(basename = basename, extension = "png", mimeType = "image/png", content = png)
+        s"""<img src="${Utils.dataUrl("image/png", png)}"/>"""
+    }
+
+    val (body, explanation, files) = renderHtml(render)
+    assert(files.isEmpty)
+
+    (body, explanation)
   }
 
   lazy val renderHtml: (String, String, Map[String, (String, Array[Byte])]) = {

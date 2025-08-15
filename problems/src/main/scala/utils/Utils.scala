@@ -2,12 +2,11 @@ package utils
 
 import com.typesafe.scalalogging.Logger
 import sourcecode.Enclosing
-import os.Path
 
 import java.awt.Toolkit
 import java.awt.datatransfer.{Clipboard, StringSelection}
 import java.io.{BufferedReader, FileReader}
-import java.nio.file.{Files, Paths}
+import java.nio.file.{Files, Path, Paths}
 import java.util.{Base64, Properties}
 import scala.jdk.CollectionConverters.given
 import scala.collection.mutable
@@ -23,7 +22,7 @@ object Utils {
       if (os.exists(path)) {
         logger.debug(s"Loading properties from $path")
         val props = new Properties()
-        Using(path.getInputStream) { stream => props.load(stream) }
+        Using.resource(path.getInputStream) { stream => props.load(stream) }
         for ((key, value) <- props.asScala)
           System.setProperty(key, value)
       }
@@ -44,7 +43,7 @@ object Utils {
     println(s"Temp directory: $dir")
     dir
   }
-  def getTempDir(implicit enclosing: Enclosing): Path = os.temp.dir(dir = tempDir, prefix = enclosing.value, deleteOnExit = false)
+  def getTempDir(implicit enclosing: Enclosing): Path = os.temp.dir(dir = tempDir, prefix = enclosing.value, deleteOnExit = false).toNIO
   
   def dataUrl(mimeType: String, data: Array[Byte]): String = {
     val base64 = Base64.getEncoder.encodeToString(data)
@@ -86,5 +85,15 @@ object Utils {
       sb.append(escapeTeXMap.getOrElse(c, c.toString))
     }
     sb.toString()
+  }
+
+  def getSystemPropertyPath(property: String, fileDescription: String): Path = {
+    val path = System.getProperty(property)
+    if (path == null)
+      throw new RuntimeException(s"Please configure $property in java.properties (path to $fileDescription)")
+    val path2 = Path.of(path)
+    if (!path2.isAbsolute)
+      throw new RuntimeException(s"$property in java.properties must refer to an absolute path")
+    path2
   }
 }
