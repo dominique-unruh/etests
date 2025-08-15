@@ -166,6 +166,8 @@ object StackUtils {
     x.algebraicEqual(y, assumption)
 
   // TODO: Should be an interable, lazily computed
+  /** For every assignment of test values to the variables, call f.
+   * @return Sequences of all the return values of f */
   def enumerate[A](variables: Set[String])(f: Map[String, StackMath] => A)(using mathContext: MathContext): Seq[A] = {
     val loops = mathContext.variables.toList map { (varName, options) =>
       if (options.fixedValue.nonEmpty)
@@ -185,15 +187,23 @@ object StackUtils {
     iter(loops, Map.empty)
     results.result()
   }
+  /** For every assignment of test values to the variables, call f.
+   * @return True if all calls to f returned true */
   def forall(variables: Set[String])(f: Map[String, StackMath] => Boolean)(using mathContext: MathContext): Boolean =
     enumerate(variables)(f).forall(identity)
+  /** For every assignment of test values to all variables occurring in terms, call f.
+   * f is called with the assignment and with the terms after substituting the assignment.
+   * @return Sequences of all the return values of f
+   * */
   def enumerateMapped[A](terms: Seq[StackMath])(f: (Map[String, StackMath], Seq[StackMath]) => A)(using mathContext: MathContext): Seq[A] =
     enumerate(terms.flatMap(_.variables).toSet) { map =>
       val termsMapped = terms.map(_.mapVariables(map))
       f(map, termsMapped)
     }
+  /** Like [[enumerateMapped]] but returns whether all f-calls return true. */
   def forallMapped(terms: Seq[StackMath])(f: (Map[String, StackMath], Seq[StackMath]) => Boolean)(using mathContext: MathContext): Boolean =
     enumerateMapped(terms)(f).forall(identity)
+  /** Like the other `forallMapped` but specifically for two terms */
   def forallMapped(x: StackMath, y: StackMath)(f: Map[String, StackMath] => (StackMath, StackMath) => Boolean)(using mathContext: MathContext): Boolean =
     forallMapped(Seq(x,y)){ case (map, Seq(x,y)) => f(map)(x,y) }
 
