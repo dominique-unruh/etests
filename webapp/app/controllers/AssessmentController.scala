@@ -17,6 +17,7 @@ import play.twirl.api.{Html, HtmlFormat}
 import com.typesafe.scalalogging.Logger
 import externalsystems.Dynexite
 import io.github.classgraph.{ClassGraph, ClassInfoList}
+import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.commons.text.StringEscapeUtils
 import utils.IndentedInterpolator
 
@@ -101,10 +102,15 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
       yield elementActionAsJson(action))
 
   def loadAnswers(assessmentName: String, registrationNumber: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
-    val assessment = getAssessment(assessmentName)
-    given ExceptionContext = ExceptionContext.initialExceptionContext("Responding to web-query for student answers from Dynexite exam", assessmentName, registrationNumber)
-    val answers = Dynexite.getDynexiteAnswers(assessment = assessment, exam = Iqc1Exam, registrationNumber = registrationNumber)
-    Ok(answersToActions(assessment, answers))
+    try {
+      val assessment = getAssessment(assessmentName)
+      given ExceptionContext = ExceptionContext.initialExceptionContext("Responding to web-query for student answers from Dynexite exam", assessmentName, registrationNumber)
+      val answers = Dynexite.getDynexiteAnswers(assessment = assessment, exam = Iqc1Exam, registrationNumber = registrationNumber)
+      Ok(answersToActions(assessment, answers))
+    } catch {
+      case e: Throwable => 
+        Ok(JsArray(Seq(elementActionAsJson(ElementAction.error(ExceptionUtils.getStackTrace(e))))))
+    }
   }
 
   def assessmentFile(assessmentName: String, fileName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>

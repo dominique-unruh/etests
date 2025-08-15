@@ -48,7 +48,7 @@ abstract class Grader(val name: ElementName) extends PageElement {
     } catch {
       case e : Throwable =>
         val message = ExceptionUtils.getStackTrace(e)
-        Seq(ElementAction(ElementName.errordisplay, JsObject(Map("message" -> JsString(message)))))
+        Seq(ElementAction.error(message))
     }
   }
 }

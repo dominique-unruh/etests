@@ -59,3 +59,7 @@ object PageElement {
 }
 
 case class ElementAction(element: ElementName, data: JsValue)
+object ElementAction {
+  def error(message: String): ElementAction =
+    ElementAction(ElementName.errordisplay, JsObject(Map("message" -> JsString(message))))
+}
