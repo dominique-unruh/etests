@@ -37,7 +37,16 @@ object Utils {
       set += k
     Map(elems*)
 
-
+  def isDistinct[A](values: IterableOnce[A]): Boolean = {
+    val set = new mutable.HashSet[A]
+    for (v <- values) {
+      if (set.contains(v))
+        return false
+      set += v
+    }
+    true
+  }
+  
   private lazy val tempDir = {
     val dir = os.temp.dir(prefix = "assessments", deleteOnExit = true)
     println(s"Temp directory: $dir")
