@@ -49,9 +49,10 @@ object MathContext {
     Ops.unaryPlus -> { case Seq(x) => x },
     Ops.unaryMinus -> { case Seq(x) => - x },
     Ops.equal -> { case Seq(x,y) => SympyExpr(sympy.Eq(x.python, y.python).as[py.Dynamic]) },
+    Ops.imaginaryUnit -> { case Seq() => SympyExpr.imaginaryUnit },
   )
 
-  val mathContext = new MathContext(
+  val default = new MathContext(
     variables = Map.empty,
     sympyFunctions =  sympyFunctions)
   case class VarOptions(name: String = "",

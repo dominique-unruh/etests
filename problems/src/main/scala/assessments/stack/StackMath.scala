@@ -54,7 +54,7 @@ sealed trait StackMath {
     case Bool(bool) => this
 
   def mapVariables(map: Map[String, StackMath]): StackMath = mapVariables(map.get)
-  
+
   def mapVariables(subst: (String, StackMath)*): StackMath = mapVariables(Map(subst*))
 
   def fixValues(using mathContext: MathContext): StackMath = mapVariables { name =>
@@ -84,7 +84,7 @@ sealed trait StackMath {
       case Integer(int) => SympyExpr(sympy.Integer(int.toString).as[py.Dynamic])
       case Bool(true) => SympyExpr.`true`
       case Bool(false) => SympyExpr.`false`
-    to(this)
+    to(this.fixValues)
   }
 
   @deprecated("Will transition to toSympyMC")
@@ -129,6 +129,7 @@ object StackMath {
     case plus, minus
     case times, divide
     case unaryPlus, unaryMinus
+    case imaginaryUnit
   }
 
   case class Operation(operator: Ops, arguments: StackMath*) extends StackMath
@@ -147,7 +148,8 @@ object StackMath {
       }
     }
   }
-}
 
+  val imaginaryUnit: Operation = Operation(Ops.imaginaryUnit)
+}
 
 case class UndefinedVariableException(message: String) extends Exception(message)

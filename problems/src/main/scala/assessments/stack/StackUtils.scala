@@ -188,19 +188,24 @@ object StackUtils {
   def forall(variables: Set[String])(f: Map[String, StackMath] => Boolean)(implicit mathContext: MathContext): Boolean =
     enumerate(variables)(f).forall(identity)
 
-  def checkEqualityDebug(x: StackMath, y: StackMath, mapRight: SympyExpr => SympyExpr = identity)(using MathContext) = {
+  def checkEqualityDebug(x: StackMath, y: StackMath,
+                         mapLeft: SympyExpr => SympyExpr = identity,
+                         mapRight: SympyExpr => SympyExpr = identity,
+                        )(using MathContext) = {
     val variables: Set[String] = x.variables ++ y.variables
     enumerate(variables) { subst =>
-      val x2 = x.mapVariables(subst).toSympyMC(allowUndefined = false)
+      val x2 = mapLeft(x.mapVariables(subst).toSympyMC(allowUndefined = false))
       val y2 = mapRight(y.mapVariables(subst).toSympyMC(allowUndefined = false))
       (subst, x2, y2, x2.algebraicEqual(y2))
     }
   }
 
-  def checkEqualityNew(x: StackMath, y: StackMath, mapRight: SympyExpr => SympyExpr = identity)(using MathContext): Boolean = {
+  def checkEqualityNew(x: StackMath, y: StackMath,
+                       mapLeft: SympyExpr => SympyExpr = identity,
+                       mapRight: SympyExpr => SympyExpr = identity)(using MathContext): Boolean = {
     val variables: Set[String] = x.variables ++ y.variables
     forall(variables) { subst =>
-      val x2 = x.mapVariables(subst).toSympyMC(allowUndefined = false)
+      val x2 = mapLeft(x.mapVariables(subst).toSympyMC(allowUndefined = false))
       val y2 = mapRight(y.mapVariables(subst).toSympyMC(allowUndefined = false))
       x2.algebraicEqual(y2)
     }

@@ -1,7 +1,7 @@
 package assessments.stack
 
 import assessments.MathContext
-import assessments.MathContext.mathContext
+import assessments.MathContext.default
 import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.{checkEquality, checkEqualityNew}
 import org.scalatest.funsuite.AnyFunSuiteLike
@@ -22,7 +22,7 @@ class StackUtilsTest extends AnyFunSuiteLike {
   }
 
   test("checkEqualityNew with test values, eq") {
-    given MathContext = mathContext
+    given MathContext = default
       .testValues("x", 1, 2, 3, -12)
       .testValues("y", 1, 2, 3, -12)
     val t1 = parse("x+y")
@@ -31,7 +31,7 @@ class StackUtilsTest extends AnyFunSuiteLike {
   }
 
   test("checkEqualityNew with test values, neq") {
-    given MathContext = mathContext
+    given MathContext = default
       .testValues("x", 1, 2, 3, -12)
       .testValues("y", 1, 2, 3, -12)
     val t1 = parse("x+y")
@@ -42,7 +42,7 @@ class StackUtilsTest extends AnyFunSuiteLike {
 
   test("checkEqualityNew with custom function") {
     val python = Python.defineFunction("f", "def f(x,y): return x+y")
-    given MathContext = mathContext
+    given MathContext = default
       .sympyFunction("f", python, 2)
     val t1 = parse("f(2,3)")
     assert(checkEqualityNew(t1, 5))
