@@ -50,5 +50,9 @@ lazy val problems = (project in file("problems"))
       "io.circe" %% "circe-core" % "0.14.14",
       "io.circe" %% "circe-generic" % "0.14.14",
       "io.circe" %% "circe-parser" % "0.14.14"
-    )
+    ),
+      libraryDependencies += "org.apache.xmlgraphics" % "batik-transcoder" % "1.19",
+      libraryDependencies += "org.apache.xmlgraphics" % "batik-codec" % "1.19",
+      libraryDependencies += "org.apache.xmlgraphics" % "batik-dom" % "1.19",
+      libraryDependencies += "org.apache.xmlgraphics" % "batik-svg-dom" % "1.19",
   )

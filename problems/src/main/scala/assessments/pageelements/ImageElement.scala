@@ -1,5 +1,35 @@
 package assessments.pageelements
 
+import assessments.ExceptionContext.addToExceptionContext
+import assessments.{ExceptionContext, ExceptionWithContext}
 import assessments.pageelements.StaticElement
+import org.apache.batik.transcoder.{SVGAbstractTranscoder, TranscoderInput, TranscoderOutput}
+import org.apache.batik.transcoder.image.PNGTranscoder
+import sourcecode.Enclosing
+
+import java.io.{ByteArrayOutputStream, InputStream, Reader}
 
 case class ImageElement(png: Array[Byte], basename: String) extends StaticElement
+
+object ImageElement {
+  def fromSVGResource(svgResource: String, clazz: Class[?])(using enclosing: Enclosing): ImageElement = {
+//    given ExceptionContext = addToExceptionContext(s"Loading SVG image $svgResource")
+    val stream = clazz.getResourceAsStream(svgResource)
+    if (stream == null)
+      throw RuntimeException(s"Resource $svgResource not found when trying to load an SVG from it.")
+//      throw new ExceptionWithContext(s"Resource $svgResource not found.")
+    fromSVG(stream, basename = svgResource.split('/').last)
+  }
+  def fromSVG(svg: InputStream, basename: String): ImageElement = {
+    val transcoder = new PNGTranscoder
+    transcoder.addTranscodingHint(SVGAbstractTranscoder.KEY_WIDTH, 1000.toFloat)
+    val input = new TranscoderInput(svg)
+    val outputStream = new ByteArrayOutputStream
+    val output = new TranscoderOutput(outputStream)
+    transcoder.transcode(input, output)
+    output.getOutputStream.flush()
+    output.getOutputStream.close()
+    val png = outputStream.toByteArray
+    ImageElement(png, basename)
+  }
+}
