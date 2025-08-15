@@ -100,6 +100,7 @@ object DynexiteDefaults {
 
     for ((input, description) <- inputs) {
       if (input.stringValue == input.reference)
+        assert(input.asInstanceOf[MultipleChoice].options.contains(input.stringValue))
         commenter += s"$description: Correct."
         points += pointsPerOption2
       else
