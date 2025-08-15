@@ -34,7 +34,7 @@ object GradeEveryone extends Task {
     try {
       // TODO: Render with student input + reference
       val answers = Dynexite.getDynexiteAnswers(question, exam, student)
-      val (body, explanation) = question.renderStaticHtml(answers)
+      val (body, explanation, gradingRules) = question.renderStaticHtml(answers)
 
       output ++= "<h2>Question text</h2>\n"
       output ++= body += '\n'
@@ -43,8 +43,7 @@ object GradeEveryone extends Task {
       output ++= explanation += '\n'
 
       output ++= "<h2>Grading rules</h2>\n"
-      // TODO
-      output ++= "TODO"
+      output ++= gradingRules += '\n'
 
       output ++= "<h2>Your grading</h2>\n"
       val gradingContext = GradingContext(

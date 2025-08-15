@@ -8,7 +8,8 @@
         initialState: JsObject,
         reachablePoints: String,
         body: Html,
-        explanation: Html)(implicit requestHeader: RequestHeader)
+        explanation: Html,
+        gradingRules: Html)(implicit requestHeader: RequestHeader)
 
 <!DOCTYPE html>
 <html lang="en">
@@ -79,6 +80,11 @@
                 <div style="background-color: lightgray">
                     <h1>Explanation</h1>
                     @explanation
+                </div>
+
+                <div style="background-color: lightblue">
+                    <h1>Grading rules</h1>
+                    @gradingRules
                 </div>
             </div>
 

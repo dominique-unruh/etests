@@ -21,6 +21,7 @@ abstract class MarkdownAssessment {
   val name: String = getClass.getName
   lazy val question: InterpolatedString[Element]
   lazy val explanation: InterpolatedString[Element] = md""
+  lazy val gradingRules: InterpolatedString[Element] = md""
 
   def grade(gradingContext: GradingContext, comments: Commenter): Unit
   val reachablePoints: Points
@@ -51,6 +52,7 @@ abstract class MarkdownAssessment {
     }
 
     val explanationTemplate = explanation.mapCompleteString(markdownToHtml)
+    val gradingRulesTemplate = gradingRules.mapCompleteString(markdownToHtml)
 
     assert(grader.name == ElementName.grader)
     elements.addOne(grader.name, grader)
@@ -65,6 +67,7 @@ abstract class MarkdownAssessment {
     Assessment(name = name,
       questionTemplate = questionTemplate,
       explanationTemplate = explanationTemplate,
+      gradingRulesTemplate = gradingRulesTemplate,
       reachablePoints = reachablePoints,
       pageElements = elements.result(), tags = tags)
   }
