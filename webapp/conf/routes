@@ -10,6 +10,7 @@ GET     /reference/:assessment         controllers.AssessmentController.loadRefe
 POST    /response/:assessment/update controllers.AssessmentController.updateAction(assessment)
 GET     /routes.js                         controllers.MiscController.javascriptRoutes
 GET     /randomstudent                      controllers.AssessmentController.randomStudent()
+GET     /dynexitelink/:regno                      controllers.AssessmentController.dynexiteLink(regno)
 GET     /dynexitepdf/:regno.pdf                      controllers.AssessmentController.dynexitePdf(regno)
 
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)

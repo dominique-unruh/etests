@@ -147,4 +147,8 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     val pdf = Dynexite.getAnswerPDF(registrationNumber = regno)
     Ok(pdf).as("application/pdf")
   }
+
+  def dynexiteLink(regno: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    Redirect(Dynexite.getLinkForLearner(regno))
+  }
 }

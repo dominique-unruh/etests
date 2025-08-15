@@ -85,3 +85,9 @@ function showDynexitePdf() {
     let url = jsRoutes.controllers.AssessmentController.dynexitePdf(regno).url
     window.open(url, "_blank")
 }
+
+function showDynexiteLink() {
+    let regno = document.getElementById("registration").value
+    let url = jsRoutes.controllers.AssessmentController.dynexiteLink(regno).url
+    window.open(url, "_blank")
+}

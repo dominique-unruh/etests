@@ -331,7 +331,17 @@ object Dynexite {
 
   final case class DynexiteResponses(answers: Map[ElementName, String], points: Points, reachable: Points)
 
-
+  def getLinkForLearner(registration: String): String = {
+    val attempt = resultsByLearner(registration).getOrElse {
+      throw RuntimeException(s"Cannot generate link to Dynexite exam: Student $registration didn't write it.") }
+    val attemptId = attempt.attemptId
+    val blueprintId = Dynexite.theResults.blueprint.blueprintId
+    // TODO Don't hardcode course
+    val url = s"https://dynexite.rwth-aachen.de/t/companies/cpsippjadbec73a3unm0/courses/d27o253adbec73a2lnp0/exams/$blueprintId/grader?attempt=$attemptId&seed="
+    // The URL also supports item=... with some item-id (looking like this: d2914rbadbec73f2974g) but taking the item-ids from the Dynexite JSON doesn't work
+    url
+  }
+  
   object dynexiteQuestionName extends Tag[Assessment, String](default = "")
 
   def getAnswerPDF(archive: Path = Utils.getSystemPropertyPath("dynexite.results.pdfs", "the Dynexite PDF zip"),
