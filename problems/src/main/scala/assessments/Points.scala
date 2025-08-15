@@ -27,8 +27,16 @@ class Points private (private val numerator: BigInt, private val denominator: Bi
   /** Returns the points as a decimal fraction (e.g. 1.23) with high precision (Java defaults) */
   def decimalFractionString: String = (BigDecimal(numerator)/BigDecimal(denominator)).toString
   /** Returns the points as a decimal fraction (e.g. 1.23) with at most `precision` digits after the period. */
-  def decimalFractionString(precision: Int): String = (BigDecimal(numerator)/BigDecimal(denominator))
-    .setScale(precision, BigDecimal.RoundingMode.HALF_UP).underlying().stripTrailingZeros().toString
+  def decimalFractionString(precision: Int): String = {
+    val bigdec = (BigDecimal(numerator)/BigDecimal(denominator)).underlying().stripTrailingZeros()
+    val bigdec2 = if (bigdec.scale() > precision)
+      bigdec.setScale(precision, BigDecimal.RoundingMode.DOWN)
+    else if (bigdec.scale() < 0)
+      bigdec.setScale(0, BigDecimal.RoundingMode.DOWN)
+    else
+      bigdec
+    bigdec2.toString
+  }
   override def toString: String = decimalFractionString(3)
 
   def <(other: Points): Boolean =

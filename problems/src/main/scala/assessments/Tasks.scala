@@ -2,6 +2,7 @@ package assessments
 
 import assessments.Comment.Kind
 import assessments.ExceptionContext.initialExceptionContext
+import cats.syntax.writer
 import exam.y2025.iqc1.Iqc1Exam
 import externalsystems.{Dynexite, DynexiteGrader}
 import org.apache.commons.io.FileUtils
@@ -23,50 +24,55 @@ object GradeEveryone extends Task {
   val exam = Iqc1Exam // TODO don't hardcode
   makeReports()
 
-  private def makeQuestionReport(student: String, writer: PrintWriter, question: Assessment): Unit = {
+  private def makeQuestionReport(student: String, question: Assessment): (Points, String) = {
     given ExceptionContext = initialExceptionContext(s"Creating report for $student, question '${question.name}'")
-
-    writer.write(s"<h1>Problem: ${escapeHtml4(question.name)}</h1>\n")
+    val output = new StringBuilder
+    var points: Points = 0
+    
+    output ++= s"<h1>Problem: ${escapeHtml4(question.name)}</h1>\n"
 
     try {
       // TODO: Render with student input + reference
       val answers = Dynexite.getDynexiteAnswers(question, exam, student)
       val (body, explanation) = question.renderStaticHtml(answers)
 
-      writer.println("<h2>Question text</h2>")
-      writer.println(body)
+      output ++= "<h2>Question text</h2>\n"
+      output ++= body += '\n'
 
-      writer.println("<h2>Solution explanation</h2>")
-      writer.println(explanation)
+      output ++= "<h2>Solution explanation</h2>\n"
+      output ++= explanation += '\n'
 
-      writer.println("<h2>Grading rules</h2>")
+      output ++= "<h2>Grading rules</h2>\n"
       // TODO
-      writer.println("TODO")
+      output ++= "TODO"
 
-      writer.println("<h2>Your grading</h2>")
+      output ++= "<h2>Your grading</h2>\n"
       val gradingContext = GradingContext(
         answers = answers,
         registrationNumber = student)
       val commenter = Commenter()
       question.pageElements(ElementName.grader).asInstanceOf[Grader].grade(gradingContext, commenter)
-      writer.write(s"Points: ${commenter.points.decimalFractionString(2)} of ${question.reachablePoints}\n")
-      writer.write("<ul>")
+      output ++= s"Points: ${commenter.points.decimalFractionString(2)} of ${question.reachablePoints}\n"
+      points += commenter.points
+      output ++= "<ul>\n"
       for (comment <- commenter.comments) {
         val style = comment.kind match
           case Kind.feedback => ""
           case Kind.warning => "color: red"
           case Kind.debug => "color: gray"
-        writer.write(s"""<li style="$style">${comment.html}</li>\n""")
+        output ++= s"""<li style="$style">${comment.html}</li>\n"""
       }
-      writer.write("</ul>")
+      output ++= "</ul>\n"
     } catch {
       case e: Throwable =>
-        writer.write(s"""<pre style="color:red">${escapeHtml4(ExceptionUtils.getStackTrace(e))}</pre>""")
+        output ++ s"""<pre style="color:red">${escapeHtml4(ExceptionUtils.getStackTrace(e))}</pre>\n"""
     }
+    (points, output.result())
   }
 
   private def makeReport(student: String, targetDir: Path) = {
     val studentDir = targetDir.resolve(student)
+    var totalPoints = Points(0)
     Files.createDirectories(studentDir)
     val reportFile = studentDir.resolve("grading.html")
     Using.resource(new PrintWriter(reportFile.toFile)) { writer =>
@@ -84,9 +90,13 @@ object GradeEveryone extends Task {
       else {
         val pdf = Dynexite.getAnswerPDF(registrationNumber = student)
         Files.write(studentDir.resolve("dynexite.pdf"), pdf)
-        for (question <- exam.problems)
-          makeQuestionReport(student, writer, question)
+        for (question <- exam.problems) {
+          val (points, report) = makeQuestionReport(student, question)
+          totalPoints += points
+          writer.write(report)
+        }
       }
+      writer.write(s"<h1>Total points: ${totalPoints.decimalFractionString(2)}</h1>")
       writer.write("</body></html>")
     }
   }
