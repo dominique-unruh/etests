@@ -323,7 +323,7 @@ object Dynexite {
 
     for ((name, answer) <- assessmentNames.zip(dynexiteAnswers)) {
       assert(!answers.contains(name), (answers, name, assessmentNames))
-      answers.update(name, answer)
+      answers.update(name, Option(answer).getOrElse(""))
     };
 
     DynexiteResponses(answers.toMap, points, reachable)
@@ -333,7 +333,7 @@ object Dynexite {
 
 
   object dynexiteQuestionName extends Tag[Assessment, String](default = "")
-  
+
   def getAnswerPDF(archive: Path = Utils.getSystemPropertyPath("dynexite.results.pdfs", "the Dynexite PDF zip"),
                    registrationNumber: String): Array[Byte] = {
     val zip = new ZipFile(archive.toFile)

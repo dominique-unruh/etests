@@ -72,6 +72,7 @@ object DynexiteDefaults {
    * @param y Analogous to `x`
    * @param assumption Assumption to pass to Sympy (e.g., all variables are positive).
    */
+  @deprecated
   def checkEq(x: => PageElement | SympyExpr,
               y: => PageElement | SympyExpr,
               assumption: SympyAssumption = SympyAssumption.positive)
@@ -99,12 +100,13 @@ object DynexiteDefaults {
     var points: Points = 0
 
     for ((input, description) <- inputs) {
-      if (input.stringValue == input.reference)
-        assert(input.asInstanceOf[MultipleChoice].options.contains(input.stringValue))
+      val stringValue = input.stringValue 
+      if (stringValue == input.reference)
+        assert(stringValue == "" || input.asInstanceOf[MultipleChoice].options.contains(stringValue))
         commenter += s"$description: Correct."
         points += pointsPerOption2
       else
-        commenter += s"$description: Incorrect. (You said ${input.stringValue}, should be ${input.reference})"
+        commenter += s"$description: Incorrect. (You said '${stringValue}', should be ${input.reference})"
     }
 
     commenter.points += points

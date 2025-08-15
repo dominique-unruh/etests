@@ -154,7 +154,7 @@ abstract class MarkdownAssessment {
       case MarkdownAssessmentRun.extractStack => mainExtractStack()
     }
   }
-  private val runOption = MarkdownAssessmentRun.extractStack
+  private val runOption = MarkdownAssessmentRun.runTests
 
   def mainRunTests(implicit exceptionContext: ExceptionContext): Unit = {
     runTests()

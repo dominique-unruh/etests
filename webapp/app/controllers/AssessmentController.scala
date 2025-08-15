@@ -106,6 +106,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
       val assessment = getAssessment(assessmentName)
       given ExceptionContext = ExceptionContext.initialExceptionContext("Responding to web-query for student answers from Dynexite exam", assessmentName, registrationNumber)
       val answers = Dynexite.getDynexiteAnswers(assessment = assessment, exam = Iqc1Exam, registrationNumber = registrationNumber)
+      assert(answers.forall(_._2 != null))
       Ok(answersToActions(assessment, answers))
     } catch {
       case e: Throwable => 

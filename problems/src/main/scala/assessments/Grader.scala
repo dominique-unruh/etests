@@ -21,7 +21,8 @@ abstract class Grader(val name: ElementName) extends PageElement {
       case None => "NO_STUDENT"
     val answers = for (case element : AnswerElement <- assessment.pageElements.values) yield {
       state.get(element.name) match
-        case Some(elementState) => element.name -> elementState("content").asInstanceOf[JsString].as[String]
+        case Some(elementState) => 
+          element.name -> elementState("content").asInstanceOf[JsString].as[String]
         case None => element.name -> ""
     }
     val gradingContext = GradingContext(answers.toMap, registrationNumber)
