@@ -105,6 +105,8 @@ object DynexiteDefaults {
         assert(stringValue == "" || input.asInstanceOf[MultipleChoice].options.contains(stringValue))
         commenter += s"$description: Correct."
         points += pointsPerOption2
+      else if (stringValue == "")
+        commenter += s"$description: Incorrect. (You selected nothing, should be ${input.reference})"
       else
         commenter += s"$description: Incorrect. (You said '${stringValue}', should be ${input.reference})"
     }

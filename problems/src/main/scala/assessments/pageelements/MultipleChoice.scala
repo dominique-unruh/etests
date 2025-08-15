@@ -57,7 +57,7 @@ final class MultipleChoice(val name: ElementName,
 
   override def renderHtml: String = {
     val html = StringBuilder()
-    html ++= s"""<select id="${name.jsElementId}" onchange="updateState("$name", {content: this.value})">\n"""
+    html ++= s"""<select id="${name.jsElementId}" onchange="updateState('$name', {content: this.value})">\n"""
     html ++= """<option value="">― not selected ―</option>\n"""
     for (option <- options)
       html ++= s"""<option value="${escapeHtml4(option)}">$option</option>\n"""
