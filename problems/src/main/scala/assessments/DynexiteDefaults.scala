@@ -7,6 +7,8 @@ import assessments.stack.{StackMath, SympyAssumption, SympyExpr}
 import utils.Tag.Tags
 import utils.Utils
 
+import scala.collection.SeqMap
+
 object DynexiteDefaults {
 //  given sympyCache: Cache[SympyExpr] = CaffeineCache[SympyExpr]
 
@@ -16,8 +18,10 @@ object DynexiteDefaults {
   def input(reference: String, tags: Tags[InputElement] = Tags.empty)(using name: sourcecode.Name): InputElement =
     new InputElement(elementName(name), reference, tags)
 
-  def multi(options: Seq[String], reference: String)(using name: sourcecode.Name): MultipleChoice =
-    new MultipleChoice(name=elementName(name), options=options, reference=reference)
+  def multi(options: Seq[String | (String,String)], reference: String)(using name: sourcecode.Name): MultipleChoice = {
+    val optionMap = SeqMap.from(options.map { case option: String => option -> option; case (option,text) => option -> text})
+    new MultipleChoice(name=elementName(name), options=optionMap, reference=reference)
+  }
 
   extension (str: String) {
     def sympy: SympyExpr = {

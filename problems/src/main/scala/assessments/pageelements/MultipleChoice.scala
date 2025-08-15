@@ -11,7 +11,7 @@ import scala.collection.immutable.SeqMap
 import scala.collection.mutable
 
 final class MultipleChoice(val name: ElementName,
-                           val options: Seq[String],
+                           val options: SeqMap[String, String],
                            val reference: String)
   extends AnswerElement {
   assert(options.contains(reference), (options, reference))
@@ -59,8 +59,8 @@ final class MultipleChoice(val name: ElementName,
     val html = StringBuilder()
     html ++= s"""<select id="${name.jsElementId}" onchange="updateState('$name', {content: this.value})">\n"""
     html ++= """<option value="">― not selected ―</option>\n"""
-    for (option <- options)
-      html ++= s"""<option value="${escapeHtml4(option)}">$option</option>\n"""
+    for ((optionName, optionText) <- options)
+      html ++= s"""<option value="${escapeHtml4(optionName)}">$optionText</option>\n"""
     html ++= "</select>\n"
     html ++=
       ind"""<script>
