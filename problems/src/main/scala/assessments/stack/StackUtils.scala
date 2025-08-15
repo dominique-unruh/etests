@@ -166,7 +166,7 @@ object StackUtils {
     x.algebraicEqual(y, assumption)
 
   // TODO: Should be an interable, lazily computed
-  def enumerate[A](variables: Set[String])(f: Map[String, StackMath] => A)(implicit mathContext: MathContext): Seq[A] = {
+  def enumerate[A](variables: Set[String])(f: Map[String, StackMath] => A)(using mathContext: MathContext): Seq[A] = {
     val loops = mathContext.variables.toList map { (varName, options) =>
       if (options.fixedValue.nonEmpty)
         (varName, Seq(options.fixedValue.get))
@@ -185,8 +185,17 @@ object StackUtils {
     iter(loops, Map.empty)
     results.result()
   }
-  def forall(variables: Set[String])(f: Map[String, StackMath] => Boolean)(implicit mathContext: MathContext): Boolean =
+  def forall(variables: Set[String])(f: Map[String, StackMath] => Boolean)(using mathContext: MathContext): Boolean =
     enumerate(variables)(f).forall(identity)
+  def enumerateMapped[A](terms: Seq[StackMath])(f: (Map[String, StackMath], Seq[StackMath]) => A)(using mathContext: MathContext): Seq[A] =
+    enumerate(terms.flatMap(_.variables).toSet) { map =>
+      val termsMapped = terms.map(_.mapVariables(map))
+      f(map, termsMapped)
+    }
+  def forallMapped(terms: Seq[StackMath])(f: (Map[String, StackMath], Seq[StackMath]) => Boolean)(using mathContext: MathContext): Boolean =
+    enumerateMapped(terms)(f).forall(identity)
+  def forallMapped(x: StackMath, y: StackMath)(f: Map[String, StackMath] => (StackMath, StackMath) => Boolean)(using mathContext: MathContext): Boolean =
+    forallMapped(Seq(x,y)){ case (map, Seq(x,y)) => f(map)(x,y) }
 
   def checkEqualityDebug(x: StackMath, y: StackMath,
                          mapLeft: SympyExpr => SympyExpr = identity,
@@ -202,12 +211,9 @@ object StackUtils {
 
   def checkEqualityNew(x: StackMath, y: StackMath,
                        mapLeft: SympyExpr => SympyExpr = identity,
-                       mapRight: SympyExpr => SympyExpr = identity)(using MathContext): Boolean = {
-    val variables: Set[String] = x.variables ++ y.variables
-    forall(variables) { subst =>
-      val x2 = mapLeft(x.mapVariables(subst).toSympyMC(allowUndefined = false))
-      val y2 = mapRight(y.mapVariables(subst).toSympyMC(allowUndefined = false))
-      x2.algebraicEqual(y2)
+                       mapRight: SympyExpr => SympyExpr = identity)(using MathContext): Boolean =
+    forallMapped(x, y) { _ => (x,y) =>
+      mapLeft(x.toSympyMC(allowUndefined = false))
+        .algebraicEqual(mapRight(y.toSympyMC(allowUndefined = false)))
     }
-  }
 }

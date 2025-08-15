@@ -1,8 +1,10 @@
 package assessments
 
 import assessments.Comment.Format.markdown
+import assessments.Comment.Kind
 import assessments.Comment.Kind.{feedback, warning}
 import org.apache.commons.text.StringEscapeUtils
+import org.jsoup.Jsoup
 import utils.Markdown
 
 import scala.annotation.targetName
@@ -19,7 +21,15 @@ final class Commenter {
   def clear(): Unit = builder.clear()
 }
 
-case class Comment(val html: String, val kind: Comment.Kind)
+case class Comment(val html: String, val kind: Comment.Kind) {
+  def toPlaintext: String = {
+    val text = try Jsoup.parse(html).text() catch case _ => html.trim
+    kind match
+      case Kind.feedback => text
+      case Kind.warning => s"WARNING: $text"
+      case Kind.debug => s"debug: $text"
+  }
+}
 
 object Comment {
   enum Kind {

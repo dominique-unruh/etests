@@ -44,7 +44,8 @@ lazy val problems = (project in file("problems"))
 //      libraryDependencies += "com.github.cb372" %% "scalacache-core" % "1.0.0-M6",
 //      libraryDependencies += "com.github.cb372" %% "scalacache-ehcache" % "0.28.0" cross for3Use2_13,
 //      libraryDependencies += "org.ehcache" % "ehcache" % "3.10.8"
-      libraryDependencies += "org.rocksdb" % "rocksdbjni" % "10.2.1",
+    libraryDependencies += "org.rocksdb" % "rocksdbjni" % "10.2.1",
+    libraryDependencies += "org.jsoup" % "jsoup" % "1.17.2",
     libraryDependencies ++= Seq(
       "io.circe" %% "circe-core" % "0.14.14",
       "io.circe" %% "circe-generic" % "0.14.14",

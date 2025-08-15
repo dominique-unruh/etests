@@ -93,7 +93,9 @@ abstract class MarkdownAssessment {
       try {
         val commenter = Commenter()
         grader.grade(gradingContext, commenter)
-        println(s"Resulting comments:\n${commenter.comments.map(comment => "* " + comment).mkString("\n")}")
+        println("Resulting comments:")
+        for (comment <- commenter.comments)
+          println("* " + comment.toPlaintext)
         println(s"Resulting number of points: ${commenter.points} (expected points: $expected)")
         if (commenter.points != expected)
           throw ExceptionWithContext("Mismatch with expectation")
@@ -135,6 +137,7 @@ abstract class MarkdownAssessment {
   /** Run selftests of this assessment */
   def runTests()(using exceptionContext: ExceptionContext): Unit = {
     for ((name,test) <- getTests)
+      println(s"""=================================================""")
       println(s"""Running test $name:""")
       test.runTest()
   }
