@@ -86,8 +86,9 @@ object DynexiteDefaults {
       case e : SyntaxError => comments += e.getMessage; false
   
   def gradeInputGroup(inputs: Seq[(AnswerElement, String)],
-                      pointsPerOption: Points = null, pointsTotal: Points = null)
-                     (using commenter: Commenter, gradingContext: GradingContext): Points = {
+                      pointsPerOption: Points = null, pointsTotal: Points = null,
+                      commenter: Commenter)
+                     (using gradingContext: GradingContext): Unit = {
     assert(inputs.nonEmpty)
     assert(pointsPerOption != null || pointsTotal != null)
     if (pointsPerOption != null && pointsTotal != null)
@@ -105,6 +106,6 @@ object DynexiteDefaults {
         commenter += s"$description: Incorrect. (You said ${input.stringValue}, should be ${input.reference})"
     }
 
-    points
+    commenter.points += points
   }
 }
