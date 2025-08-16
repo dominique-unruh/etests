@@ -44,12 +44,12 @@ abstract class MarkdownAssessment {
     val questionTemplate = {
       val date = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
       val clazz = this.getClass.getName.stripSuffix("$")
-      val comment = s"<!-- Exported via Dominique Unruh's assessment tool. Source class ${StringEscapeUtils.escapeHtml4(clazz)}. Date: ${StringEscapeUtils.escapeHtml4(date)} -->\n"
-      new InterpolatedHtml(question.interpolatedString.mapCompleteText(s => comment + markdownToHtml(s)))
+      val comment = InterpolatedHtml(Html(s"<!-- Exported via Dominique Unruh's assessment tool. Source class ${StringEscapeUtils.escapeHtml4(clazz)}. Date: ${StringEscapeUtils.escapeHtml4(date)} -->\n"))
+      comment ++ question.toHtml
     }
 
-    val explanationTemplate = new InterpolatedHtml(explanation.interpolatedString.mapCompleteText(markdownToHtml))
-    val gradingRulesTemplate = new InterpolatedHtml(gradingRules.interpolatedString.mapCompleteText(markdownToHtml))
+    val explanationTemplate = explanation.toHtml
+    val gradingRulesTemplate = gradingRules.toHtml
 
     assert(grader.name == ElementName.grader)
     elements.addOne(grader.name, grader)

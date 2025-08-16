@@ -8,6 +8,7 @@ trait InterpolatedText[+T, Text, Self[+U] <: InterpolatedText[U, Text, Self]] {
   def completeText: Text
   def flatMapArgs(f: T => Text): Text
   def args: Seq[T]
+  def ++[U >: T](other: Self[U]): Self[U]
 }
 
 trait InterpolatedTextC[Text, Self[+U] <: InterpolatedText[U, Text, Self]] {

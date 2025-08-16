@@ -57,6 +57,11 @@ extends InterpolatedText[T, String, InterpolatedString] {
     builder ++= parts.last
     builder.result()
   }
+
+  override def ++[U >: T](other: InterpolatedString[U]): InterpolatedString[U] =
+    new InterpolatedString[U](
+      parts.dropRight(1) ++ Seq(parts.last + other.parts.head) ++ other.parts.tail,
+      args ++ other.args)
 }
 
 object InterpolatedString extends InterpolatedTextC[String, InterpolatedString] {

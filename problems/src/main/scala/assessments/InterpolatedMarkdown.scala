@@ -1,5 +1,7 @@
 package assessments
 
+import utils.Markdown.markdownToHtml
+
 final class InterpolatedMarkdown[+T](val interpolatedString: InterpolatedString[T])
   extends InterpolatedText[T, Markdown, InterpolatedMarkdown] {
 
@@ -23,6 +25,12 @@ final class InterpolatedMarkdown[+T](val interpolatedString: InterpolatedString[
 
   override def args: Seq[T] =
     interpolatedString.args
+
+  override def ++[U >: T](other: InterpolatedMarkdown[U]): InterpolatedMarkdown[U] =
+    new InterpolatedMarkdown[U](interpolatedString ++ other.interpolatedString)
+
+  def toHtml: InterpolatedHtml[T] =
+    new InterpolatedHtml(interpolatedString.mapCompleteText(markdownToHtml))
 }
 
 object InterpolatedMarkdown extends InterpolatedTextC[Markdown, InterpolatedMarkdown] {
@@ -34,4 +42,6 @@ object InterpolatedMarkdown extends InterpolatedTextC[Markdown, InterpolatedMark
     new InterpolatedMarkdown(InterpolatedString(text.markdown))
 }
 
-case class Markdown(markdown: String)
+case class Markdown(markdown: String) {
+  def toHtml: Html = Html(markdownToHtml(markdown))
+}

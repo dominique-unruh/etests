@@ -21,8 +21,11 @@ final class InterpolatedHtml[+T](val interpolatedString: InterpolatedString[T])
   override def flatMapArgs(f: T => Html): Html =
     Html(interpolatedString.flatMapArgs(t => f(t).html))
 
-  override def args: Seq[T] = 
+  override def args: Seq[T] =
     interpolatedString.args
+
+  override def ++[U >: T](other: InterpolatedHtml[U]): InterpolatedHtml[U] =
+    new InterpolatedHtml[U](interpolatedString ++ other.interpolatedString)
 }
 
 object InterpolatedHtml extends InterpolatedTextC[Html, InterpolatedHtml] {
