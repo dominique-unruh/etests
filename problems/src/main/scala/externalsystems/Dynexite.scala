@@ -219,14 +219,11 @@ object Dynexite {
   @upickle.implicits.allowUnknownKeys(false)
   final case class BluePrint(blueprintId: String, name: String) derives up.ReadWriter
 
-
-  def getDynexiteAnswers(assessment: Assessment,
+  def getDynexiteAnswersRaw(assessment: Assessment,
                          exam: Exam,
                          registrationNumber: String,
                          results: Map[String, Option[Attempt]] = Dynexite.resultsByLearner)
-                        (implicit exceptionContext: ExceptionContext):
-  Map[ElementName, String] = {
-    given ExceptionContext = ExceptionContext.addToExceptionContext(s"Matching Dynexite answers up with our exam implementation for $registrationNumber, ${assessment.name}", registrationNumber, assessment)
+                           (implicit exceptionContext: ExceptionContext): DynexiteResponses = {
     results.get(registrationNumber) match {
       case None => throw ExceptionWithContext(s"No student with registration number $registrationNumber known.")
       case Some(None) => throw ExceptionWithContext(s"Student with registration number $registrationNumber made no attempt.")
@@ -238,12 +235,22 @@ object Dynexite {
         val assessmentDynexiteName = assessment.tags.getOrElse(dynexiteQuestionName, assessment.name)
         if (item.name != assessmentDynexiteName)
           throw ExceptionWithContext(s"Dynexite problem has name '${item.name}', our problem has name '$assessmentDynexiteName'. Should be equal.")
-        val answers = getDynexiteAnswers(item = item, assessment = assessment)
-        val reachable = answers.reachable
-        if (reachable != assessment.reachablePoints)
-          throw ExceptionWithContext(s"Dynexite says there are $reachable reachable points, we say ${assessment.reachablePoints}")
-        answers.answers
+        getDynexiteAnswers(item = item, assessment = assessment)
     }
+  }
+
+  def getDynexiteAnswers(assessment: Assessment,
+                         exam: Exam,
+                         registrationNumber: String,
+                         results: Map[String, Option[Attempt]] = Dynexite.resultsByLearner)
+                        (implicit exceptionContext: ExceptionContext):
+  Map[ElementName, String] = {
+    given ExceptionContext = ExceptionContext.addToExceptionContext(s"Matching Dynexite answers up with our exam implementation for $registrationNumber, ${assessment.name}", registrationNumber, assessment)
+    val answers = getDynexiteAnswersRaw(assessment, exam, registrationNumber, results)
+    val reachable = answers.reachable
+    if (reachable != assessment.reachablePoints)
+      throw ExceptionWithContext(s"Dynexite says there are $reachable reachable points, we say ${assessment.reachablePoints}")
+    answers.answers
   }
 
   def getDynexiteAnswers(item: Dynexite.Item, assessment: Assessment)
@@ -318,7 +325,7 @@ object Dynexite {
 
     for (block <- item.blocks) {
       reachable += block.maxPoints
-      points += block.earnedPoints;
+      points += block.earnedPoints
     };
 
     for ((name, answer) <- assessmentNames.zip(dynexiteAnswers)) {
@@ -341,7 +348,7 @@ object Dynexite {
     // The URL also supports item=... with some item-id (looking like this: d2914rbadbec73f2974g) but taking the item-ids from the Dynexite JSON doesn't work
     url
   }
-  
+
   object dynexiteQuestionName extends Tag[Assessment, String](default = "")
 
   def getAnswerPDF(archive: Path = Utils.getSystemPropertyPath("dynexite.results.pdfs", "the Dynexite PDF zip"),

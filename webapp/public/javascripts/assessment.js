@@ -96,3 +96,25 @@ function showDynexiteLink() {
     let url = jsRoutes.controllers.AssessmentController.dynexiteLink(regno).url
     window.open(url, "_blank")
 }
+
+function dynexiteAnswers() {
+    clearErrors()
+    function failCallback(obj, statusMessage) {
+        log_error("Failed to get dynexite answers")
+        console.log("Failed AJAX call: ", state, obj, statusMessage)
+    }
+    function successCallback(text) {
+        log_error(text)
+    }
+    let regno = document.getElementById("registration").value
+    if (regno == null || regno === "") {
+        log_error("Not student registration number specified.")
+        document.getElementById("registration").focus()
+        return
+    }
+    $.ajax(jsRoutes.controllers.AssessmentController.dynexiteAnswers(assessmentName, regno).url,
+        {method: "GET", headers: {'CSRF-Token': csrfToken}})
+        .fail(failCallback)
+        .done(successCallback)
+}
+

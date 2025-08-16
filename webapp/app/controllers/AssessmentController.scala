@@ -143,6 +143,23 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     Ok(JsObject(Map("registration" -> JsString(learners(index)))))
   }
 
+  def dynexiteAnswers(assessmentName: String, regno: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    given ExceptionContext = ExceptionContext.initialExceptionContext(s"Responsing to web-request $request")
+    val assessment = getAssessment(assessmentName)
+    val result = StringBuilder()
+    try {
+      result ++= Dynexite.getDynexiteAnswersRaw(assessment, Iqc1Exam, regno).toString
+    } catch
+      case e: Throwable => result ++= ExceptionUtils.getStackTrace(e)
+    result ++= "\n\n\n"
+    try {
+      result ++= Dynexite.getDynexiteAnswers(assessment, Iqc1Exam, regno).toString
+    } catch
+      case e: Throwable => result ++= ExceptionUtils.getStackTrace(e)
+
+    Ok(result.result())
+  }
+  
   def dynexitePdf(regno: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     val pdf = Dynexite.getAnswerPDF(registrationNumber = regno)
     Ok(pdf).as("application/pdf")

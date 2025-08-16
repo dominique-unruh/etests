@@ -17,6 +17,7 @@ class MiscController @Inject()(val controllerComponents: ControllerComponents) e
         routes.javascript.AssessmentController.randomStudent,
         routes.javascript.AssessmentController.dynexitePdf,
         routes.javascript.AssessmentController.dynexiteLink,
+        routes.javascript.AssessmentController.dynexiteAnswers,
       )
     ).as(MimeTypes.JAVASCRIPT)
   }
