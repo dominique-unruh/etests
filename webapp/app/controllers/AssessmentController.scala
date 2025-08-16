@@ -10,11 +10,12 @@ import java.nio.file.{Files, Path}
 import javax.script.{ScriptEngine, ScriptEngineManager}
 import scala.util.matching.Regex
 import assessments.{Assessment, ElementName, ExceptionContext, MarkdownAssessment}
-import exam.y2025.iqc1.{CnotConstruction, Iqc1Exam, Uf}
+import exam.y2025.iqc1.{Iqc1Exam, Uf}
 import play.api.libs.json.{JsArray, JsBoolean, JsObject, JsString, JsValue}
 import play.mvc.BodyParser.Json
 import play.twirl.api.{Html, HtmlFormat}
 import com.typesafe.scalalogging.Logger
+import exam.y2025.iqc2.CnotConstruction
 import externalsystems.Dynexite
 import io.github.classgraph.{ClassGraph, ClassInfoList}
 import org.apache.commons.lang3.exception.ExceptionUtils
@@ -159,7 +160,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
 
     Ok(result.result())
   }
-  
+
   def dynexitePdf(regno: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     val pdf = Dynexite.getAnswerPDF(registrationNumber = regno)
     Ok(pdf).as("application/pdf")
