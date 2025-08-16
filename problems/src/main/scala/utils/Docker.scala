@@ -58,7 +58,6 @@ object Docker {
         Cache.cache.put(argsJson, result.asJson.noSpaces.getBytes)
         result
       case cached =>
-        println("CACHED!")
         decode[DockerResult](new String(cached)).getOrElse(throw IOException("Unparsable cache content"))
   }
 

@@ -29,6 +29,11 @@ function loadAnswers() {
         console.log("Failed AJAX call: ", state, obj, statusMessage)
     }
     let regno = document.getElementById("registration").value
+    if (regno == null || regno === "") {
+        log_error("Not student registration number specified.")
+        document.getElementById("registration").focus()
+        return
+    }
     $.ajax(jsRoutes.controllers.AssessmentController.loadAnswers(assessmentName, regno).url,
         {method: "GET", dataType: 'json', headers: {'CSRF-Token': csrfToken}})
         .fail(failCallback)
