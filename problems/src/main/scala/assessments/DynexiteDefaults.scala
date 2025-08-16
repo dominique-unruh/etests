@@ -1,6 +1,7 @@
 package assessments
 
 import assessments.pageelements.*
+import assessments.pageelements.MultipleChoice.Style.select
 import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
 import assessments.stack.{StackMath, SympyAssumption, SympyExpr}
@@ -18,9 +19,9 @@ object DynexiteDefaults {
   def input(reference: String, tags: Tags[InputElement] = Tags.empty)(using name: sourcecode.Name): InputElement =
     new InputElement(elementName(name), reference, tags)
 
-  def multi(options: Seq[String | (String,String)], reference: String)(using name: sourcecode.Name): MultipleChoice = {
+  def multi(options: Seq[String | (String,String)], reference: String, style: MultipleChoice.Style = select)(using name: sourcecode.Name): MultipleChoice = {
     val optionMap = SeqMap.from(options.map { case option: String => option -> option; case (option,text) => option -> text})
-    new MultipleChoice(name=elementName(name), options=optionMap, reference=reference)
+    new MultipleChoice(name=elementName(name), options=optionMap, reference=reference, style=style)
   }
 
   extension (str: String) {
