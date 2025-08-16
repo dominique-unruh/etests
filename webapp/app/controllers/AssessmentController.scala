@@ -70,9 +70,9 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
           title = assessment.name,
           initialState = JsObject(assessment.pageElements.map{ (name, element) => (name.toString, element.initialState) }),
           reachablePoints = assessment.reachablePoints.decimalFractionString,
-          body = Html(body),
-          explanation = Html(explanation),
-          gradingRules = Html(gradingRules))
+          body = Html(body.html),
+          explanation = Html(explanation.html),
+          gradingRules = Html(gradingRules.html))
         Ok(html)
       case packageContent =>
         val html = StringBuilder()

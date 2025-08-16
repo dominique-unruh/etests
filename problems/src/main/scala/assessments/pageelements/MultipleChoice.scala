@@ -1,6 +1,6 @@
 package assessments.pageelements
 
-import assessments.{ElementName, Points}
+import assessments.{ElementName, Html, Points}
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import play.api.libs.json.{JsObject, JsString}
@@ -55,7 +55,7 @@ final class MultipleChoice(val name: ElementName,
     html.result()
   }*/
 
-  override def renderHtml: String = {
+  override def renderHtml: Html = {
     val html = StringBuilder()
     html ++= s"""<select id="${name.jsElementId}" onchange="updateState('$name', {content: this.value})">\n"""
     html ++= """<option value="">― not selected ―</option>\n"""
@@ -72,7 +72,7 @@ final class MultipleChoice(val name: ElementName,
            |  }
            |</script>""".stripMargin
 
-    html.result()
+    Html(html.result())
   }
 
   override def setAction(content: String): Seq[ElementAction] =

@@ -1,7 +1,7 @@
 package assessments.pageelements
 
 import MathPreviewElement.mathtextToLatex
-import assessments.{Assessment, ElementName}
+import assessments.{Assessment, ElementName, Html}
 import me.shadaj.scalapy.py
 import me.shadaj.scalapy.py.PyQuote
 import play.api.libs.json.{JsObject, JsString, JsValue}
@@ -13,8 +13,8 @@ class MathPreviewElement(val name: ElementName,
                          val observed: ElementName,
                          val latexRenderer: String => String) extends PageElement {
   override val tags: Tag.Tags[MathPreviewElement.this.type] = Tags.empty
-  override def renderHtml: String =
-    ind"""<div style="font-weight: bold; border: solid 1 1 1 1;" id="${name.jsElementId}">Preview...</div><script>
+  override def renderHtml: Html =
+    Html(ind"""<div style="font-weight: bold; border: solid 1 1 1 1;" id="${name.jsElementId}">Preview...</div><script>
          |  function ${name.jsElementCallbackName}(json) {
          |    let span = document.getElementById("${name.jsElementId}");
          |    console.log(span);
@@ -22,7 +22,7 @@ class MathPreviewElement(val name: ElementName,
          |    span.textContent = json.preview;
          |    MathJax.typesetPromise([span]);
          |  }
-         |</script>"""
+         |</script>""")
 
   override def updateAction(assessment: Assessment, state: Map[ElementName, JsValue]): IterableOnce[ElementAction] = {
     val content = state(observed).asInstanceOf[JsObject].value("content").asInstanceOf[JsString].value

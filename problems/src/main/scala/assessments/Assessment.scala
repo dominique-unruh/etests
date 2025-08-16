@@ -18,9 +18,9 @@ import scala.util.{Random, Using}
 import scala.xml.*
 
 class Assessment (val name: String,
-                  val questionTemplate: InterpolatedString[Element],
-                  val explanationTemplate: InterpolatedString[Element],
-                  val gradingRulesTemplate: InterpolatedString[Element],
+                  val questionTemplate: InterpolatedHtml[Element],
+                  val explanationTemplate: InterpolatedHtml[Element],
+                  val gradingRulesTemplate: InterpolatedHtml[Element],
                   val pageElements: SeqMap[ElementName, PageElement],
                   val reachablePoints: Points,
                   val tags: Tags[Assessment] = Tags.empty) {
@@ -31,12 +31,12 @@ class Assessment (val name: String,
       assert(element.name == name, (element.name, name))
   }
 
-  def renderHtml(elementHtml: (Element, FileMapBuilder) => String):
-             (String, String, String, Map[String, (String, Array[Byte])]) = {
+  def renderHtml(elementHtml: (Element, FileMapBuilder) => Html):
+             (Html, Html, Html, Map[String, (String, Array[Byte])]) = {
     def substituted = mutable.HashSet[ElementName]()
     val associatedFiles = new FileMapBuilder
 
-    def substitute(interpolatable: Element): String = {
+    def substitute(interpolatable: Element): Html = {
       interpolatable match {
         case pageElement: PageElement =>
           val name = pageElement.name
@@ -48,20 +48,20 @@ class Assessment (val name: String,
     }
 
 //    val body = templateRegex.replaceAllIn(htmlTemplate, substitute)
-    val body = questionTemplate.mapArgs(substitute).mkString
-    val explanation = explanationTemplate.mapArgs(substitute).mkString
-    val gradingRules = gradingRulesTemplate.mapArgs(substitute).mkString
+    val body = questionTemplate.mapArgs(substitute).mkText
+    val explanation = explanationTemplate.mapArgs(substitute).mkText
+    val gradingRules = gradingRulesTemplate.mapArgs(substitute).mkText
 
     (body, explanation, gradingRules, associatedFiles.result())
   }
 
-  def renderStaticHtml(solution: Map[ElementName, String]): (String, String, String) = {
+  def renderStaticHtml(solution: Map[ElementName, String]): (Html, Html, Html) = {
     def render(element: Element, associatedFiles: FileMapBuilder) = element match {
       case element: PageElement =>
         element.renderHtml // TODO static
       case ImageElement(png, basename) =>
 //        val name = associatedFiles.add(basename = basename, extension = "png", mimeType = "image/png", content = png)
-        s"""<img src="${Utils.dataUrl("image/png", png)}"/>"""
+        Html(s"""<img src="${Utils.dataUrl("image/png", png)}"/>""")
     }
 
     val (body, explanation, gradingRules, files) = renderHtml(render)
@@ -70,13 +70,13 @@ class Assessment (val name: String,
     (body, explanation, gradingRules)
   }
 
-  lazy val renderHtml: (String, String, String, Map[String, (String, Array[Byte])]) = {
+  lazy val renderHtml: (Html, Html, Html, Map[String, (String, Array[Byte])]) = {
     def render(element: Element, associatedFiles: FileMapBuilder) = element match {
       case element: PageElement =>
         element.renderHtml
       case ImageElement(png, basename) =>
         val name = associatedFiles.add(basename = basename, extension = "png", mimeType = "image/png", content = png)
-        s"""<img src="${StringEscapeUtils.escapeHtml4(name)}"/>"""
+        Html(s"""<img src="${StringEscapeUtils.escapeHtml4(name)}"/>""")
     }
 
     renderHtml(render)

@@ -2,11 +2,12 @@ package assessments;
 
 import scala.StringContext;
 
-case class InterpolatedString[+T] private (parts: Seq[String], args: Seq[T]) {
-  def mapArgs[U](f: T => U) : InterpolatedString[U] =
+final case class InterpolatedString[+T] private (parts: Seq[String], args: Seq[T])
+extends InterpolatedText[T, String, InterpolatedString] {
+  override def mapArgs[U](f: T => U) : InterpolatedString[U] =
     new InterpolatedString[U](parts, args.map(f))
 
-  def mapCompleteString(f: String => String): InterpolatedString[T] = {
+  override def mapCompleteText(f: String => String): InterpolatedString[T] = {
     val marker1 = '\uffef'
     val marker2 = '\ufeff'
     val numbers = args.zipWithIndex.map((_,index) => marker1.toString + marker2.toString * index)
@@ -39,20 +40,35 @@ case class InterpolatedString[+T] private (parts: Seq[String], args: Seq[T]) {
     new InterpolatedString[T](newParts.result(), newArgs.result())
   }
 
-  def checkCorrectness(): Unit =
+  override def checkCorrectness(): Unit =
     assert (parts.length == args.length + 1)
+
+  override def isComplete: Boolean = parts.isEmpty
+
+  override def completeText: String = {
+    assert(isComplete)
+    parts.head
+  }
+
+  override def flatMapArgs(f: T => String): String = {
+    val builder = StringBuilder()
+    for ((p,a) <- parts.zip(args))
+      builder ++= p ++= f(a)
+    builder ++= parts.last
+    builder.result()
+  }
 }
 
-object InterpolatedString {
+object InterpolatedString extends InterpolatedTextC[String, InterpolatedString] {
   def apply[T](parts: Seq[String], args: Seq[T]): InterpolatedString[T] = {
     val is = new InterpolatedString[T](parts, args)
     is.checkCorrectness()
     is
   }
 
-  def apply[T](string: String) = new InterpolatedString[T](Seq(string), Seq.empty)
+  override def apply[T](string: String) = new InterpolatedString[T](Seq(string), Seq.empty)
   
-  val empty = InterpolatedString("")
+  val empty: InterpolatedString[Nothing] = InterpolatedString("")
   
   extension (is: InterpolatedString[String]) {
     def mkString: String = is.parts.zipAll(is.args, "", "").map((p,a) => p+a).mkString

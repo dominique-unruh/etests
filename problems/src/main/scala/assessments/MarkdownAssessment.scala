@@ -1,6 +1,7 @@
 package assessments
 
 import assessments.ExceptionContext.initialExceptionContext
+import assessments.InterpolatedMarkdown.md
 import assessments.MarkdownAssessment.MarkdownAssessmentRun
 import assessments.pageelements.{AnswerElement, Element, ElementAction, PageElement, StaticElement}
 import externalsystems.MoodleStack
@@ -19,9 +20,9 @@ import scala.util.matching.Regex
 
 abstract class MarkdownAssessment {
   val name: String = getClass.getName
-  lazy val question: InterpolatedString[Element]
-  lazy val explanation: InterpolatedString[Element] = md""
-  lazy val gradingRules: InterpolatedString[Element] = md""
+  lazy val question: InterpolatedMarkdown[Element]
+  lazy val explanation: InterpolatedMarkdown[Element] = md""
+  lazy val gradingRules: InterpolatedMarkdown[Element] = md""
 
   def grade(gradingContext: GradingContext, comments: Commenter): Unit
   val reachablePoints: Points
@@ -30,10 +31,6 @@ abstract class MarkdownAssessment {
       MarkdownAssessment.this.grade(gradingContext, commenter)
     override lazy val reachablePoints: Points = MarkdownAssessment.this.reachablePoints
     override val tags: Tag.Tags[this.type] = Tag.Tags.empty
-  }
-
-  extension (sc: StringContext) {
-    inline def md(args: Element*): InterpolatedString[Element] = InterpolatedString(sc.parts, args)
   }
 
   private def findMethod(elementName: ElementName) =
@@ -48,11 +45,11 @@ abstract class MarkdownAssessment {
       val date = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
       val clazz = this.getClass.getName.stripSuffix("$")
       val comment = s"<!-- Exported via Dominique Unruh's assessment tool. Source class ${StringEscapeUtils.escapeHtml4(clazz)}. Date: ${StringEscapeUtils.escapeHtml4(date)} -->\n"
-      question.mapCompleteString(s => comment + markdownToHtml(s))
+      new InterpolatedHtml(question.interpolatedString.mapCompleteText(s => comment + markdownToHtml(s)))
     }
 
-    val explanationTemplate = explanation.mapCompleteString(markdownToHtml)
-    val gradingRulesTemplate = gradingRules.mapCompleteString(markdownToHtml)
+    val explanationTemplate = new InterpolatedHtml(explanation.interpolatedString.mapCompleteText(markdownToHtml))
+    val gradingRulesTemplate = new InterpolatedHtml(gradingRules.interpolatedString.mapCompleteText(markdownToHtml))
 
     assert(grader.name == ElementName.grader)
     elements.addOne(grader.name, grader)

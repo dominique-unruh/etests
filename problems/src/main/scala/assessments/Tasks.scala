@@ -38,13 +38,13 @@ object GradeEveryone extends Task {
       val (body, explanation, gradingRules) = question.renderStaticHtml(answers)
 
       output ++= "<h2>Question text</h2>\n"
-      output ++= body += '\n'
+      output ++= body.html += '\n'
 
       output ++= "<h2>Solution explanation</h2>\n"
-      output ++= explanation += '\n'
+      output ++= explanation.html += '\n'
 
       output ++= "<h2>Grading rules</h2>\n"
-      output ++= gradingRules += '\n'
+      output ++= gradingRules.html += '\n'
 
       output ++= "<h2>Your grading</h2>\n"
       val gradingContext = GradingContext(

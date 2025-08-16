@@ -4,6 +4,7 @@ import assessments.pageelements.{ElementAction, PageElement}
 import play.api.libs.json.JsValue
 import utils.Tag.Tags
 
+// TODO what is this? Used?
 final class TextInput(val name: ElementName,
                       val reference: String,
                       val correct: Seq[String] = Nil,
@@ -14,5 +15,5 @@ final class TextInput(val name: ElementName,
   extends PageElement {
   assert(points > 0)
 
-  override def renderHtml: String = "[NOT IMPLEMENTED: MultipleChoice HTML]"
+  override def renderHtml: Html = Html("[NOT IMPLEMENTED: MultipleChoice HTML]")
 }

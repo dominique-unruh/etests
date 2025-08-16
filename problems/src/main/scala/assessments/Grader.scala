@@ -9,7 +9,7 @@ import org.apache.commons.text.StringEscapeUtils
 import play.api.libs.json.{JsNumber, JsObject, JsString, JsValue}
 
 abstract class Grader(val name: ElementName) extends PageElement {
-  override def renderHtml: String = ""
+  override def renderHtml: Html = Html.empty
   def grade(gradingContext: GradingContext, commenter: Commenter): Unit
   lazy val reachablePoints: Points
 

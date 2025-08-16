@@ -10,7 +10,7 @@ class InterpolatedStringTest extends AnyFunSuiteLike {
     def f(string: String) = {
       string.split(" ").reverse.mkString(" ")
     }
-    val is2 = is.mapCompleteString(f)
+    val is2 = is.mapCompleteText(f)
     println(is2.parts)
     println(is2.args)
     is2.checkCorrectness()

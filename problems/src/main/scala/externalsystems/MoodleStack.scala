@@ -1,6 +1,6 @@
 package externalsystems
 
-import assessments.Assessment
+import assessments.{Assessment, Html}
 import assessments.pageelements.{ImageElement, InputElement, MathPreviewElement, PageElement, PreviewElement}
 import org.apache.commons.text.StringEscapeUtils
 import utils.Tag
@@ -67,7 +67,7 @@ object MoodleStack {
       </input>
   }
 
-  case class Question(name: String, questionText: String,
+  case class Question(name: String, questionText: Html,
                       questionVariables: String = "",
                       files: Map[String, Array[Byte]] = Map.empty,
                       inputs: Seq[Input]) {
@@ -94,7 +94,7 @@ object MoodleStack {
           </name>
           <questiontext format="html">
             <text>
-              {scala.xml.PCData(questionText)}
+              {scala.xml.PCData(questionText.html)}
             </text>{filesXML}
           </questiontext>
           <generalfeedback format="html">
@@ -175,15 +175,15 @@ object MoodleStack {
             insertStars = pageElement.tags(moodleInsertStars))
           inputs += input
           if (pageElement.tags(moodleNoPreview))
-            s"[[input:$name]]"
+            Html(s"[[input:$name]]")
           else
-            s"[[input:$name]] [[validation:$name]]"
+            Html(s"[[input:$name]] [[validation:$name]]")
         case preview: MathPreviewElement =>
           val name = preview.observed.toString
-          s"[[validation:$name]]"
+          Html(s"[[validation:$name]]")
         case ImageElement(png, basename) =>
           val name = associatedFiles.add(basename = basename, extension = "png", mimeType = "image/png", content = png)
-          s"""<img src="@@PLUGINFILE@@/${StringEscapeUtils.escapeHtml4(name)}"/>"""
+          Html(s"""<img src="@@PLUGINFILE@@/${StringEscapeUtils.escapeHtml4(name)}"/>""")
         case _ =>
           throw RuntimeException(s"Unknown page element (type ${element.getClass.getName}): $element")
       }
