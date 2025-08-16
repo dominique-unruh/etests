@@ -116,10 +116,6 @@ final class MultipleChoice(val name: ElementName,
       case Style.radio =>
         val index = options.keys.toSeq.indexOf(content)
         val hd = options.keys.toSeq.head
-        println((index, options.keys.toSeq, options.keys.toSeq.indexOf(content)))
-        println(hd.map(_.toInt))
-        println(content.map(_.toInt))
-        println(content)
         if (index < 0)
           throw RuntimeException(s"setAction(\"$content\") called, but options are ${options.keys.map(s => s"\"$s\"").mkString(", ")}")
         Seq(ElementAction(this.name, JsObject(Seq("index" -> JsNumber(index)))))

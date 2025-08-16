@@ -107,14 +107,19 @@ object GradeEveryone extends Task {
 
   private def makeErrorReport(errors: mutable.Queue[(String, Assessment, String)], reportPath: Path): Unit = {
     Using.resource(new PrintWriter(reportPath.toFile)) { writer =>
-      writer.println("<h1>Errors</h1>")
-      writer.println("<ul>")
-      for ((student, question, message) <- errors) {
-        writer.println(s"""<li><a href="$student/grading.html">$student, ${question.name}</a>:""")
-//        writer.println(s"""(<a href="http://localhost:9000/preview/${question.getClass.getName}/">Webapp</a>):""")
-        writer.println(s"""<span style="color:red">$message</span></li>""")
+      if (errors.isEmpty)
+        writer.println("<h1>No errors</h1>")
+      else {
+        writer.println(s"<h1>Errors</h1>")
+        writer.println(s"There were ${errors.length} errors and warnings")
+        writer.println("<ul>")
+        for ((student, question, message) <- errors) {
+          writer.println(s"""<li><a href="$student/grading.html">$student, ${question.name}</a>:""")
+          //        writer.println(s"""(<a href="http://localhost:9000/preview/${question.getClass.getName}/">Webapp</a>):""")
+          writer.println(s"""<span style="color:red">$message</span></li>""")
+        }
+        writer.println("</ul>")
       }
-      writer.println("</ul>")
     }
   }
   
