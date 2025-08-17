@@ -78,7 +78,7 @@ final class MultipleChoice(val name: ElementName,
       ind"""<script>
            |  function ${name.jsElementCallbackName}(json) {
            |    let radios = document.querySelectorAll('input[name="${name.jsElementId}"]');
-           |    let radio = radios[json.index] 
+           |    let radio = radios[json.index]
            |    radio.checked = true;
            |    updateState("$name", {content: radio.value});
            |  }
@@ -114,11 +114,16 @@ final class MultipleChoice(val name: ElementName,
       case Style.select =>
         Seq(ElementAction(this.name, JsObject(Seq("content" -> JsString(content)))))
       case Style.radio =>
-        val index = options.keys.toSeq.indexOf(content)
-        val hd = options.keys.toSeq.head
-        if (index < 0)
-          throw RuntimeException(s"setAction(\"$content\") called, but options are ${options.keys.map(s => s"\"$s\"").mkString(", ")}")
-        Seq(ElementAction(this.name, JsObject(Seq("index" -> JsNumber(index)))))
+        if (content == "")
+          Seq(ElementAction(this.name, JsObject(Seq("index" -> JsNumber(0)))))
+        else {
+          val index = options.keys.toSeq.indexOf(content)
+          val hd = options.keys.toSeq.head
+          if (index < 0)
+            throw RuntimeException(s"setAction(\"$content\") called, but options are ${options.keys.map(s => s"\"$s\"").mkString(", ")}")
+          // index+1 because the webapp has "not selected" first
+          Seq(ElementAction(this.name, JsObject(Seq("index" -> JsNumber(index + 1)))))
+        }
     }
   }
 
