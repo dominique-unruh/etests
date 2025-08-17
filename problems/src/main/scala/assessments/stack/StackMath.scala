@@ -57,10 +57,16 @@ sealed trait StackMath {
 
   def mapVariables(subst: (String, StackMath)*): StackMath = mapVariables(Map(subst*))
 
-  def fixValues(using mathContext: MathContext): StackMath = mapVariables { name =>
-    for (options <- mathContext.variables.get(name);
-         fixedValue <- options.fixedValue)
-      yield fixedValue
+  /** Applied preprocessors and then fixed values (according to [[MathContext]] */
+  def fixValues(using mathContext: MathContext): StackMath = {
+    val fixed1 = mathContext.preprocessors.foldLeft(this)((math, preprocessor) => preprocessor(math))
+    val fixed2 =
+      fixed1.mapVariables { name =>
+        for (options <- mathContext.variables.get(name);
+             fixedValue <- options.fixedValue)
+        yield fixedValue
+      }
+    fixed2
   }
 
   def fixUnderscoreInt: StackMath = mapIdentifiers {
@@ -110,6 +116,22 @@ sealed trait StackMath {
 
     SympyExpr(toSympy(this.fix))
   }
+  
+  def mapFunction(name: String | Ops, f: Seq[StackMath] => StackMath): StackMath = this match
+    case Operation(operator, arguments*) if operator == name =>
+      f(arguments)
+    case Operation(operator, arguments*) =>
+      Operation(operator, arguments.map(_.mapFunction(name, f))*)
+    case Funcall(fname, arguments*) if fname == name =>
+//      println(("XXX", fname, name, arguments))
+      val res = f(arguments)
+//      println(res)
+      res
+    case Funcall(fname, arguments*) =>
+      Funcall(fname, arguments.map(_.mapFunction(name, f))*)
+    case Variable(name) => this
+    case Integer(int) => this
+    case Bool(bool) => this
 }
 
 object StackMath {

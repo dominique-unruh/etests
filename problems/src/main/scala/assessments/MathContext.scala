@@ -11,6 +11,7 @@ import scala.annotation.constructorOnly
 
 case class MathContext private (variables: Map[String, VarOptions],
                                 sympyFunctions: Map[String | StackMath.Ops, Seq[SympyExpr] => SympyExpr],
+                                preprocessors: Seq[StackMath => StackMath],
                                ) {
   def symbol(name: String, options: VarOptions): MathContext = {
     assert(!variables.contains(name))
@@ -33,7 +34,11 @@ case class MathContext private (variables: Map[String, VarOptions],
     }
     sympyFunction(name, wrapperFunction)
   }
-  
+  def preprocessor(preprocessor: StackMath => StackMath): MathContext =
+    copy(preprocessors = preprocessors.appended(preprocessor))
+
+  def preprocessor(functionName: String, preprocessor: Seq[StackMath] => StackMath): MathContext =
+    this.preprocessor { m => m.mapFunction(functionName, preprocessor) }
 }
 
 object MathContext {
@@ -54,6 +59,7 @@ object MathContext {
 
   val default = new MathContext(
     variables = Map.empty,
+    preprocessors = Seq.empty,
     sympyFunctions =  sympyFunctions)
   case class VarOptions(name: String = "",
                         fixedValue: Option[StackMath] = None,
