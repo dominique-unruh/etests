@@ -7,9 +7,12 @@ import java.awt.Toolkit
 import java.awt.datatransfer.{Clipboard, StringSelection}
 import java.io.{BufferedReader, FileReader}
 import java.nio.file.{Files, Path, Paths}
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.{Base64, Properties}
 import scala.jdk.CollectionConverters.given
 import scala.collection.mutable
+import scala.quoted.{Expr, Quotes}
 import scala.util.Using
 
 object Utils {
@@ -104,5 +107,47 @@ object Utils {
     if (!path2.isAbsolute)
       throw new RuntimeException(s"$property in java.properties must refer to an absolute path")
     path2
+  }
+
+  /**
+   * Macro that raises a compilation error if compilation happens on or after the specified date.
+   *
+   * @param date Date string in format "yyyy-MM-dd" (e.g., "2025-10-12")
+   * @param message Error message to display
+   */
+  inline def errorAfter(date: String, message: String): Unit =
+    ${ errorAfterImpl('date, 'message) }
+
+  private def errorAfterImpl(dateStr: Expr[String], message: Expr[String])(using Quotes): Expr[Unit] = {
+    import scala.quoted.*
+    import quotes.reflect.*
+
+    // Extract the string values from the expressions
+    val dateString = dateStr.valueOrAbort
+    val errorMessage = message.valueOrAbort
+
+    try {
+      // Parse the target date
+      val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+      val targetDate = LocalDate.parse(dateString, formatter)
+      val currentDate = LocalDate.now()
+
+      // Check if current date is on or after the target date
+      if (!currentDate.isBefore(targetDate)) {
+        report.errorAndAbort(
+          s"Compilation error triggered: $errorMessage " +
+            s"(compiled on $currentDate, error date was $targetDate)"
+        )
+      }
+
+      // If we're before the target date, compilation succeeds
+      '{ () }
+
+    } catch {
+      case _: java.time.format.DateTimeParseException =>
+        report.errorAndAbort(
+          s"Invalid date format: '$dateString'. Expected format: yyyy-MM-dd"
+        )
+    }
   }
 }
