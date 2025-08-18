@@ -110,4 +110,6 @@ object Points {
   given FromDigits.Decimal[Points] with
     override def fromDigits(digits: String): Points =
       Points(digits)
+      
+  given Ordering[Points] = Ordering.fromLessThan((a,b) => a <= b)
 }

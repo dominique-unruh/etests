@@ -71,14 +71,25 @@ final class Commenter {
            add <- additional)
         yield combo.appended(add) }
     
-    def getPoints(combo: Seq[Case]): Points = 99999 // TODO
+    def getPoints(combo: Seq[Case]): Points = {
+      val matches = grades.filter((pattern, points) =>
+        val patternParts = pattern.split("-")
+        assert(patternParts.length == combo.length)
+        combo.zip(patternParts).forall((c,p) => p == "*" || c == p)
+      )
+      if (matches.isEmpty)
+        throw ExceptionWithContext(s"No pattern matches ${combo.map(_.name).mkString("-")}")
+      if (matches.length > 1)
+        throw ExceptionWithContext(s"Several pattern matche ${combo.map(_.name).mkString("-")}, namely ${matches.map(_._1).mkString(", ")}")
+      matches.head._2
+    }
     
     // for each combo, get whether it fits, the grade, and a comment string
     val evaluated = for (combo <- combos)
       yield {
         val accepted = boundary[Boolean] {
           checker(combo)
-          throw ExceptionWithContext("Checker in combinatorial grader returned without using break(true/false)")
+          throw ExceptionWithContext(s"Checker in combinatorial grader returned without using break(true/false), for case ${combo.mkString("-")}")
         }
         val points = getPoints(combo)
         val comment = combo.map(_.description).filter(_.nonEmpty) match
@@ -86,8 +97,20 @@ final class Commenter {
           case cases => "Correct solution, except: " + cases.mkString(", ")
         (combo, accepted, points, comment)
       }
-    println(evaluated)
-    ???
+//    println(evaluated)
+    evaluated
+      .filter((combo, accepted, points, comment) => accepted)
+      .maxByOption((combo, accepted, points, comment) => (points, -comment.length)) // Most points, from those shortest comment
+      match {
+      case Some((_, _, points, comment)) =>
+        this += s"$comment. $points out of $max points."
+        this.points += points
+      case None =>
+        this += s"Incorrect. 0 out of $max points."
+    }
+
+//    println(s"Chosen: $combo $points $comment")
+
   }
 }
 
