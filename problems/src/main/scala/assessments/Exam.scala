@@ -7,9 +7,9 @@ case class Exam(name: String, problems: MarkdownAssessment*) {
   
   def assessmentIndex(assessment: Assessment)(implicit exceptionContext: ExceptionContext): Int = {
     given ExceptionContext = ExceptionContext.addToExceptionContext(s"Looking for assessment $assessment in exam", assessment, this)
-    val index = problems.indexWhere(_ eq assessment)
+    val index = problems.indexWhere(_.assessment eq assessment)
     if (index == -1)
-      throw ExceptionWithContext(s"Assessment $assessment not found in exam ${this.name}")
+      throw ExceptionWithContext(s"Assessment ${assessment.name} not found in exam ${this.name} (did you include the question in the exam object?)")
     index
   }
 
