@@ -40,6 +40,9 @@ object InterpolatedMarkdown extends InterpolatedTextC[Markdown, InterpolatedMark
 
   override def apply[T](text: Markdown): InterpolatedMarkdown[T] =
     new InterpolatedMarkdown(InterpolatedString(text.markdown))
+
+  given [T]: Conversion[Markdown, InterpolatedMarkdown[T]] = 
+    md => InterpolatedMarkdown.apply(md)
 }
 
 case class Markdown(markdown: String) {

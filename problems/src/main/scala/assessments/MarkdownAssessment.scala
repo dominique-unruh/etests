@@ -1,6 +1,6 @@
 package assessments
 
-import assessments.ExceptionContext.initialExceptionContext
+import assessments.ExceptionContext.{addToExceptionContext, initialExceptionContext}
 import assessments.InterpolatedMarkdown.md
 import assessments.MarkdownAssessment.MarkdownAssessmentRun
 import assessments.pageelements.{AnswerElement, Element, ElementAction, PageElement, StaticElement}
@@ -136,7 +136,9 @@ abstract class MarkdownAssessment {
 
   /** Run selftests of this assessment */
   def runTests()(using exceptionContext: ExceptionContext): Unit = {
+    given ExceptionContext = addToExceptionContext(s"Running tests for question $name")
     for ((name,test) <- getTests)
+      given ExceptionContext = addToExceptionContext(s"Running test $name")
       println(s"""=================================================""")
       println(s"""Running test $name:""")
       test.runTest()

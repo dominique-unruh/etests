@@ -1,16 +1,17 @@
 package assessments
 
+import assessments.InterpolatedMarkdown.md
+import assessments.pageelements.Element
 import org.apache.commons.text.StringEscapeUtils
 import utils.Tag.Tags
 
 import scala.collection.SeqMap
 
-class DummyAssessment(name: String) extends Assessment(
-  name = name,
-  questionTemplate = InterpolatedHtml(Html(s"DUMMY ASSESSMENT: ${StringEscapeUtils.escapeHtml4(name)}")),
-  explanationTemplate = InterpolatedHtml.empty,
-  gradingRulesTemplate = InterpolatedHtml.empty,
-  pageElements = SeqMap.empty,
-  reachablePoints = -1,
-  tags = Tags()
-)
+class DummyAssessment(override val name: String) extends MarkdownAssessment {
+  override lazy val question: InterpolatedMarkdown[Element] = Markdown("Dummy question $name")
+
+  override def grade(gradingContext: GradingContext, comments: Commenter): Unit =
+    throw NoGraderYetException
+
+  override val reachablePoints: Points = 999
+}

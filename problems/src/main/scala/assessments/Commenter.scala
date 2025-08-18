@@ -52,6 +52,7 @@ final class Commenter {
   def gradeBlock(max: Points)(body: Label[Points] ?=> Reachable ?=> Nothing): Unit = {
     given Reachable = new Reachable(max)
     val reached = boundary(body)
+    assert(reached <= max)
     this += s"$reached out of $max points"
     points += reached
   }

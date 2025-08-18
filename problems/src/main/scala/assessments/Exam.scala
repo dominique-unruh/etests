@@ -1,6 +1,8 @@
 package assessments
 
-case class Exam(name: String, problems: Assessment*) {
+import assessments.ExceptionContext.{addToExceptionContext, initialExceptionContext}
+
+case class Exam(name: String, problems: MarkdownAssessment*) {
   assert(problems.map(_.name).distinct.length == problems.map(_.name).length)
   
   def assessmentIndex(assessment: Assessment)(implicit exceptionContext: ExceptionContext): Int = {
@@ -10,4 +12,14 @@ case class Exam(name: String, problems: Assessment*) {
       throw ExceptionWithContext(s"Assessment $assessment not found in exam ${this.name}")
     index
   }
+
+  def runTests(): Unit = {
+    given ExceptionContext = initialExceptionContext(s"Running tests for exam $name")
+    for (assessment <- problems)
+      assessment.runTests()
+  }
+  
+  def main(args: Array[String]): Unit = {
+    runTests()
+  } 
 }
