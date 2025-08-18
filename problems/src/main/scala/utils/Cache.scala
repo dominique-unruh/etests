@@ -15,7 +15,7 @@ object Cache {
   private var lastAccess: Long = 0
 
   @tailrec
-  private def openAvailableCache(count: Int = 1, max: Int = 0): RocksDB = {
+  private def openAvailableCache(count: Int = 1, max: Int = 10): RocksDB = {
     if (count >= max)
       RocksDB.open(options, s".cache/$count")
     else

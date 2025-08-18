@@ -71,7 +71,7 @@ final class Commenter {
            add <- additional)
         yield combo.appended(add) }
     
-    def getPoints(combo: Seq[Case]): Points = ???
+    def getPoints(combo: Seq[Case]): Points = 99999 // TODO
     
     // for each combo, get whether it fits, the grade, and a comment string
     val evaluated = for (combo <- combos)
