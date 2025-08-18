@@ -1,9 +1,10 @@
 package utils
 
 import com.typesafe.scalalogging.Logger
-import org.rocksdb.{Options, RocksDB}
+import org.rocksdb.{Options, RocksDB, RocksDBException}
 
 import java.io.File
+import scala.annotation.tailrec
 
 /** Persistent cache. To clear it, delete the `.cache` directory. */
 object Cache {
@@ -13,10 +14,22 @@ object Cache {
   private var _cache: Option[RocksDB] = None
   private var lastAccess: Long = 0
 
+  @tailrec
+  private def openAvailableCache(count: Int = 1, max: Int = 0): RocksDB = {
+    if (count >= max)
+      RocksDB.open(options, s".cache/$count")
+    else
+      try
+        RocksDB.open(options, s".cache/$count")
+      catch
+        case e: RocksDBException if e.getMessage.contains("lock file") =>
+          openAvailableCache(count + 1, max)
+  }
+  
   def cache: RocksDB = synchronized {
     _cache.getOrElse {
       logger.debug("Opening cache")
-      val db = RocksDB.open(options, ".cache")
+      val db = openAvailableCache()
       _cache = Some(db)
 
       // Register shutdown hook to clean up
