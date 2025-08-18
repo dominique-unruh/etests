@@ -149,12 +149,12 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     val assessment = getAssessment(assessmentName)
     val result = StringBuilder()
     try {
-      result ++= Dynexite.getDynexiteAnswersRaw(assessment, Iqc1Exam, regno).toString
+      result ++= Dynexite.getDynexiteAnswersRaw(assessment, Iqc1Exam, regno).mkString("\n")
     } catch
       case e: Throwable => result ++= ExceptionUtils.getStackTrace(e)
     result ++= "\n\n\n"
     try {
-      result ++= Dynexite.getDynexiteAnswers(assessment, Iqc1Exam, regno).toString
+      result ++= Dynexite.getDynexiteAnswers(assessment, Iqc1Exam, regno).toSeq.mkString("\n")
     } catch
       case e: Throwable => result ++= ExceptionUtils.getStackTrace(e)
 

@@ -223,8 +223,27 @@ object Dynexite {
                          exam: Exam,
                          registrationNumber: String,
                          results: Map[String, Option[Attempt]] = Dynexite.resultsByLearner)
-                           (implicit exceptionContext: ExceptionContext): DynexiteResponses = {
+                           (implicit exceptionContext: ExceptionContext) = {
     results.get(registrationNumber) match {
+      case None => throw ExceptionWithContext(s"No student with registration number $registrationNumber known.")
+      case Some(None) => throw ExceptionWithContext(s"Student with registration number $registrationNumber made no attempt.")
+      case Some(Some(attempt)) =>
+        val assessmentIndex = exam.assessmentIndex(assessment)
+        if (assessmentIndex >= attempt.items.length)
+          throw ExceptionWithContext("Dynexite has less items than there are problems?!")
+        val item = attempt.items(assessmentIndex)
+        item.blocks.map(_.answers)
+    }
+  }
+
+  def getDynexiteAnswers(assessment: Assessment,
+                         exam: Exam,
+                         registrationNumber: String,
+                         results: Map[String, Option[Attempt]] = Dynexite.resultsByLearner)
+                        (implicit exceptionContext: ExceptionContext):
+  Map[ElementName, String] = {
+    given ExceptionContext = ExceptionContext.addToExceptionContext(s"Matching Dynexite answers up with our exam implementation for $registrationNumber, ${assessment.name}", registrationNumber, assessment)
+    val answers = results.get(registrationNumber) match {
       case None => throw ExceptionWithContext(s"No student with registration number $registrationNumber known.")
       case Some(None) => throw ExceptionWithContext(s"Student with registration number $registrationNumber made no attempt.")
       case Some(Some(attempt)) =>
@@ -237,16 +256,6 @@ object Dynexite {
           throw ExceptionWithContext(s"Dynexite problem has name '${item.name}', our problem has name '$assessmentDynexiteName'. Should be equal.")
         getDynexiteAnswers(item = item, assessment = assessment)
     }
-  }
-
-  def getDynexiteAnswers(assessment: Assessment,
-                         exam: Exam,
-                         registrationNumber: String,
-                         results: Map[String, Option[Attempt]] = Dynexite.resultsByLearner)
-                        (implicit exceptionContext: ExceptionContext):
-  Map[ElementName, String] = {
-    given ExceptionContext = ExceptionContext.addToExceptionContext(s"Matching Dynexite answers up with our exam implementation for $registrationNumber, ${assessment.name}", registrationNumber, assessment)
-    val answers = getDynexiteAnswersRaw(assessment, exam, registrationNumber, results)
     val reachable = answers.reachable
     if (reachable != assessment.reachablePoints)
       throw ExceptionWithContext(s"Dynexite says there are $reachable reachable points, we say ${assessment.reachablePoints}")
