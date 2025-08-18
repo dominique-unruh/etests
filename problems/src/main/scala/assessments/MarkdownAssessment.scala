@@ -24,10 +24,10 @@ abstract class MarkdownAssessment {
   lazy val explanation: InterpolatedMarkdown[Element] = md""
   lazy val gradingRules: InterpolatedMarkdown[Element] = md""
 
-  def grade(gradingContext: GradingContext, comments: Commenter): Unit
+  def grade(gradingContext: GradingContext, comments: Commenter)(implicit exceptionContext: ExceptionContext): Unit
   val reachablePoints: Points
   val grader: Grader = new Grader(ElementName.grader) {
-    override def grade(gradingContext: GradingContext, commenter: Commenter): Unit = 
+    override def grade(gradingContext: GradingContext, commenter: Commenter)(implicit exceptionContext: ExceptionContext): Unit = 
       MarkdownAssessment.this.grade(gradingContext, commenter)
     override lazy val reachablePoints: Points = MarkdownAssessment.this.reachablePoints
     override val tags: Tag.Tags[this.type] = Tag.Tags.empty
