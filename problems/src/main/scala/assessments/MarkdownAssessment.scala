@@ -84,8 +84,8 @@ abstract class MarkdownAssessment {
         val name = pageElement.name
         if (!changedReference.contains(name))
           throw ExceptionWithContext(s"Unknown answer element $name", pageElement, name, value, changedReference)
-        if (changedReference(name) == value)
-          throw ExceptionWithContext(s"Answer element $name was updated to unchanged value $value", name, value, changedReference)
+//        if (changedReference(name) == value)
+//          throw ExceptionWithContext(s"Answer element $name was updated to unchanged value $value", name, value, changedReference)
         changedReference.addOne(name -> value)
 
       println(s"Reference solution: ${changedReference.map((k, v) => s"$k -> $v").mkString(", ")}")
@@ -183,4 +183,6 @@ object MarkdownAssessment {
     case extractStack
     case runTests
   }
+
+  given Conversion[MarkdownAssessment, Assessment] = _.assessment
 }
