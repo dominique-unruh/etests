@@ -37,6 +37,17 @@ object DynexiteDefaults {
     }
     def math: StackMath =
       parse(str)
+    def mathTry(name: String)(using gradingContext: GradingContext, commenter: Commenter): StackMath = {
+      if (str == "")
+        StackMath.noAnswer
+      else
+        try
+          math
+        catch
+          case e: SyntaxError =>
+            commenter += s"Could not parse $name, treating as no answer"
+            StackMath.noAnswer
+    }
   }
 
   // Not using "extension (pe: PageElement) because that exports additionally methods DynexiteDefault.latex... that may conflict with equally named methods when DynexiteDefaults.* is imported
@@ -45,18 +56,8 @@ object DynexiteDefaults {
     def sympy(using gradingContext: GradingContext): SympyExpr = stringValue.sympy
     def latex(using gradingContext: GradingContext): String = sympy.latex
     def math(using gradingContext: GradingContext): StackMath = stringValue.math
-    def mathTry(name: String)(using gradingContext: GradingContext, commenter: Commenter): StackMath = {
-      val string = stringValue
-      if (string == "")
-        StackMath.noAnswer
-      else
-      try
-        math
-      catch
-        case e: SyntaxError =>
-          commenter += s"Could not parse $name, treating as no answer"
-          StackMath.noAnswer
-    }
+    def mathTry(name: String)(using gradingContext: GradingContext, commenter: Commenter): StackMath =
+      stringValue.mathTry(name)
   }
 
 /*  extension (pe: PageElement) {

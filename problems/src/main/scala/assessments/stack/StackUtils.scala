@@ -202,6 +202,9 @@ object StackUtils {
       val termsMapped = terms.map(_.mapVariables(map))
       f(map, termsMapped)
     }
+  def enumerateMapped[A](x: StackMath, y: StackMath)(f: Map[String, StackMath] => (StackMath, StackMath) => A)(using mathContext: MathContext): Seq[A] =
+    enumerateMapped(Seq(x,y)) { case (map, Seq(x,y)) => f(map)(x,y) }
+
   /** Like [[enumerateMapped]] but returns whether all f-calls return true. */
   def forallMapped(terms: Seq[StackMath])(f: (Map[String, StackMath], Seq[StackMath]) => Boolean)(using mathContext: MathContext): Boolean =
     enumerateMapped(terms)(f).forall(identity)
@@ -212,7 +215,7 @@ object StackUtils {
   def checkEqualityDebug(x: StackMath, y: StackMath,
                          mapLeft: SympyExpr => SympyExpr = identity,
                          mapRight: SympyExpr => SympyExpr = identity,
-                        )(using MathContext) = {
+                        )(using MathContext): Seq[(Map[String, StackMath], SympyExpr, SympyExpr, Boolean)] = {
     val variables: Set[String] = x.variables ++ y.variables
     enumerate(variables) { subst =>
       val x2 = mapLeft(x.mapVariables(subst).toSympyMC(allowUndefined = false))
