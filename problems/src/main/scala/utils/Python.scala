@@ -41,7 +41,7 @@ object Python {
    * {{{
    * from sympy import eye
    * def multI(vec):
-   *   return eye(2) @ vec
+   *   return eye(2) * vec
    * return multI
    * }}}
    * 
