@@ -53,8 +53,7 @@ object DynexiteDefaults {
       try
         math
       catch
-        // TODO right exception
-        case e: IOException =>
+        case e: SyntaxError =>
           commenter += s"Could not parse $name, treating as no answer"
           StackMath.noAnswer
     }
