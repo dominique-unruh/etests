@@ -11,7 +11,7 @@ import play.api.libs.json.{JsNumber, JsObject, JsString, JsValue}
 
 abstract class Grader(val name: ElementName) extends PageElement {
   override def renderHtml: Html = Html.empty
-  def grade(gradingContext: GradingContext, commenter: Commenter)(implicit exceptionContext: ExceptionContext): Unit
+  def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit
   lazy val reachablePoints: Points
 
   override def updateAction(assessment: Assessment, state: Map[ElementName, JsValue]): IterableOnce[ElementAction] = {
@@ -27,19 +27,18 @@ abstract class Grader(val name: ElementName) extends PageElement {
           element.name -> elementState("content").asInstanceOf[JsString].as[String]
         case None => element.name -> ""
     }
-    val gradingContext = GradingContext(answers.toMap, registrationNumber)
+    val context = GradingContext(answers.toMap, registrationNumber)
     try {
-      val commenter = Commenter()
-      grade(gradingContext, commenter)
+      grade()(using context)
       val report = StringBuilder()
       report ++= s"<p>Grading report for ${StringEscapeUtils.escapeHtml4(registrationNumber)}:</p>\n"
-      val pointsString = commenter.points.decimalFractionString(precision = 2)
-      if (commenter.points.isPreciseString(pointsString))
+      val pointsString = context.points.decimalFractionString(precision = 2)
+      if (context.points.isPreciseString(pointsString))
         report ++= s"<p>Points: $pointsString / ${assessment.reachablePoints.decimalFractionString}</p>\n"
       else
-        report ++= s"<p>Points: $pointsString / ${assessment.reachablePoints.decimalFractionString}  (precise number: ${commenter.points.fractionHtml})</p>\n"
+        report ++= s"<p>Points: $pointsString / ${assessment.reachablePoints.decimalFractionString}  (precise number: ${context.points.fractionHtml})</p>\n"
       report ++= "<ul>\n"
-      for (comment <- commenter.comments) {
+      for (comment <- context.comments) {
         val line = comment.kind match
           case Kind.feedback => s"  <li>${comment.html}</li>\n"
           case Kind.debug => s"""  <li style="color:gray">${comment.html}</li>\n"""
@@ -47,7 +46,7 @@ abstract class Grader(val name: ElementName) extends PageElement {
         report ++= line
       }
       report ++= "</ul>\n"
-      Seq(ElementAction(name, JsObject(Map("points" -> JsString(commenter.points.decimalFractionString(2)), "report" -> JsString(report.result())))))
+      Seq(ElementAction(name, JsObject(Map("points" -> JsString(context.points.decimalFractionString(2)), "report" -> JsString(report.result())))))
     } catch {
       case e : Throwable =>
         val message = ExceptionUtils.getStackTrace(e)

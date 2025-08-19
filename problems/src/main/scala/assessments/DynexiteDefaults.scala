@@ -37,7 +37,7 @@ object DynexiteDefaults {
     }
     def math: StackMath =
       parse(str)
-    def mathTry(name: String)(using gradingContext: GradingContext, commenter: Commenter): StackMath = {
+    def mathTry(name: String)(using gradingContext: GradingContext): StackMath = {
       if (str == "")
         StackMath.noAnswer
       else
@@ -45,7 +45,7 @@ object DynexiteDefaults {
           math
         catch
           case e: SyntaxError =>
-            commenter += s"Could not parse $name, treating as no answer"
+            gradingContext += s"Could not parse $name, treating as no answer"
             StackMath.noAnswer
     }
   }
@@ -56,7 +56,7 @@ object DynexiteDefaults {
     def sympy(using gradingContext: GradingContext): SympyExpr = stringValue.sympy
     def latex(using gradingContext: GradingContext): String = sympy.latex
     def math(using gradingContext: GradingContext): StackMath = stringValue.math
-    def mathTry(name: String)(using gradingContext: GradingContext, commenter: Commenter): StackMath =
+    def mathTry(name: String)(using gradingContext: GradingContext): StackMath =
       stringValue.mathTry(name)
   }
 
@@ -95,7 +95,7 @@ object DynexiteDefaults {
   def checkEq(x: => PageElement | SympyExpr,
               y: => PageElement | SympyExpr,
               assumption: SympyAssumption = SympyAssumption.positive)
-             (using gradingContext: GradingContext, comments: Commenter): Boolean =
+             (using context: GradingContext): Boolean =
     try {
       def toSympy(value: PageElement | SympyExpr) = value match {
         case x: PageElement => x.sympy
@@ -103,12 +103,12 @@ object DynexiteDefaults {
       }
       checkEquality(toSympy(x), toSympy(y), assumption=assumption)
     } catch
-      case e : SyntaxError => comments += e.getMessage; false
+      case e : SyntaxError =>
+        context += e.getMessage; false
   
   def gradeInputGroup(inputs: Seq[(AnswerElement, String)],
-                      pointsPerOption: Points = null, pointsTotal: Points = null,
-                      commenter: Commenter)
-                     (using gradingContext: GradingContext): Unit = {
+                      pointsPerOption: Points = null, pointsTotal: Points = null)
+                     (using context: GradingContext): Unit = {
     assert(inputs.nonEmpty)
     assert(pointsPerOption != null || pointsTotal != null)
     if (pointsPerOption != null && pointsTotal != null)
@@ -122,14 +122,14 @@ object DynexiteDefaults {
       val stringValue = input.stringValue 
       if (stringValue == input.reference)
         assert(stringValue == "" || input.asInstanceOf[MultipleChoice].options.contains(stringValue))
-        commenter += s"$description: Correct."
+        context += s"$description: Correct."
         points += pointsPerOption2
       else if (stringValue == "")
-        commenter += s"$description: Incorrect. (You selected nothing, should be '${input.reference}')"
+        context += s"$description: Incorrect. (You selected nothing, should be '${input.reference}')"
       else
-        commenter += s"$description: Incorrect. (You said '${stringValue}', should be '${input.reference}')"
+        context += s"$description: Incorrect. (You said '${stringValue}', should be '${input.reference}')"
     }
 
-    commenter.points += points
+    context.points += points
   }
 }

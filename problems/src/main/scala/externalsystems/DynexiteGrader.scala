@@ -4,7 +4,7 @@ import assessments.ExceptionContext.initialExceptionContext
 
 import scala.language.experimental.genericNumberLiterals
 import assessments.pageelements.AnswerElement
-import assessments.{Assessment, Commenter, ElementName, ExceptionContext, ExceptionWithContext, Grader, GradingContext, Points}
+import assessments.{Assessment, ElementName, ExceptionContext, ExceptionWithContext, Grader, GradingContext, Points}
 import com.typesafe.scalalogging.Logger
 import externalsystems.Dynexite.{ClassificationBlock, DynexiteResponses, StackBlock, getDynexiteAnswers}
 
@@ -80,35 +80,35 @@ object DynexiteGrader {
     assert(blocks.nonEmpty)
 
     val DynexiteResponses(answers, dynexitePoints, dynexiteReachable) = getDynexiteAnswers(item, assessment)
-    val graders = (for (case (_, grader: Grader) <- assessment.pageElements) yield grader).toSeq;
+    val graders = (for (case (_, grader: Grader) <- assessment.pageElements) yield grader).toSeq
     assert(graders.size == 1, graders)
     val grader = graders.head
 
-    val commenter = Commenter()
-    grader.grade(GradingContext(
+    val context = GradingContext(
       answers = answers.map { (k, v) => (k, v) },
       registrationNumber = registrationNumber
-    ), commenter)
+    )
+    grader.grade()(using context)
 
-    logger.debug("Comments: " + commenter.comments)
+    logger.debug("Comments: " + context.comments)
 
     val reachable = grader.reachablePoints
 
-    logger.debug(s"Points: ${commenter.points} / $reachable")
+    logger.debug(s"Points: ${context.points} / $reachable")
     logger.debug(s"Dynexite: $dynexitePoints / $dynexiteReachable")
 
     val report = ListBuffer[String]()
     report += s"Problem: ${assessment.name}"
-    report += s"Points: ${commenter.points} out of $reachable"
+    report += s"Points: ${context.points} out of $reachable"
     report += "Comments:"
-    for (comment <- commenter.comments)
+    for (comment <- context.comments)
       report += "* "+comment
 
     // Allowing some error in this check since Dynexite doesn't have rational points
 //    assert((points - dynexitePoints).abs <= 0.005, (points, dynexitePoints))
     assert(reachable == dynexiteReachable)
 
-    QuestionResult(points=commenter.points, reachable=reachable, report=report.mkString("\n"))
+    QuestionResult(points=context.points, reachable=reachable, report=report.mkString("\n"))
   }
 
   private val logger = Logger[DynexiteGrader.type]

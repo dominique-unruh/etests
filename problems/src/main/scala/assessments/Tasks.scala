@@ -47,15 +47,14 @@ object GradeEveryone extends Task {
       output ++= gradingRules.html += '\n'
 
       output ++= "<h2>Your grading</h2>\n"
-      val gradingContext = GradingContext(
+      val context = GradingContext(
         answers = answers,
         registrationNumber = student)
-      val commenter = Commenter()
-      question.pageElements(ElementName.grader).asInstanceOf[Grader].grade(gradingContext, commenter)
-      output ++= s"Points: ${commenter.points.decimalFractionString(2)} of ${question.reachablePoints}\n"
-      points += commenter.points
+      question.pageElements(ElementName.grader).asInstanceOf[Grader].grade()(using context)
+      output ++= s"Points: ${context.points.decimalFractionString(2)} of ${question.reachablePoints}\n"
+      points += context.points
       output ++= "<ul>\n"
-      for (comment <- commenter.comments) {
+      for (comment <- context.comments) {
         if (comment.kind == Kind.warning)
           errors += ((student, question, s"Warning: ${comment.html}"))
         val style = comment.kind match {

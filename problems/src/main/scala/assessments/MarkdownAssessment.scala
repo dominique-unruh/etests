@@ -24,11 +24,11 @@ abstract class MarkdownAssessment {
   lazy val explanation: InterpolatedMarkdown[Element] = md""
   lazy val gradingRules: InterpolatedMarkdown[Element] = md""
 
-  def grade(gradingContext: GradingContext, comments: Commenter)(implicit exceptionContext: ExceptionContext): Unit
+  def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit
   val reachablePoints: Points
   val grader: Grader = new Grader(ElementName.grader) {
-    override def grade(gradingContext: GradingContext, commenter: Commenter)(implicit exceptionContext: ExceptionContext): Unit = 
-      MarkdownAssessment.this.grade(gradingContext, commenter)
+    override def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit =
+      MarkdownAssessment.this.grade()
     override lazy val reachablePoints: Points = MarkdownAssessment.this.reachablePoints
     override val tags: Tag.Tags[this.type] = Tag.Tags.empty
   }
@@ -89,15 +89,14 @@ abstract class MarkdownAssessment {
         changedReference.addOne(name -> value)
 
       println(s"Reference solution: ${changedReference.map((k, v) => s"$k -> $v").mkString(", ")}")
-      val gradingContext = GradingContext(answers = changedReference.toMap, registrationNumber = "TEST")
+      val context = GradingContext(answers = changedReference.toMap, registrationNumber = "TEST")
       try {
-        val commenter = Commenter()
-        grader.grade(gradingContext, commenter)
+        grader.grade()(using context)
         println("Resulting comments:")
-        for (comment <- commenter.comments)
+        for (comment <- context.comments)
           println("* " + comment.toPlaintext)
-        println(s"Resulting number of points: ${commenter.points} (expected points: $expected)")
-        if (commenter.points != expected)
+        println(s"Resulting number of points: ${context.points} (expected points: $expected)")
+        if (context.points != expected)
           throw ExceptionWithContext("Mismatch with expectation")
       } catch {
         case NoGraderYetException =>
