@@ -157,6 +157,8 @@ class gcd(sympy.Function):
   lazy val `false` = SympyExpr(sympy.S.`false`)
   lazy val zero: SympyExpr = integer(0)
   lazy val imaginaryUnit = SympyExpr(sympy.S.ImaginaryUnit)
+  lazy val eulerConstant = SympyExpr(sympy.S.Exp1)
+  lazy val pi = SympyExpr(sympy.S.Pi)
 }
 
 object StackUtils {

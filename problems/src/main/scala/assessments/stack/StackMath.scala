@@ -151,7 +151,7 @@ object StackMath {
     case plus, minus
     case times, divide
     case unaryPlus, unaryMinus
-    case imaginaryUnit
+    case imaginaryUnit, eulerConstant, pi
     /** Special symbol to denote a missing answer */
     case noAnswer
   }
@@ -174,6 +174,8 @@ object StackMath {
   }
 
   val imaginaryUnit: Operation = Operation(Ops.imaginaryUnit)
+  val eulerConstant: Operation = Operation(Ops.eulerConstant)
+  val pi: Operation = Operation(Ops.pi)
   val noAnswer: Operation = Operation(Ops.noAnswer)
 }
 

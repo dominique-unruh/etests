@@ -55,6 +55,8 @@ object MathContext {
     Ops.unaryMinus -> { case Seq(x) => - x },
     Ops.equal -> { case Seq(x,y) => SympyExpr(sympy.Eq(x.python, y.python).as[py.Dynamic]) },
     Ops.imaginaryUnit -> { case Seq() => SympyExpr.imaginaryUnit },
+    Ops.eulerConstant -> { case Seq() => SympyExpr.eulerConstant },
+    Ops.pi -> { case Seq() => SympyExpr.pi },
   )
 
   val default = new MathContext(
