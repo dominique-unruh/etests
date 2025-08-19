@@ -116,7 +116,7 @@ sealed trait StackMath {
 
     SympyExpr(toSympy(this.fix))
   }
-  
+
   def mapFunction(name: String | Ops, f: Seq[StackMath] => StackMath): StackMath = this match
     case Operation(operator, arguments*) if operator == name =>
       f(arguments)
@@ -152,6 +152,8 @@ object StackMath {
     case times, divide
     case unaryPlus, unaryMinus
     case imaginaryUnit
+    /** Special symbol to denote a missing answer */
+    case noAnswer
   }
 
   case class Operation(operator: Ops, arguments: StackMath*) extends StackMath
@@ -172,6 +174,7 @@ object StackMath {
   }
 
   val imaginaryUnit: Operation = Operation(Ops.imaginaryUnit)
+  val noAnswer: Operation = Operation(Ops.noAnswer)
 }
 
 case class UndefinedVariableException(message: String) extends Exception(message)

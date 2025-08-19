@@ -219,11 +219,14 @@ object StackUtils {
     }
   }
 
-  def checkEqualityNew(x: StackMath, y: StackMath,
+  def checkEqualityNew(value: StackMath, expected: StackMath,
                        mapLeft: SympyExpr => SympyExpr = identity,
                        mapRight: SympyExpr => SympyExpr = identity)(using MathContext): Boolean =
-    forallMapped(x, y) { _ => (x,y) =>
-      mapLeft(x.toSympyMC(allowUndefined = false))
-        .algebraicEqual(mapRight(y.toSympyMC(allowUndefined = false)))
-    }
+    if (value == StackMath.noAnswer || expected == StackMath.noAnswer)
+      value == expected
+    else
+      forallMapped(value, expected) { _ =>(x, y) =>
+        mapLeft(x.toSympyMC(allowUndefined = false))
+          .algebraicEqual(mapRight(y.toSympyMC(allowUndefined = false)))
+      }
 }

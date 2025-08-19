@@ -51,9 +51,9 @@ object Python {
   def define(code: String): py.Dynamic = {
     val magic = s"magic_${Random.nextInt(1000000000)}"
     val code2 = s"def $magic():\n  ${code.replace("\n", "\n  ")}\n\n"
-    logger.debug(code2)
+//    logger.debug(code2)
     val result = execLocally(code2).bracketAccess(magic)()
-    logger.debug(result.toString)
+//    logger.debug(result.toString)
     result
   }
   
