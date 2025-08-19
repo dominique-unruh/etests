@@ -105,6 +105,7 @@
                     function @(ElementName.grader.jsElementCallbackName)(json) {
                         document.getElementById("grading-points").textContent = json['points']
                         document.getElementById("grading-report").innerHTML = json['report']
+                        MathJax.typesetPromise()
                     }
                 </script>
 
