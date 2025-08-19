@@ -8,6 +8,7 @@ import assessments.stack.{StackMath, SympyAssumption, SympyExpr}
 import utils.Tag.Tags
 import utils.Utils
 
+import java.io.IOException
 import scala.collection.SeqMap
 
 object DynexiteDefaults {
@@ -44,6 +45,19 @@ object DynexiteDefaults {
     def sympy(using gradingContext: GradingContext): SympyExpr = stringValue.sympy
     def latex(using gradingContext: GradingContext): String = sympy.latex
     def math(using gradingContext: GradingContext): StackMath = stringValue.math
+    def mathTry(name: String)(using gradingContext: GradingContext, commenter: Commenter): StackMath = {
+      val string = stringValue
+      if (string == "")
+        StackMath.noAnswer
+      else
+      try
+        math
+      catch
+        // TODO right exception
+        case e: IOException =>
+          commenter += s"Could not parse $name, treating as no answer"
+          StackMath.noAnswer
+    }
   }
 
 /*  extension (pe: PageElement) {
@@ -111,9 +125,9 @@ object DynexiteDefaults {
         commenter += s"$description: Correct."
         points += pointsPerOption2
       else if (stringValue == "")
-        commenter += s"$description: Incorrect. (You selected nothing, should be ${input.reference})"
+        commenter += s"$description: Incorrect. (You selected nothing, should be '${input.reference}')"
       else
-        commenter += s"$description: Incorrect. (You said '${stringValue}', should be ${input.reference})"
+        commenter += s"$description: Incorrect. (You said '${stringValue}', should be '${input.reference}')"
     }
 
     commenter.points += points

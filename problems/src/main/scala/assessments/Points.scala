@@ -99,6 +99,7 @@ object Points {
   def apply(value: BigDecimal): Points =
     Points(value.bigDecimal.unscaledValue(),
       bigInt10.pow(value.bigDecimal.scale()))
+  def apply(value: Double): Points = Points(value.toString)
   given Conversion[BigInt, Points] with
     def apply(value: BigInt): Points = Points(value)
   given Conversion[Int, Points] with
@@ -107,6 +108,7 @@ object Points {
     def apply(value: Long): Points = Points(value)
   given Conversion[BigDecimal, Points] with
     def apply(value: BigDecimal): Points = Points(value)
+  given Conversion[Double, Points] = value => Points(value)
   given FromDigits.Decimal[Points] with
     override def fromDigits(digits: String): Points =
       Points(digits)

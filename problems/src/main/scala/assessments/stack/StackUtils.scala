@@ -157,6 +157,8 @@ class gcd(sympy.Function):
   lazy val `false` = SympyExpr(sympy.S.`false`)
   lazy val zero: SympyExpr = integer(0)
   lazy val imaginaryUnit = SympyExpr(sympy.S.ImaginaryUnit)
+  lazy val eulerConstant = SympyExpr(sympy.S.Exp1)
+  lazy val pi = SympyExpr(sympy.S.Pi)
 }
 
 object StackUtils {
@@ -219,11 +221,14 @@ object StackUtils {
     }
   }
 
-  def checkEqualityNew(x: StackMath, y: StackMath,
+  def checkEqualityNew(value: StackMath, expected: StackMath,
                        mapLeft: SympyExpr => SympyExpr = identity,
                        mapRight: SympyExpr => SympyExpr = identity)(using MathContext): Boolean =
-    forallMapped(x, y) { _ => (x,y) =>
-      mapLeft(x.toSympyMC(allowUndefined = false))
-        .algebraicEqual(mapRight(y.toSympyMC(allowUndefined = false)))
-    }
+    if (value == StackMath.noAnswer || expected == StackMath.noAnswer)
+      value == expected
+    else
+      forallMapped(value, expected) { _ =>(x, y) =>
+        mapLeft(x.toSympyMC(allowUndefined = false))
+          .algebraicEqual(mapRight(y.toSympyMC(allowUndefined = false)))
+      }
 }
