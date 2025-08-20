@@ -3,6 +3,8 @@
 # https://www.playframework.com/documentation/latest/ScalaRouting
 # ~~~~
 
+GET     /                    controllers.Default.redirect(to = "/preview/")
+GET     /preview/              controllers.AssessmentController.allExams()
 GET     /preview/:exam/              controllers.AssessmentController.exam(exam)
 GET     /preview/:exam/:assessment/              controllers.AssessmentController.assessment(exam, assessment)
 GET     /preview/:exam/:assessment/:file         controllers.AssessmentController.assessmentFile(exam, assessment, file)

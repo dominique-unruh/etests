@@ -3,6 +3,9 @@ package assessments
 import assessments.Exam.logger
 import assessments.ExceptionContext.{addToExceptionContext, initialExceptionContext}
 import com.typesafe.scalalogging.Logger
+import io.github.classgraph.ClassGraph
+
+import scala.jdk.CollectionConverters.IterableHasAsScala
 
 case class Exam(name: String, problems: MarkdownAssessment*) {
   assert(problems.map(_.name).distinct.length == problems.map(_.name).length)
@@ -36,4 +39,26 @@ case class Exam(name: String, problems: MarkdownAssessment*) {
 
 object Exam {
   private val logger = Logger[Exam]
+
+  lazy val exams: Seq[Exam] = {
+    val classgraph = new ClassGraph()
+      .enableClassInfo()
+      .acceptPackages("exam")
+      .scan()
+    val results = Seq.newBuilder[Exam]
+
+    for (classInfo <- classgraph.getAllStandardClasses.asScala)
+       if (classInfo.getName.endsWith("$") && classInfo.extendsSuperclass(classOf[Exam]))
+         try {
+           println(classInfo)
+           val clazz = classInfo.loadClass()
+//           println(clazz)
+           val moduleField = clazz.getDeclaredField("MODULE$")
+//           println(moduleField)
+           results += moduleField.get(null).asInstanceOf[Exam]
+         } catch
+           case e: NoSuchFieldException =>
+
+    results.result()
+  }
 }

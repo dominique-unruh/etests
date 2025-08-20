@@ -35,26 +35,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
 
 //  private val exampleAssessmentMarkdown: String = Files.readString(Path.of("/home/unruh/r/assessments/data/test.md"))
 //  private val exampleAssessment: Assessment = CnotConstruction.assessment
-
-  private lazy val classgraph = new ClassGraph()
-    .enableClassInfo()
-    .acceptPackages("exam")
-    .scan()
-
-  // TODO remove
-  private def packageContent(name: String) = {
-    classgraph.getPackageInfo(name) match {
-      case null => Nil
-      case pkg =>
-        val results = Seq.newBuilder[String]
-        for (clazz <- pkg.getClassInfo.asScala
-             if clazz.extendsSuperclass(classOf[MarkdownAssessment]))
-          results += clazz.getName.stripSuffix("$")
-        results.result()
-    }
-  }
-
-  // TODO remove
+  
   private def getAssessment(exam: Exam, name: String)(using exceptionContext: ExceptionContext): MarkdownAssessment = {
     given ExceptionContext = ExceptionContext.addToExceptionContext(s"Looking up question $name in exam $exam")
     exam.assessmentByName(name)
@@ -66,6 +47,20 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     val module = moduleField.get (null)
     module.asInstanceOf[Exam]
   }
+
+  def allExams(): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    val exams = Exam.exams
+    val html = StringBuilder()
+    html ++= s"<h1>Available exams</h1>\n"
+    html ++= "<ul>\n"
+    for (exam <- exams.sortBy(_.name))
+      val escapedName = StringEscapeUtils.escapeHtml4(exam.name)
+      val link = routes.AssessmentController.exam(exam.getClass.getName.stripSuffix("$")).url
+      html ++= s"""  <li><a href="$link">$escapedName</a> (${exam.getClass.getSimpleName.stripSuffix("$")})</li>\n"""
+    html ++= "</ul>\n"
+    Ok(Html(html.result()))
+  }
+
 
   def exam(examName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     val exam = getExam(examName)

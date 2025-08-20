@@ -14,7 +14,7 @@ ThisBuild / scalaVersion := "3.6.4"
 lazy val webapp = (project in file("webapp"))
   .settings(
     libraryDependencies += guice,
-    libraryDependencies += "io.github.classgraph" % "classgraph" % "4.8.181",
+//    libraryDependencies += "io.github.classgraph" % "classgraph" % "4.8.181",
     libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test,
   )
   .enablePlugins(PlayScala)
@@ -56,4 +56,5 @@ lazy val problems = (project in file("problems"))
       libraryDependencies += "org.apache.xmlgraphics" % "batik-codec" % "1.19",
       libraryDependencies += "org.apache.xmlgraphics" % "batik-dom" % "1.19",
       libraryDependencies += "org.apache.xmlgraphics" % "batik-svg-dom" % "1.19",
+      libraryDependencies += "io.github.classgraph" % "classgraph" % "4.8.181",
   )
