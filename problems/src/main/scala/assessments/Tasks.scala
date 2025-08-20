@@ -2,17 +2,14 @@ package assessments
 
 import assessments.Comment.Kind
 import assessments.ExceptionContext.initialExceptionContext
-import cats.syntax.writer
-import exam.y2025.iqc1.Iqc1Exam
-import externalsystems.{Dynexite, DynexiteGrader}
-import org.apache.commons.io.FileUtils
+import externalsystems.Dynexite
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import utils.Utils
 
-import java.io.{BufferedWriter, FileWriter, PrintWriter}
-import java.nio.file.{Files, Path, Paths}
+import java.io.PrintWriter
+import java.nio.file.{Files, Path}
 import scala.collection.mutable
 import scala.util.Using
 
@@ -22,7 +19,7 @@ abstract class Task extends App {
 
 //noinspection ScalaFileName
 object GradeEveryone extends Task {
-  val exam = Iqc1Exam // TODO don't hardcode
+  val exam = Utils.getSystemPropertyObject[assessments.Exam]("current.exam", "the current exam")
   makeReports()
 
   private def makeQuestionReport(student: String, question: Assessment, errors: mutable.Queue[(String, Assessment, String)]): (Points, String) = {

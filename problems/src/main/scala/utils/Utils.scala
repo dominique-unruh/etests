@@ -12,8 +12,10 @@ import java.time.format.DateTimeFormatter
 import java.util.{Base64, Properties}
 import scala.jdk.CollectionConverters.given
 import scala.collection.mutable
-import scala.quoted.{Expr, Quotes}
+import scala.quoted.{Expr, Quotes, Type}
+import scala.reflect.ClassTag
 import scala.util.Using
+import scala.reflect.runtime.universe.{TypeTag, typeOf}
 
 object Utils {
   private val logger = Logger[Utils.type]
@@ -109,7 +111,46 @@ object Utils {
     path2
   }
 
-  /**
+  def getSystemPropertyClass[T](property: String, classDescription: String)(implicit typeTag: TypeTag[T]): Class[T] = {
+    val className = System.getProperty(property)
+    if (className == null)
+      throw new RuntimeException(s"Please configure $property in java.properties (class name of $classDescription)")
+    val clazz = try
+      getClass.getClassLoader.loadClass(className)
+    catch
+      case e: ClassNotFoundException =>
+        throw new RuntimeException(s"$property in java.properties must refer to an existing class (full class name like package.subpackage.MyClass)")
+    if (!typeTag.mirror.runtimeClass(typeTag.tpe).isAssignableFrom(clazz))
+      throw new RuntimeException(s"$property in java.properties must refer to a class of type ${typeTag}")
+    clazz.asInstanceOf[Class[T]]
+  }
+
+  def getSystemPropertyObject[T](property: String, objectDescription: String)(using classTag: ClassTag[T]): T = {
+    val objectName = System.getProperty(property)
+    if (objectName == null)
+      throw new RuntimeException(s"Please configure $property in java.properties (object name of $objectDescription)")
+
+    val clazz = try
+      getClass.getClassLoader.loadClass(objectName + "$")
+    catch
+      case e: ClassNotFoundException =>
+        throw new RuntimeException(s"$property in java.properties must refer to an existing object (full object name like package.subpackage.MyObject)")
+
+    val moduleField = try
+      clazz.getField("MODULE$")
+    catch
+      case e: NoSuchFieldException =>
+        throw new RuntimeException(s"$property in java.properties must refer to a Scala object, not a class")
+
+    val objectInstance = moduleField.get(null)
+
+    if (!classTag.runtimeClass.isAssignableFrom(objectInstance.getClass))
+      throw new RuntimeException(s"$property in java.properties must refer to an object of type $classTag")
+
+    objectInstance.asInstanceOf[T]
+  }
+
+    /**
    * Macro that raises a compilation error if compilation happens on or after the specified date.
    *
    * @param date Date string in format "yyyy-MM-dd" (e.g., "2025-10-12")

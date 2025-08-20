@@ -24,6 +24,7 @@ lazy val problems = (project in file("problems"))
   .settings(
     libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "2.4.0",
     libraryDependencies += "org.scala-lang" %% "scala3-compiler" % scalaVersion.value,
+    libraryDependencies += "org.scala-lang" %% "scala3-reflect" % scalaVersion.value,
     libraryDependencies += "com.lihaoyi" %% "sourcecode" % "0.4.2",
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.19" % Test,
     libraryDependencies += "org.commonmark" % "commonmark" % "0.25.1",
