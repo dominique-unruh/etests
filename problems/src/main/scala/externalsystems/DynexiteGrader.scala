@@ -79,7 +79,7 @@ object DynexiteGrader {
     val blocks = item.blocks
     assert(blocks.nonEmpty)
 
-    val DynexiteResponses(answers, dynexitePoints, dynexiteReachable) = getDynexiteAnswers(item, assessment)
+    val (answers, dynexitePoints, dynexiteReachable) = getDynexiteAnswers(item, assessment)
     val graders = (for (case (_, grader: Grader) <- assessment.pageElements) yield grader).toSeq
     assert(graders.size == 1, graders)
     val grader = graders.head

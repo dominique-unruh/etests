@@ -241,7 +241,7 @@ object Dynexite {
                         (implicit exceptionContext: ExceptionContext):
   Map[ElementName, String] = {
     given ExceptionContext = ExceptionContext.addToExceptionContext(s"Matching Dynexite answers up with our exam implementation for $registrationNumber, ${assessment.name}", registrationNumber, assessment)
-    val answers = resultsByLearner(exam).get(registrationNumber) match {
+    val (answers, points, reachable) = resultsByLearner(exam).get(registrationNumber) match {
       case None => throw ExceptionWithContext(s"No student with registration number $registrationNumber known.")
       case Some(None) => throw ExceptionWithContext(s"Student with registration number $registrationNumber made no attempt.")
       case Some(Some(attempt)) =>
@@ -254,16 +254,44 @@ object Dynexite {
           throw ExceptionWithContext(s"Dynexite problem has name '${item.name}', our problem has name '$assessmentDynexiteName'. Should be equal.")
         getDynexiteAnswers(item = item, assessment = assessment)
     }
-    val reachable = answers.reachable
     if (reachable != assessment.reachablePoints)
       throw ExceptionWithContext(s"Dynexite says there are $reachable reachable points, we say ${assessment.reachablePoints}")
-    answers.answers
+    answers
   }
+
+  def blockNumberAnswers(block: Block): Int = block match
+    case block: StackBlock => block.answers.size
+    case block: ClassificationBlock => block.answers.length
 
   def getDynexiteAnswers(item: Dynexite.Item, assessment: Assessment)
                         (implicit exceptionContext: ExceptionContext):
-  DynexiteResponses = {
-    item.blocks match {
+  (Map[ElementName, String], Points, Points) = {
+    val numAnswers = item.blocks.map(blockNumberAnswers)
+    val answerElements = assessment.pageElements.values.collect { case elem: AnswerElement => elem }.toSeq
+
+    if (numAnswers.sum != answerElements.length)
+      throw ExceptionWithContext(s"Problem ${assessment.name} has ${answerElements.length} answer elements, but in Dynexite, we have ${numAnswers.sum} answers")
+
+    val answerElementBlocks = {
+      val builder = Seq.newBuilder[Seq[AnswerElement]]
+      val answerElementsMutable = answerElements.to(mutable.Queue)
+      for (num <- numAnswers)
+        builder += answerElementsMutable.take(num).toSeq
+        answerElementsMutable.remove(0, num)
+      assert(answerElementsMutable.isEmpty)
+      builder.result()
+    }
+
+    assert(answerElementBlocks.length == item.blocks.length)
+
+    val maps = for ((answerElements, block) <- answerElementBlocks.zip(item.blocks)) yield { block match
+      case block: StackBlock => getDynexiteAnswersStack(block, answerElements, assessment)
+      case block: ClassificationBlock => getDynexiteAnswersClassification(block, answerElements)
+      case _ =>
+        throw ExceptionWithContext(s"Dynexite data contained a solution block of unsupported type ${block.getClass.getName}")
+    }
+
+  /*  item.blocks match {
       case Seq() => DynexiteResponses(Map.empty, 0, 0)
       case Seq(_: StackBlock, _*) =>
         assert(item.blocks.forall(_.isInstanceOf[StackBlock]))
@@ -273,74 +301,65 @@ object Dynexite {
         getDynexiteAnswersClassification(item, assessment)
       case Seq(block, _*) =>
         throw ExceptionWithContext(s"Dynexite data contained a solution block of unsupported type ${block.getClass.getName}")
-    }
+    }*/
+
+    val points = item.blocks.map(_.earnedPoints).sum
+    val reachable = item.blocks.map(_.maxPoints).sum
+
+    (Map(maps.flatten*), points, reachable)
   }
 
 
-  private def getDynexiteAnswersStack(item: Dynexite.Item, assessment: Assessment)
+  private def getDynexiteAnswersStack(block: Dynexite.StackBlock, elements: Seq[AnswerElement], assessment: Assessment)
                                      (implicit exceptionContext: ExceptionContext):
-  DynexiteResponses = {
+  Map[ElementName, String] = {
     var points: Points = 0
     var reachable: Points = 0
 
     val expectedNames = {
       val builder = mutable.Map[String, ElementName]()
-      for (case (name, _: AnswerElement) <- assessment.pageElements) {
-        val lastName = name.last
-        assert(!builder.contains(lastName), (builder, lastName, assessment.pageElements))
-        builder.update(lastName, name)
+      for (element <- elements) {
+        val lastName = element.name.last
+        assert(!builder.contains(lastName), (builder, lastName, elements))
+        builder.update(lastName, element.name)
       }
       builder.toMap
     }
 
     val answers = mutable.Map[ElementName, String]()
 
-    for (block <- item.blocks) {
-      reachable += block.maxPoints
-      points += block.earnedPoints
-
-      for ((name, value) <- block.asInstanceOf[StackBlock].answers) {
-        val elementName = expectedNames.getOrElse(name,
-          throw ExceptionWithContext(s"$name (answer name from Dynexite/Stack) not in the list of input fields of ${assessment.name} (${expectedNames.keys.mkString(", ")})",
-            name, assessment, expectedNames)
-        )
-        assert(!answers.contains(elementName))
-        answers.update(elementName, value)
-      }
+    for ((name, value) <- block.answers) {
+      val elementName = expectedNames.getOrElse(name,
+        throw ExceptionWithContext(s"$name (answer name from Dynexite/Stack) not in the list of input fields of ${assessment.name} (${expectedNames.keys.mkString(", ")})",
+          name, assessment, expectedNames)
+      )
+      assert(!answers.contains(elementName))
+      answers.update(elementName, value)
     }
 
-    DynexiteResponses(answers.toMap, points, reachable)
+    // TODO check for answers from expectedNames that were not used
+
+    answers.toMap
   }
 
-  private def getDynexiteAnswersClassification(item: Dynexite.Item, assessment: Assessment)
+  private def getDynexiteAnswersClassification(block: Dynexite.ClassificationBlock, elements: Seq[AnswerElement])
                                               (implicit exceptionContext: ExceptionContext):
-  DynexiteResponses = {
-    var points: Points = 0
-    var reachable: Points = 0
+  Map[ElementName, String] = {
 
-    val dynexiteAnswers =
-      for (block <- item.blocks;
-           answer <- block.asInstanceOf[ClassificationBlock].answers)
-      yield answer
+    val dynexiteAnswers = block.answers
 
-    val assessmentNames = (for (case (name, _: AnswerElement) <- assessment.pageElements)
-      yield name).toSeq;
+    val assessmentNames = elements.map(_.name)
 
     assert(dynexiteAnswers.length == assessmentNames.length, (dynexiteAnswers, assessmentNames))
 
     val answers = mutable.Map[ElementName, String]()
-
-    for (block <- item.blocks) {
-      reachable += block.maxPoints
-      points += block.earnedPoints
-    };
 
     for ((name, answer) <- assessmentNames.zip(dynexiteAnswers)) {
       assert(!answers.contains(name), (answers, name, assessmentNames))
       answers.update(name, Option(answer).getOrElse(""))
     };
 
-    DynexiteResponses(answers.toMap, points, reachable)
+    answers.toMap
   }
 
   final case class DynexiteResponses(answers: Map[ElementName, String], points: Points, reachable: Points)

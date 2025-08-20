@@ -20,6 +20,7 @@ abstract class Task extends App {
 //noinspection ScalaFileName
 object GradeEveryone extends Task {
   val exam = Utils.getSystemPropertyObject[assessments.Exam]("current.exam", "the current exam")
+
   makeReports()
 
   private def makeQuestionReport(student: String, question: Assessment, errors: mutable.Queue[(String, Assessment, String)]): (Points, String) = {
@@ -125,5 +126,6 @@ object GradeEveryone extends Task {
     for (student <- Dynexite.resultsByLearner(exam).keys)
       makeReport(exam, student, targetDir, errors)
     makeErrorReport(errors, targetDir.resolve("errors.html"))
+    println(s"\n\nReports in $targetDir, errors in ${targetDir.resolve("errors.html")}")
   }
 }

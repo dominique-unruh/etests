@@ -75,6 +75,7 @@ object Points {
   private val bigInt10 = BigInt(10)
   val one: Points = Points(bigInt1)
   val zero: Points = Points(bigInt0)
+
   def apply(numerator: BigInt, denominator: BigInt): Points = {
     var num = numerator
     var den = denominator
@@ -92,26 +93,64 @@ object Points {
     }
     new Points(num, den)
   }
+
   def apply(value: String): Points = Points(BigDecimal(value, MathContext.UNLIMITED))
+
   def apply(value: BigInt): Points = new Points(value, bigInt1)
+
   def apply(value: Int): Points = new Points(value, bigInt1)
+
   def apply(value: Long): Points = new Points(value, bigInt1)
+
   def apply(value: BigDecimal): Points =
     Points(value.bigDecimal.unscaledValue(),
       bigInt10.pow(value.bigDecimal.scale()))
+
   def apply(value: Double): Points = Points(value.toString)
+
   given Conversion[BigInt, Points] with
     def apply(value: BigInt): Points = Points(value)
+
   given Conversion[Int, Points] with
     def apply(value: Int): Points = Points(value)
+
   given Conversion[Long, Points] with
     def apply(value: Long): Points = Points(value)
+
   given Conversion[BigDecimal, Points] with
     def apply(value: BigDecimal): Points = Points(value)
+
   given Conversion[Double, Points] = value => Points(value)
+
   given FromDigits.Decimal[Points] with
     override def fromDigits(digits: String): Points =
       Points(digits)
-      
-  given Ordering[Points] = Ordering.fromLessThan((a,b) => a <= b)
+
+  //  given Ordering[Points] = Ordering.fromLessThan((a,b) => a <= b)
+  given Numeric[Points] = new Numeric[Points] {
+    override def plus(x: Points, y: Points): Points = x + y
+
+    override def minus(x: Points, y: Points): Points = ???
+
+    override def times(x: Points, y: Points): Points = ???
+
+    override def negate(x: Points): Points = ???
+
+    override def fromInt(x: Int): Points = Points(x)
+
+    override def parseString(str: String): Option[Points] = ???
+
+    override def toInt(x: Points): Int = ???
+
+    override def toLong(x: Points): Long = ???
+
+    override def toFloat(x: Points): Float = ???
+
+    override def toDouble(x: Points): Double = ???
+
+    override def compare(x: Points, y: Points): Int =
+      if (x == y) 0
+      else if (x < y) -1
+      else +1
+  }
 }
