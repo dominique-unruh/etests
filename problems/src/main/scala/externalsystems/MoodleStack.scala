@@ -1,7 +1,7 @@
 package externalsystems
 
 import assessments.{Assessment, Html}
-import assessments.pageelements.{ImageElement, InputElement, MathPreviewElement, PageElement, PreviewElement}
+import assessments.pageelements.{ImageElement, InputElement, MathPreviewElement}
 import org.apache.commons.text.StringEscapeUtils
 import utils.Tag
 
@@ -9,6 +9,8 @@ import java.util.Base64
 import scala.xml.*
 
 object MoodleStack {
+  /** A guess what kind of identifiers are OK in Moodle/Stack situations */
+  private val identifierRegex = "^[a-zA-Z][a-zA-Z0-9_]*$".r.anchored
 
   enum InputType {
     case algebraic
@@ -43,8 +45,8 @@ object MoodleStack {
                   ) {
     assert(name.nonEmpty)
     assert(reference.nonEmpty)
-    assert(allowWords.forall(_.nonEmpty)) // TODO: Also: ASCII letters? No-spaces?
-    assert(extraOptions.forall(_.nonEmpty)) // TODO: Also: ASCII letters? No-spaces?
+    assert(allowWords.forall(identifierRegex.matches))
+    assert(extraOptions.forall(identifierRegex.matches))
 
     def xml: Elem =
       <input>
