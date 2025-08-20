@@ -3,15 +3,16 @@
 # https://www.playframework.com/documentation/latest/ScalaRouting
 # ~~~~
 
-GET     /preview/:assessment/              controllers.AssessmentController.assessment(assessment)
-GET     /preview/:assessment/:file         controllers.AssessmentController.assessmentFile(assessment, file)
-GET     /answers/:assessment/:regno         controllers.AssessmentController.loadAnswers(assessment, regno)
-GET     /reference/:assessment         controllers.AssessmentController.loadReference(assessment)
-POST    /response/:assessment/update controllers.AssessmentController.updateAction(assessment)
+GET     /preview/:exam/              controllers.AssessmentController.exam(exam)
+GET     /preview/:exam/:assessment/              controllers.AssessmentController.assessment(exam, assessment)
+GET     /preview/:exam/:assessment/:file         controllers.AssessmentController.assessmentFile(exam, assessment, file)
+GET     /answers/:exam/:assessment/:regno         controllers.AssessmentController.loadAnswers(exam, assessment, regno)
+GET     /reference/:exam/:assessment         controllers.AssessmentController.loadReference(exam, assessment)
+POST    /response/:exam/:assessment/update controllers.AssessmentController.updateAction(exam, assessment)
 GET     /routes.js                         controllers.MiscController.javascriptRoutes
-GET     /randomstudent                      controllers.AssessmentController.randomStudent()
-GET     /dynexitelink/:regno                      controllers.AssessmentController.dynexiteLink(regno)
-GET     /dynexitepdf/:regno.pdf                      controllers.AssessmentController.dynexitePdf(regno)
-GET     /dynexiteanswers/:assessment/:regno                      controllers.AssessmentController.dynexiteAnswers(assessment, regno)
+GET     /randomstudent/:exam                      controllers.AssessmentController.randomStudent(exam)
+GET     /dynexitelink/:exam/:regno                      controllers.AssessmentController.dynexiteLink(exam, regno)
+GET     /dynexitepdf/:exam/:regno.pdf                      controllers.AssessmentController.dynexitePdf(exam, regno)
+GET     /dynexiteanswers/:exam/:assessment/:regno                      controllers.AssessmentController.dynexiteAnswers(exam, assessment, regno)
 
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)

@@ -1,5 +1,6 @@
 package controllers
 
+import assessments.ExceptionContext.initialExceptionContext
 import assessments.pageelements.{AnswerElement, ElementAction}
 
 import javax.inject.*
@@ -9,8 +10,7 @@ import play.api.mvc.*
 import java.nio.file.{Files, Path}
 import javax.script.{ScriptEngine, ScriptEngineManager}
 import scala.util.matching.Regex
-import assessments.{Assessment, ElementName, ExceptionContext, MarkdownAssessment}
-import exam.y2025.iqc1.{Iqc1Exam, Uf}
+import assessments.{Assessment, ElementName, Exam, ExceptionContext, MarkdownAssessment}
 import play.api.libs.json.{JsArray, JsBoolean, JsObject, JsString, JsValue}
 import play.mvc.BodyParser.Json
 import play.twirl.api.{Html, HtmlFormat}
@@ -41,6 +41,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     .acceptPackages("exam")
     .scan()
 
+  // TODO remove
   private def packageContent(name: String) = {
     classgraph.getPackageInfo(name) match {
       case null => Nil
@@ -53,47 +54,56 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     }
   }
 
-  private def getAssessment(name: String) = {
+  // TODO remove
+  private def getAssessment(exam: Exam, name: String)(using exceptionContext: ExceptionContext): MarkdownAssessment = {
+    given ExceptionContext = ExceptionContext.addToExceptionContext(s"Looking up question $name in exam $exam")
+    exam.assessmentByName(name)
+  }
+
+  private def getExam(name: String) = {
     val clazz = Class.forName (name.stripSuffix ("/").replace ('/', '.') + "$")
     val moduleField = clazz.getField ("MODULE$")
     val module = moduleField.get (null)
-//    logger.debug (module.getClass.toString)
-    module.asInstanceOf[MarkdownAssessment].assessment
+    module.asInstanceOf[Exam]
   }
 
-  def assessment(assessmentName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
-    packageContent(assessmentName) match {
-      case Nil =>
-        val assessment = getAssessment(assessmentName)
-        val (body, explanation, gradingRules, files) = assessment.renderHtml
-        val html = views.html.assessment(
-          assessmentName = assessmentName,
-          title = assessment.name,
-          initialState = JsObject(assessment.pageElements.map{ (name, element) => (name.toString, element.initialState) }),
-          reachablePoints = assessment.reachablePoints.decimalFractionString,
-          body = Html(body.html),
-          explanation = Html(explanation.html),
-          gradingRules = Html(gradingRules.html))
-        Ok(html)
-      case packageContent =>
-        val html = StringBuilder()
-        html ++= "<ul>\n"
-        for (name <- packageContent) {
-          val escapedName = StringEscapeUtils.escapeHtml4(name)
-          val link = routes.AssessmentController.assessment(name).url
-          html ++= s"""  <li><a href="$link">$escapedName</a></li>\n"""
-        }
-        html ++= "</ul>\n"
-        Ok(Html(html.result()))
-    }
+  def exam(examName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    val exam = getExam(examName)
+    val html = StringBuilder()
+    html ++= s"<h1>Exam ${exam.name}</h1>\n"
+    html ++= "<ul>\n"
+    for (problem <- exam.problems)
+      val escapedName = StringEscapeUtils.escapeHtml4(problem.name)
+      val link = routes.AssessmentController.assessment(examName, problem.name).url
+      html ++= s"""  <li><a href="$link">$escapedName</a> (${problem.getClass.getSimpleName.stripSuffix("$")})</li>\n"""
+    html ++= "</ul>\n"
+    Ok(Html(html.result()))
   }
 
-  def loadReference(assessmentName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
-    val assessment = getAssessment(assessmentName)
+  def assessment(examName: String, assessmentName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    given ExceptionContext = ExceptionContext.initialExceptionContext(s"Web query for exam $examName, problem $assessmentName")
+    val exam = getExam(examName)
+    val assessment = getAssessment(exam, assessmentName)
+    val (body, explanation, gradingRules, files) = assessment.renderHtml
+    val html = views.html.assessment(
+      examName = examName,
+      assessmentName = assessmentName,
+      title = assessment.name,
+      initialState = JsObject(assessment.pageElements.map{ (name, element) => (name.toString, element.initialState) }),
+      reachablePoints = assessment.reachablePoints.decimalFractionString,
+      body = Html(body.html),
+      explanation = Html(explanation.html),
+      gradingRules = Html(gradingRules.html))
+    Ok(html)
+
+  }
+
+  def loadReference(examName: String, assessmentName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     given ExceptionContext = ExceptionContext.initialExceptionContext("Responding to web-query for reference solution from Dynexite exam",
       assessmentName)
-    // TODO: Don't hardcode exam!
-    val answers = assessment.referenceSolution
+    val exam = getExam(examName)
+    val assessment = getAssessment(exam, assessmentName)
+    val answers = assessment.assessment.referenceSolution
     Ok(answersToActions(assessment, answers))
   }
 
@@ -103,11 +113,12 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
            action <- assessment.pageElements(element).asInstanceOf[AnswerElement].setAction(content))
       yield elementActionAsJson(action))
 
-  def loadAnswers(assessmentName: String, registrationNumber: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+  def loadAnswers(examName: String, assessmentName: String, registrationNumber: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    given ExceptionContext = ExceptionContext.initialExceptionContext("Responding to web-query for student answers from Dynexite exam", assessmentName, registrationNumber)
     try {
-      val assessment = getAssessment(assessmentName)
-      given ExceptionContext = ExceptionContext.initialExceptionContext("Responding to web-query for student answers from Dynexite exam", assessmentName, registrationNumber)
-      val answers = Dynexite.getDynexiteAnswers(assessment = assessment, exam = Iqc1Exam, registrationNumber = registrationNumber)
+      val exam = getExam(examName)
+      val assessment = getAssessment(exam, assessmentName)
+      val answers = Dynexite.getDynexiteAnswers(assessment = assessment, exam = exam, registrationNumber = registrationNumber)
       assert(answers.forall(_._2 != null))
       Ok(answersToActions(assessment, answers))
     } catch {
@@ -116,16 +127,20 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     }
   }
 
-  def assessmentFile(assessmentName: String, fileName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
-    val assessment = getAssessment(assessmentName)
+  def assessmentFile(examName: String, assessmentName: String, fileName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    given ExceptionContext = initialExceptionContext(s"Responsing to web-request $request")
+    val exam = getExam(examName)
+    val assessment = getAssessment(exam, assessmentName)
     val (body, explanation, gradingRules, files) = assessment.renderHtml
     val (mime, content) = files(fileName)
     Ok(content).as(mime)
   }
 
-  def updateAction(assessmentName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+  def updateAction(examName: String, assessmentName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    given ExceptionContext = initialExceptionContext(s"Responsing to web-request $request")
+    val exam = getExam(examName)
     // TODO do some caching
-    val assessment = getAssessment(assessmentName)
+    val assessment = getAssessment(exam, assessmentName)
     val payload = request.body.asJson.get.asInstanceOf[JsObject]
     val actions = assessment.updateAction(payload)
     val response: JsValue = JsArray(actions.map(elementActionAsJson))
@@ -139,34 +154,35 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
       "data" -> action.data))
 
   private lazy val learners = Dynexite.resultsByLearner.view.collect({ case (regno, Some(_)) => regno }).toVector
-  def randomStudent(): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+  def randomStudent(examName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     val index = Random.nextInt(learners.length)
     Ok(JsObject(Map("registration" -> JsString(learners(index)))))
   }
 
-  def dynexiteAnswers(assessmentName: String, regno: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+  def dynexiteAnswers(examName: String, assessmentName: String, regno: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     given ExceptionContext = ExceptionContext.initialExceptionContext(s"Responsing to web-request $request")
-    val assessment = getAssessment(assessmentName)
+    val exam = getExam(examName)
+    val assessment = getAssessment(exam, assessmentName)
     val result = StringBuilder()
     try {
-      result ++= Dynexite.getDynexiteAnswersRaw(assessment, Iqc1Exam, regno).mkString("\n")
+      result ++= Dynexite.getDynexiteAnswersRaw(assessment, exam, regno).mkString("\n")
     } catch
       case e: Throwable => result ++= ExceptionUtils.getStackTrace(e)
     result ++= "\n\n\n"
     try {
-      result ++= Dynexite.getDynexiteAnswers(assessment, Iqc1Exam, regno).toSeq.mkString("\n")
+      result ++= Dynexite.getDynexiteAnswers(assessment, exam, regno).toSeq.mkString("\n")
     } catch
       case e: Throwable => result ++= ExceptionUtils.getStackTrace(e)
 
     Ok(result.result())
   }
 
-  def dynexitePdf(regno: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+  def dynexitePdf(examName: String, regno: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     val pdf = Dynexite.getAnswerPDF(registrationNumber = regno)
     Ok(pdf).as("application/pdf")
   }
 
-  def dynexiteLink(regno: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+  def dynexiteLink(examName: String, regno: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     Redirect(Dynexite.getLinkForLearner(regno))
   }
 }

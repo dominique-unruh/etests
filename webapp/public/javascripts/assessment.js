@@ -17,7 +17,7 @@ function loadReference() {
         log_error("Failed to load reference solution")
         console.log("Failed AJAX call: ", state, obj, statusMessage)
     }
-    $.ajax(jsRoutes.controllers.AssessmentController.loadReference(assessmentName).url,
+    $.ajax(jsRoutes.controllers.AssessmentController.loadReference(examName, assessmentName).url,
         {method: "GET", dataType: 'json', headers: {'CSRF-Token': csrfToken}})
         .fail(failCallback)
         .done(doActions)
@@ -34,7 +34,7 @@ function loadAnswers() {
         document.getElementById("registration").focus()
         return
     }
-    $.ajax(jsRoutes.controllers.AssessmentController.loadAnswers(assessmentName, regno).url,
+    $.ajax(jsRoutes.controllers.AssessmentController.loadAnswers(examName, assessmentName, regno).url,
         {method: "GET", dataType: 'json', headers: {'CSRF-Token': csrfToken}})
         .fail(failCallback)
         .done(doActions)
@@ -56,7 +56,7 @@ function sendState() {
         log_error("Failed to send updated state to server")
         console.log("Failed AJAX call: ", state, obj, statusMessage)
     }
-    $.ajax(jsRoutes.controllers.AssessmentController.updateAction(assessmentName).url,
+    $.ajax(jsRoutes.controllers.AssessmentController.updateAction(examName, assessmentName).url,
         {method: "POST", dataType: 'json', data: JSON.stringify(state), contentType: 'application/json',
             headers: {'CSRF-Token': csrfToken}})
         .fail(failCallback)
@@ -73,7 +73,7 @@ function randomStudent() {
         document.getElementById("registration").value = json['registration']
         loadAnswers()
     }
-    $.ajax(jsRoutes.controllers.AssessmentController.randomStudent(assessmentName).url,
+    $.ajax(jsRoutes.controllers.AssessmentController.randomStudent(examName).url,
         {method: "GET", dataType: 'json', headers: {'CSRF-Token': csrfToken}})
         .fail(failCallback)
         .done(successCallback)
@@ -87,13 +87,13 @@ function clearErrors() {
 
 function showDynexitePdf() {
     let regno = document.getElementById("registration").value
-    let url = jsRoutes.controllers.AssessmentController.dynexitePdf(regno).url
+    let url = jsRoutes.controllers.AssessmentController.dynexitePdf(examName, regno).url
     window.open(url, "_blank")
 }
 
 function showDynexiteLink() {
     let regno = document.getElementById("registration").value
-    let url = jsRoutes.controllers.AssessmentController.dynexiteLink(regno).url
+    let url = jsRoutes.controllers.AssessmentController.dynexiteLink(examName, regno).url
     window.open(url, "_blank")
 }
 
@@ -112,7 +112,7 @@ function dynexiteAnswers() {
         document.getElementById("registration").focus()
         return
     }
-    $.ajax(jsRoutes.controllers.AssessmentController.dynexiteAnswers(assessmentName, regno).url,
+    $.ajax(jsRoutes.controllers.AssessmentController.dynexiteAnswers(examName, assessmentName, regno).url,
         {method: "GET", headers: {'CSRF-Token': csrfToken}})
         .fail(failCallback)
         .done(successCallback)

@@ -16,6 +16,7 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters.given
 
 object Dynexite {
+  // TODO: Allow for different paths for different exams or something (don't assume that the dynexite.results.json path refers to the exam we look at)
   lazy val resultJsonPath: Path = {
     val path = System.getProperty("dynexite.results.json")
     if (path == null)

@@ -3,7 +3,9 @@
 @import play.api.libs.json.JsObject
 @import assessments.ElementName
 @import scala.jdk.CollectionConverters.given
-@(assessmentName: String,
+@(
+        examName: String,
+        assessmentName: String,
         title: String,
         initialState: JsObject,
         reachablePoints: String,
@@ -28,6 +30,7 @@
                 }
             };
             let csrfToken = "@(CSRF.getToken.value)";
+            let examName = "@(examName)";
             let assessmentName = "@(assessmentName)";
             let state = @Html(initialState.toString);
         </script>
