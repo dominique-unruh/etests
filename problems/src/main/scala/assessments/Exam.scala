@@ -4,10 +4,11 @@ import assessments.Exam.logger
 import assessments.ExceptionContext.{addToExceptionContext, initialExceptionContext}
 import com.typesafe.scalalogging.Logger
 import io.github.classgraph.ClassGraph
+import utils.Tag.Tags
 
 import scala.jdk.CollectionConverters.IterableHasAsScala
 
-case class Exam(name: String, problems: MarkdownAssessment*) {
+case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownAssessment*) {
   assert(problems.map(_.name).distinct.length == problems.map(_.name).length)
   
   def assessmentIndex(assessment: Assessment)(implicit exceptionContext: ExceptionContext): Int = {
@@ -34,7 +35,7 @@ case class Exam(name: String, problems: MarkdownAssessment*) {
   
   def main(args: Array[String]): Unit = {
     runTests()
-  } 
+  }
 }
 
 object Exam {

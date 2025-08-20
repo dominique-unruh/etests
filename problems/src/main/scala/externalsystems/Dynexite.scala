@@ -16,21 +16,20 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters.given
 
 object Dynexite {
-  // TODO: Allow for different paths for different exams or something (don't assume that the dynexite.results.json path refers to the exam we look at)
-  lazy val resultJsonPath: Path = {
-    val path = System.getProperty("dynexite.results.json")
-    if (path == null)
-      throw RuntimeException("No Dynexite result path configured. Set dynexite.results.json=... in java.properties")
-    val path2 = Path.of(path)
-    if (!Files.exists(path2))
-      throw RuntimeException(s"Dynexite result path points to nonexisting file $path2. Set dynexite.results.json=... in java.properties")
-    path2
-  }
-  lazy val theResults: ExamResults = {
-    parseExamResults(resultJsonPath)
-  }
-  lazy val resultsByLearner: Map[String, Option[Attempt]] =
-    theResults.learners.map(learner => learner.identifier -> learner.attempts.lastOption).toMap
+  private val resultJsonPaths = mutable.Map[String, Path]()
+  def resultJsonPath(exam: Exam): Path = resultJsonPaths.getOrElseUpdate(exam.getClass.getName, {
+    val property = s"dynexite.results.json.${exam.getClass.getSimpleName.stripSuffix("$")}"
+    Utils.getSystemPropertyPath(property, s"JSON file with Dynexite results for exam ${exam.name}")
+  })
+
+  private val examResultsMap = mutable.Map[String, ExamResults]()
+  def examResults(exam: Exam): ExamResults = examResultsMap.getOrElseUpdate(exam.getClass.getName, {
+    parseExamResults(resultJsonPath(exam))
+  })
+  private val resultsByLearnerMap = mutable.Map[String, Map[String, Option[Attempt]]]()
+  def resultsByLearner(exam: Exam): Map[String, Option[Attempt]] = resultsByLearnerMap.getOrElseUpdate(exam.getClass.getName, {
+    examResults(exam).learners.map(learner => learner.identifier -> learner.attempts.lastOption).toMap
+  })
 
   def parseExamResults(path: Path): ExamResults = {
     try
@@ -222,10 +221,9 @@ object Dynexite {
 
   def getDynexiteAnswersRaw(assessment: Assessment,
                          exam: Exam,
-                         registrationNumber: String,
-                         results: Map[String, Option[Attempt]] = Dynexite.resultsByLearner)
+                         registrationNumber: String)
                            (implicit exceptionContext: ExceptionContext) = {
-    results.get(registrationNumber) match {
+    resultsByLearner(exam).get(registrationNumber) match {
       case None => throw ExceptionWithContext(s"No student with registration number $registrationNumber known.")
       case Some(None) => throw ExceptionWithContext(s"Student with registration number $registrationNumber made no attempt.")
       case Some(Some(attempt)) =>
@@ -239,12 +237,11 @@ object Dynexite {
 
   def getDynexiteAnswers(assessment: Assessment,
                          exam: Exam,
-                         registrationNumber: String,
-                         results: Map[String, Option[Attempt]] = Dynexite.resultsByLearner)
+                         registrationNumber: String)
                         (implicit exceptionContext: ExceptionContext):
   Map[ElementName, String] = {
     given ExceptionContext = ExceptionContext.addToExceptionContext(s"Matching Dynexite answers up with our exam implementation for $registrationNumber, ${assessment.name}", registrationNumber, assessment)
-    val answers = results.get(registrationNumber) match {
+    val answers = resultsByLearner(exam).get(registrationNumber) match {
       case None => throw ExceptionWithContext(s"No student with registration number $registrationNumber known.")
       case Some(None) => throw ExceptionWithContext(s"Student with registration number $registrationNumber made no attempt.")
       case Some(Some(attempt)) =>
@@ -348,21 +345,25 @@ object Dynexite {
 
   final case class DynexiteResponses(answers: Map[ElementName, String], points: Points, reachable: Points)
 
-  def getLinkForLearner(registration: String): String = {
-    val attempt = resultsByLearner(registration).getOrElse {
+  def getLinkForLearner(exam: Exam, registration: String): String = {
+    val attempt = resultsByLearner(exam)(registration).getOrElse {
       throw RuntimeException(s"Cannot generate link to Dynexite exam: Student $registration didn't write it.") }
     val attemptId = attempt.attemptId
-    val blueprintId = Dynexite.theResults.blueprint.blueprintId
-    // TODO Don't hardcode course
-    val url = s"https://dynexite.rwth-aachen.de/t/companies/cpsippjadbec73a3unm0/courses/d27o253adbec73a2lnp0/exams/$blueprintId/grader?attempt=$attemptId&seed="
+    val blueprintId = Dynexite.examResults(exam).blueprint.blueprintId
+    val course = exam.tags.getOrElse(dynexiteCourseId, throw RuntimeException(s"Exam $exam has no tag dynexiteCourseId"))
+    val url = s"https://dynexite.rwth-aachen.de/t/companies/cpsippjadbec73a3unm0/courses/$course/exams/$blueprintId/grader?attempt=$attemptId&seed="
     // The URL also supports item=... with some item-id (looking like this: d2914rbadbec73f2974g) but taking the item-ids from the Dynexite JSON doesn't work
     url
   }
 
   object dynexiteQuestionName extends Tag[Assessment, String](default = "")
+  /** From links like https://dynexite.rwth-aachen.de/t/companies/cpsippjadbec73a3unm0/courses/XXX/exams/ (the XXX part) */
+  object dynexiteCourseId extends Tag[Exam, String](default = null)
 
-  def getAnswerPDF(archive: Path = Utils.getSystemPropertyPath("dynexite.results.pdfs", "the Dynexite PDF zip"),
+  def getAnswerPDF(exam: Exam,
                    registrationNumber: String): Array[Byte] = {
+    val archive: Path = Utils.getSystemPropertyPath(
+      s"dynexite.results.pdfs.${exam.getClass.getSimpleName.stripSuffix("$")}", "the Dynexite PDF zip")
     val zip = new ZipFile(archive.toFile)
 
     var pdf: Array[Byte] = null

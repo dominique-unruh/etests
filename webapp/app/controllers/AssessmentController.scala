@@ -35,7 +35,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
 
 //  private val exampleAssessmentMarkdown: String = Files.readString(Path.of("/home/unruh/r/assessments/data/test.md"))
 //  private val exampleAssessment: Assessment = CnotConstruction.assessment
-  
+
   private def getAssessment(exam: Exam, name: String)(using exceptionContext: ExceptionContext): MarkdownAssessment = {
     given ExceptionContext = ExceptionContext.addToExceptionContext(s"Looking up question $name in exam $exam")
     exam.assessmentByName(name)
@@ -148,8 +148,9 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
       "callback" -> JsString(action.element.jsElementCallbackName),
       "data" -> action.data))
 
-  private lazy val learners = Dynexite.resultsByLearner.view.collect({ case (regno, Some(_)) => regno }).toVector
   def randomStudent(examName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    val exam = getExam(examName)
+    val learners = Dynexite.resultsByLearner(exam).view.collect({ case (regno, Some(_)) => regno }).toVector
     val index = Random.nextInt(learners.length)
     Ok(JsObject(Map("registration" -> JsString(learners(index)))))
   }
@@ -173,11 +174,13 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
   }
 
   def dynexitePdf(examName: String, regno: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
-    val pdf = Dynexite.getAnswerPDF(registrationNumber = regno)
+    val exam = getExam(examName)
+    val pdf = Dynexite.getAnswerPDF(exam, registrationNumber = regno)
     Ok(pdf).as("application/pdf")
   }
 
   def dynexiteLink(examName: String, regno: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
-    Redirect(Dynexite.getLinkForLearner(regno))
+    val exam = getExam(examName)
+    Redirect(Dynexite.getLinkForLearner(exam, regno))
   }
 }

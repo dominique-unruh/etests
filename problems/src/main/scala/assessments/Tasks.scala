@@ -70,7 +70,7 @@ object GradeEveryone extends Task {
     (points, output.result())
   }
 
-  private def makeReport(student: String, targetDir: Path, errors: mutable.Queue[(String, Assessment, String)]): Unit = {
+  private def makeReport(exam: Exam, student: String, targetDir: Path, errors: mutable.Queue[(String, Assessment, String)]): Unit = {
     val studentDir = targetDir.resolve(student)
     var totalPoints = Points(0)
     Files.createDirectories(studentDir)
@@ -85,10 +85,10 @@ object GradeEveryone extends Task {
       writer.println("<ul>")
       writer.println(s"<li>Registration number: ${escapeHtml4(student)}</li>\n")
       writer.println("</ul>")
-      if (Dynexite.resultsByLearner(student).isEmpty)
+      if (Dynexite.resultsByLearner(exam)(student).isEmpty)
         writer.write("Student did not participate")
       else {
-        val pdf = Dynexite.getAnswerPDF(registrationNumber = student)
+        val pdf = Dynexite.getAnswerPDF(exam = exam, registrationNumber = student)
         Files.write(studentDir.resolve("dynexite.pdf"), pdf)
         for (question <- exam.problems) {
           val (points, report) = makeQuestionReport(student, question, errors)
@@ -122,8 +122,8 @@ object GradeEveryone extends Task {
   private def makeReports(): Unit = {
     val targetDir = Utils.getSystemPropertyPath("private.report.dir", "the directory where to write the private reports")
     val errors = mutable.Queue[(String, Assessment, String)]()
-    for (student <- Dynexite.resultsByLearner.keys)
-      makeReport(student, targetDir, errors)
+    for (student <- Dynexite.resultsByLearner(exam).keys)
+      makeReport(exam, student, targetDir, errors)
     makeErrorReport(errors, targetDir.resolve("errors.html"))
   }
 }

@@ -10,10 +10,11 @@ import scala.util.control.Breaks.{break, breakable}
 
 class DynexiteTest extends AnyFunSuiteLike {
   Utils.loadSystemProperties()
+  val exam: Iqc1Exam.type = Iqc1Exam
 
   private def resultsAvailable: Boolean = {
     try
-      Dynexite.resultJsonPath
+      Dynexite.resultJsonPath(exam)
       true
     catch
       case _ =>
@@ -23,7 +24,7 @@ class DynexiteTest extends AnyFunSuiteLike {
 
   test("load results") {
     if (resultsAvailable) {
-      Dynexite.theResults
+      Dynexite.resultsByLearner(exam)
   }}
 
   test("get answers") {
