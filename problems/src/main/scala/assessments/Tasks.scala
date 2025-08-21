@@ -66,7 +66,7 @@ object GradeEveryone extends Task {
     } catch {
       case e: Throwable =>
         output ++= s"""<pre style="color:red">${escapeHtml4(ExceptionUtils.getStackTrace(e))}</pre>\n"""
-        errors += ((student, question, s"Exception: <pre>${escapeHtml4(e.getMessage)}</pre>"))
+        errors += ((student, question, s"Exception: <pre>${escapeHtml4(e.toString)}</pre>"))
     }
     (points, output.result())
   }
