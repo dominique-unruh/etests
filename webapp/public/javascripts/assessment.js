@@ -50,7 +50,63 @@ function doActions(json) {
     }
 }
 
-// TODO debounce this!
+// Track if an AJAX call for send state is currently in progress
+let isAjaxInProgress = false;
+// Track if there's a pending state update waiting to be sent
+let hasPendingUpdate = false;
+
+
+function sendState() {
+    clearErrors();
+    document.getElementById("working").innerText = "(loading)"
+
+    if (isAjaxInProgress) {
+        hasPendingUpdate = true;
+        return;
+    }
+
+    performSendState();
+}
+
+
+
+function performSendState() {
+    document.getElementById("working").innerText = "(loading)"
+    isAjaxInProgress = true;
+    hasPendingUpdate = false; // Clear pending flag since we're processing now
+
+    function failCallback(obj, statusMessage) {
+        log_error("Failed to send updated state to server");
+        console.log("Failed AJAX call: ", state, obj, statusMessage);
+        document.getElementById("working").innerText = "(loading failed)"
+        isAjaxInProgress = false;
+        if (hasPendingUpdate)
+            performSendState();
+        else
+            setTimeout(performSendState, 15000);
+    }
+
+    function successCallback(json) {
+        document.getElementById("working").innerText = ""
+        isAjaxInProgress = false;
+        if (hasPendingUpdate)
+            performSendState();
+        doActions(json);
+    }
+
+    $.ajax(jsRoutes.controllers.AssessmentController.updateAction(examName, assessmentName).url, {
+        method: "POST",
+        dataType: 'json',
+        data: JSON.stringify(state),
+        contentType: 'application/json',
+        timeout: 10000,
+        headers: {'CSRF-Token': csrfToken}
+    })
+        .fail(failCallback)
+        .done(successCallback);
+}
+
+/*// TODO debounce this!
 function sendState() {
     clearErrors()
     function failCallback(obj, statusMessage) {
@@ -63,7 +119,7 @@ function sendState() {
             headers: {'CSRF-Token': csrfToken}})
         .fail(failCallback)
         .done(doActions)
-}
+}*/
 
 function randomStudent() {
     clearErrors()

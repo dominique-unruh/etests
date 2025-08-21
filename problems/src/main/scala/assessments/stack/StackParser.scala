@@ -46,14 +46,15 @@ object StackParser {
     case MaximaOperation(MaximaSymbol(name), args*) =>
       StackMath.Funcall(name, args.map(maximaToStackMath) *)
 
-  def parse(input: String) = {
-    assert(!input.contains(';'))
-    val result = Docker.runInDocker(
+  def parse(input: String): StackMath = {
+    if (input.contains(';'))
+      throw SyntaxError("; not allowed in Stack math")
+    val result = synchronized { Docker.runInDocker( // synchronized to avoid too many parallel processes
       image = Path.of("docker/maxima-parser"),
       command = Seq("maxima", "-b", "/parse.mac"),
       files = Map("expression.txt" -> input),
       requestedOutputs = Seq("result.txt", "status.txt")
-    )
+    ) }
 //    println(result.exitCode)
 //    println(result.files.view.mapValues(new String(_)).toMap)
     if (result.exitCode != 0)

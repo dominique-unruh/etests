@@ -24,7 +24,7 @@ object Cache {
       try
         RocksDB.open(options, s".cache/$count")
       catch
-        case e: RocksDBException if e.getMessage.contains("lock file") =>
+        case e: RocksDBException if e.getMessage.contains("lock") =>
           openAvailableCache(count + 1, max)
   }
   
