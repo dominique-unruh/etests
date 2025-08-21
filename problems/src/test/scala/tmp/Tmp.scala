@@ -1,7 +1,14 @@
 package tmp
 
-import assessments.Exam
+import assessments.stack.{StackMath, StackParser}
+import assessments.stack.StackMath.Ops
+import assessments.{Exam, SyntaxError}
+import ujson.{Arr, Bool, Null, Num, Obj, Str, Value}
+import utils.Docker
 
+import java.io.StringReader
+import java.nio.file.Path
+import scala.collection.mutable.ArrayBuffer
 import scala.reflect.{ClassTag, TypeTest, Typeable}
 import scala.reflect.ClassTag
 import scala.compiletime.{constValue, erasedValue}
@@ -11,6 +18,7 @@ import scala.reflect.runtime.universe.TypeTag
 import scala.reflect.runtime.universe.TypeTag.given
 import scala.reflect.runtime.universe.given
 import scala.reflect.api.TypeTags
+import scala.util.Random
 
 class SimpleTest
 
@@ -20,10 +28,10 @@ object Tmp {
   import scala.quoted.*
 
 
-
   def main(args: Array[String]): Unit = {
-    given TypeTag[Int] = TypeTag.Int
-    println(summon[TypeTag[Int]])
 
+    
+
+    println(StackParser.parse("1+sqrt(2)*b"))
   }
 }

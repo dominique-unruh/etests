@@ -1,7 +1,7 @@
 package utils
 
 import com.typesafe.scalalogging.Logger
-import sourcecode.Enclosing
+import sourcecode.{Enclosing, FileName}
 
 import java.awt.Toolkit
 import java.awt.datatransfer.{Clipboard, StringSelection}
@@ -57,7 +57,7 @@ object Utils {
     println(s"Temp directory: $dir")
     dir
   }
-  def getTempDir(implicit enclosing: Enclosing): Path = os.temp.dir(dir = tempDir, prefix = enclosing.value, deleteOnExit = false).toNIO
+  def getTempDir(implicit enclosing: FileName): Path = os.temp.dir(dir = tempDir, prefix = enclosing.value, deleteOnExit = false).toNIO
   
   def dataUrl(mimeType: String, data: Array[Byte]): String = {
     val base64 = Base64.getEncoder.encodeToString(data)

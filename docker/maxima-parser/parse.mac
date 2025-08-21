@@ -1,0 +1,13 @@
+file_search_maxima : append(["/moodle-qtype_stack/stack/maxima/###.mac"], file_search_maxima)$
+load("stackmaxima.mac")$
+stream: openr("expression.txt")$
+expr_string: readline(stream)$
+stringout("status.txt", "parsing")$
+simp:false$
+expression: parse_string(expr_string)$
+stringout("status.txt", "done-parsing")$
+load("/expression_to_json.mac")$
+stringout("status.txt", "loaded expression to json")$
+term: expr_to_json(expression)$
+stringout("status.txt", "to term done")$
+stringout("result.txt", term)$

@@ -1,109 +1,77 @@
 package assessments.stack
 
 import assessments.SyntaxError
-import assessments.stack.StackMath.{Bool, Funcall, Integer, Operation, Ops, Variable}
+import assessments.stack.StackMath.{Operation, Ops}
+import ujson.{Arr, Str, transform}
+import utils.Docker
 
+import java.nio.file.Path
+import scala.collection.mutable.ArrayBuffer
 
 object StackParser {
 
-  import fastparse.*
-  import MultiLineWhitespace.*
+  sealed trait MaximaTerm
+  case class MaximaSymbol(name: String) extends MaximaTerm
+  case class MaximaAtom(name: String) extends MaximaTerm
+  case class MaximaInteger(int: BigInt) extends MaximaTerm
+  case class MaximaOperation(head: MaximaTerm, args: MaximaTerm*) extends MaximaTerm
 
-  //noinspection TypeAnnotation
-  object Strings {
-    inline val lower_case_letters = "abcdefghijklmnopqrstuvwxyz"
-    inline val upper_case_letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    inline val letters = lower_case_letters + upper_case_letters
-    inline val digits = "0123456789"
-    inline val letters_digits = letters + digits
-    inline val letters_digits_underscore = letters_digits + "_"
-  }
+  def parseArray(json: ujson.Value): MaximaTerm = json match
+    case Arr(ArrayBuffer(Str("operation"), head, args*)) =>
+      MaximaOperation(parseArray(head), args.map(a => parseArray(a)) *)
+    case Arr(ArrayBuffer(Str("atom"), Str(name))) =>
+      MaximaAtom(name)
+    case Arr(ArrayBuffer(Str("symbol"), Str(name))) =>
+      MaximaSymbol(name)
+    case Arr(ArrayBuffer(Str("integer"), Str(int))) =>
+      MaximaInteger(BigInt(int))
 
-  def anyOf[A, $: P](parsers: IterableOnce[() => P[A]]): P[A] = {
-    var parser: P[A] = null
-    for (p <- parsers) {
-      if (parser == null)
-        parser = p()
+  def maximaToStackMath(maximaTerm: MaximaTerm): StackMath = maximaTerm match
+    case MaximaSymbol(name) => StackMath.Variable(name)
+    case MaximaAtom(name) => ???
+    case MaximaInteger(int) => StackMath.Integer(int)
+    case MaximaOperation(MaximaAtom(name), args*) =>
+      val (op,iter) = (name, args.length) match
+        case ("\"+\"", 1) => (Ops.unaryPlus, false)
+        case ("\"+\"", n) => (Ops.plus, true)
+        case ("\"*\"", 2) => (Ops.times, false)
+        case ("\"/\"", 2) => (Ops.divide, false)
+        case ("\"^\"", 2) => (Ops.power, false)
+        case ("\"-\"", 1) => (Ops.unaryMinus, false)
+        case _ => throw RuntimeException(s"Unknown maxima atom \"$name\" of arity ${args.length}")
+      if (iter)
+        args.tail.foldLeft(maximaToStackMath(args.head))((t,a) => Operation(op, t, maximaToStackMath(a)))
       else
-        parser = parser | p()
-    }
-    assert(parser != null)
-    parser
+        StackMath.Operation(op, args.map(maximaToStackMath) *)
+    case MaximaOperation(MaximaSymbol(name), args*) =>
+      StackMath.Funcall(name, args.map(maximaToStackMath) *)
+
+  def parse(input: String) = {
+    assert(!input.contains(';'))
+    val result = Docker.runInDocker(
+      image = Path.of("docker/maxima-parser"),
+      command = Seq("maxima", "-b", "/parse.mac"),
+      files = Map("expression.txt" -> input),
+      requestedOutputs = Seq("result.txt", "status.txt")
+    )
+//    println(result.exitCode)
+    println(result.files.view.mapValues(new String(_)).toMap) // TODO logger
+    if (result.exitCode != 0)
+      throw RuntimeException("Docker failed")
+    if (result.fileString("status.txt").getOrElse("").contains("parsing"))
+      throw SyntaxError(s"Could not parse $input using maxima")
+    if (!result.files.contains("result.txt"))
+      throw RuntimeException("Could not parse with maxima, unknown reason")
+    val term = result.fileString("result.txt").get
+    val term2 = term.trim.stripSuffix(";")
+    val array = ujson.read(term2)
+
+//    println(array)
+
+    val maximaTerm = parseArray(array)
+
+//    println(maximaTerm)
+    maximaToStackMath(maximaTerm)
   }
 
-  def selector[A, $: P](map: (String, A)*): P[A] =
-    anyOf(map.iterator.map((keyword, value) => () => LiteralStr(keyword).map(_ => value)))
-
-  def infixl_rep[I, A, $: P](argument: => P[A], infix: => P[I], f: (A, I, A) => A): P[A] = {
-    (argument ~ (infix ~ argument).rep) map { (arg1, ops) =>
-      var result = arg1
-      for ((op, arg) <- ops)
-        result = f(result, op, arg)
-      result
-    }
-  }
-
-  def identifier[$: P]: P[String] = P((CharIn(Strings.letters) ~ CharsWhileIn(Strings.letters_digits_underscore, 0)).!)
-
-  def variable[$: P]: P[StackMath] = P(identifier.map(Variable.apply))
-
-  def integer[$: P]: P[StackMath] = P(CharsWhileIn(Strings.digits, 1).!.map(i => Integer(i.toInt)))
-
-  def function_application[$: P]: P[StackMath] = P((identifier ~ "(" ~ num_expr.rep(sep = ",") ~ ")")
-    .map { case (head: String, args: Seq[StackMath]) => Funcall(head, args *) })
-
-  def atom[$: P]: P[StackMath] = P("(" ~ num_expr ~ ")" | function_application | variable | integer)
-
-  def power_like[$: P]: P[StackMath] = P((atom ~ "^" ~ atom).map((x, y) => Operation(Ops.power, x, y)) | atom)
-
-
-  def mult_like[$: P]: P[StackMath] =
-    P(infixl_rep_map(power_like, "*" -> Ops.times, "/" -> Ops.divide))
-
-  def infixl_rep_map[$: P](argument: => P[StackMath], map: (String, Ops)*): P[StackMath] =
-    infixl_rep(argument, selector(map *), { (a, o, b) => Operation(o, a, b) })
-
-  def unary_add_like[$: P]: P[StackMath] =
-    ("-" ~ mult_like).map(Operation(Ops.unaryMinus, _)) | ("+" ~ mult_like).map(Operation(Ops.unaryPlus, _)) | mult_like
-
-  def add_like[$: P]: P[StackMath] = P(
-    infixl_rep_map(unary_add_like, "+" -> Ops.plus, "-" -> Ops.minus))
-
-  def comparison_ops: Seq[(String, Ops)] =
-    Seq("=" -> Ops.equal, "<=" -> Ops.less_eq, "=>" -> Ops.greater_eq,
-      ">" -> Ops.greater, "<" -> Ops.less)
-
-  def comparison[$: P]: P[StackMath] = P {
-    (add_like ~ (selector(comparison_ops *) ~ add_like).?) map {
-      case (e, None) => e
-      case (e, Some(op, e2)) => Operation(op, e, e2)
-    }
-  }
-
-  def boolean[$: P]: P[Bool] = selector("true" -> Bool(true), "false" -> Bool(false))
-
-  def bool_atom[$: P]: P[StackMath] = ("(" ~ bool_expr ~ ")") | comparison | variable | boolean
-
-  def not_like[$: P]: P[StackMath] = P((LiteralStr("not") ~/ not_like).map(x => Operation(Ops.not, x)) | bool_atom)
-
-  def and_like[$: P]: P[StackMath] = infixl_rep_map(not_like, "and" -> Ops.and)
-
-  def or_like[$: P]: P[StackMath] = infixl_rep_map(not_like, "or" -> Ops.or, "xor" -> Ops.xor)
-
-  def num_expr[$: P]: P[StackMath] = P(add_like)
-
-  def bool_expr[$: P]: P[StackMath] = P(or_like)
-
-  def expr[$: P]: P[StackMath] = num_expr
-//  def expr[$: P]: P[StackMath] = bool_expr | num_expr
-
-  def parseWith[A](input: String, parser: fastparse.ParsingRun[?] ?=> fastparse.ParsingRun[A]): A =
-    import fastparse.*
-    import MultiLineWhitespace.*
-    fastparse.parse(input, { (p: P[?]) => given P[?] = p; parser ~ End }, verboseFailures = true) match {
-      case Parsed.Success(value, index) => value
-      case failure: Parsed.Failure => throw SyntaxError(failure.msg)
-    }
-
-  def parse(input: String): StackMath = parseWith(input, comparison | expr)
 }

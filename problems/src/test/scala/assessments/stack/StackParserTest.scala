@@ -17,4 +17,21 @@ class StackParserTest extends AnyFunSuiteLike {
     println(result)
     assert(result.toString == "power(unaryMinus(1), n)")
   }
+
+  test("don't simplify") {
+    val result = StackParser.parse("2+3")
+    assert(result == Operation(Ops.plus, 2, 3))
+  }
+
+  test("a+b+c+d") {
+    val result = StackParser.parse("a+b+c+d")
+    assert(result.toString == "plus(plus(plus(a, b), c), d)")
+  }
+
+  test("a+(b+c)+d") {
+    val result = StackParser.parse("a+(b+c)+d")
+    println(result.toString)
+    assert(result.toString == "plus(plus(a, plus(b, c)), d)")
+  }
+
 }
