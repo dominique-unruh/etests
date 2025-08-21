@@ -2,7 +2,8 @@ package tmp
 
 import assessments.stack.{StackMath, StackParser}
 import assessments.stack.StackMath.Ops
-import assessments.{Exam, SyntaxError}
+import assessments.{Exam, MathContext, SyntaxError}
+import exam.y2025.iqc1.Globals
 import ujson.{Arr, Bool, Null, Num, Obj, Str, Value}
 import utils.Docker
 
@@ -29,9 +30,10 @@ object Tmp {
 
 
   def main(args: Array[String]): Unit = {
+    given MathContext = Globals.mathContext
 
-    
-
-    println(StackParser.parse("1+sqrt(2)*b"))
+    val term = StackParser.parse("1/sqrt(2)*-3/2+1/sqrt(2)*1/2")
+    val sympy = term.toSympyMC()
+    println(sympy.latex)
   }
 }

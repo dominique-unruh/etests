@@ -34,7 +34,7 @@ object StackParser {
       val (op,iter) = (name, args.length) match
         case ("\"+\"", 1) => (Ops.unaryPlus, false)
         case ("\"+\"", n) => (Ops.plus, true)
-        case ("\"*\"", 2) => (Ops.times, false)
+        case ("\"*\"", n) => (Ops.times, true)
         case ("\"/\"", 2) => (Ops.divide, false)
         case ("\"^\"", 2) => (Ops.power, false)
         case ("\"-\"", 1) => (Ops.unaryMinus, false)
@@ -55,7 +55,7 @@ object StackParser {
       requestedOutputs = Seq("result.txt", "status.txt")
     )
 //    println(result.exitCode)
-    println(result.files.view.mapValues(new String(_)).toMap) // TODO logger
+//    println(result.files.view.mapValues(new String(_)).toMap)
     if (result.exitCode != 0)
       throw RuntimeException("Docker failed")
     if (result.fileString("status.txt").getOrElse("").contains("parsing"))

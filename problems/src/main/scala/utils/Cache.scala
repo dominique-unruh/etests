@@ -4,6 +4,7 @@ import com.typesafe.scalalogging.Logger
 import org.rocksdb.{Options, RocksDB, RocksDBException}
 
 import java.io.File
+import java.nio.file.{Files, Path}
 import scala.annotation.tailrec
 
 /** Persistent cache. To clear it, delete the `.cache` directory. */
@@ -16,6 +17,7 @@ object Cache {
 
   @tailrec
   private def openAvailableCache(count: Int = 1, max: Int = 10): RocksDB = {
+    Files.createDirectories(Path.of(".cache"))
     if (count >= max)
       RocksDB.open(options, s".cache/$count")
     else
