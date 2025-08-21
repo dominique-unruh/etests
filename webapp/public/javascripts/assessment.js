@@ -50,6 +50,7 @@ function doActions(json) {
     }
 }
 
+// TODO debounce this!
 function sendState() {
     clearErrors()
     function failCallback(obj, statusMessage) {
@@ -58,6 +59,7 @@ function sendState() {
     }
     $.ajax(jsRoutes.controllers.AssessmentController.updateAction(examName, assessmentName).url,
         {method: "POST", dataType: 'json', data: JSON.stringify(state), contentType: 'application/json',
+            timeout: 30000,
             headers: {'CSRF-Token': csrfToken}})
         .fail(failCallback)
         .done(doActions)
