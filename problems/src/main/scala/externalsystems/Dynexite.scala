@@ -1,6 +1,6 @@
 package externalsystems
 
-import assessments.pageelements.AnswerElement
+import assessments.pageelements.{AnswerElement, MultipleChoice}
 import assessments.{Assessment, ElementName, Exam, ExceptionContext, ExceptionWithContext, MarkdownAssessment, Points}
 import externalsystems.Dynexite.ResultInputFieldKey
 import upickle.core.AbortException
@@ -262,6 +262,7 @@ object Dynexite {
   def blockNumberAnswers(block: Block): Int = block match
     case block: StackBlock => block.answers.size
     case block: ClassificationBlock => block.answers.length
+    case block: SingleChoiceBlock => 1
 
   def getDynexiteAnswers(item: Dynexite.Item, assessment: Assessment)
                         (implicit exceptionContext: ExceptionContext):
@@ -287,6 +288,7 @@ object Dynexite {
     val maps = for ((answerElements, block) <- answerElementBlocks.zip(item.blocks)) yield { block match
       case block: StackBlock => getDynexiteAnswersStack(block, answerElements, assessment)
       case block: ClassificationBlock => getDynexiteAnswersClassification(block, answerElements)
+      case block: SingleChoiceBlock => getDynexiteAnswersSingleChoiceBlock(block, answerElements)
       case _ =>
         throw ExceptionWithContext(s"Dynexite data contained a solution block of unsupported type ${block.getClass.getName}")
     }
@@ -309,6 +311,28 @@ object Dynexite {
     (Map(maps.flatten*), points, reachable)
   }
 
+
+  private def getDynexiteAnswersSingleChoiceBlock(block: Dynexite.SingleChoiceBlock, elements: Seq[AnswerElement])
+                                                 (implicit exceptionContext: ExceptionContext): Map[ElementName, String] = {
+    val Seq(element) = elements
+    val answer = block.answers
+    
+    if (!element.isInstanceOf[MultipleChoice])
+      throw ExceptionWithContext(s"Dynexite content block of type single choice is matched up with input field ${element.name} of type ${element.getClass.getSimpleName}, but must be type MultipleChoice")
+    val options = element.asInstanceOf[MultipleChoice].options
+
+    
+    val answerString = answer match
+      case Some(int) =>
+        if (int < 0)
+          throw ExceptionWithContext(s"Dynexite content block of type single choice returned option choice number $int. Only positive numbers allowed!")
+        if (int >= options.size)
+          throw ExceptionWithContext(s"Dynexite content block of type single choice is matched up with input field ${element.name}. The former selected option #$int (starting from 0), but ${element.name} has only ${options.size} options.")
+        options.keys.toSeq(int)
+      case None => ""
+
+    Map(element.name -> answerString)
+  }
 
   private def getDynexiteAnswersStack(block: Dynexite.StackBlock, elements: Seq[AnswerElement], assessment: Assessment)
                                      (implicit exceptionContext: ExceptionContext):
