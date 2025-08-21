@@ -259,33 +259,25 @@ object Dynexite {
     answers
   }
 
-  def blockNumberAnswers(block: Block): Int = block match
+/*  def blockNumberAnswers(block: Block): Int = block match
     case block: StackBlock => block.answers.size
     case block: ClassificationBlock => block.answers.length
-    case block: SingleChoiceBlock => 1
+    case block: SingleChoiceBlock => 1*/
 
   def getDynexiteAnswers(item: Dynexite.Item, assessment: Assessment)
                         (implicit exceptionContext: ExceptionContext):
   (Map[ElementName, String], Points, Points) = {
-    val numAnswers = item.blocks.map(blockNumberAnswers)
-    val answerElements = assessment.pageElements.values.collect { case elem: AnswerElement => elem }.toSeq
+    val blockAssignment = assessment.tags.getOrElse(dynexiteBlockAssignment, {
+      if (item.blocks.length > 1)
+        throw ExceptionWithContext(s"Problem ${assessment.name} corresponds to ${item.blocks.length} Dynexite input blocks. Please add tag dynexiteBlockAssignment to the problem.")
+      Seq(assessment.pageElements.values.collect { case elem: AnswerElement => elem }.toSeq)
+    })
 
-    if (numAnswers.sum != answerElements.length)
-      throw ExceptionWithContext(s"Problem ${assessment.name} has ${answerElements.length} answer elements, but in Dynexite, we have ${numAnswers.sum} answers")
+    assert(Utils.isDistinct(blockAssignment.flatten))
+    
+    assert(blockAssignment.length == item.blocks.length)
 
-    val answerElementBlocks = {
-      val builder = Seq.newBuilder[Seq[AnswerElement]]
-      val answerElementsMutable = answerElements.to(mutable.Queue)
-      for (num <- numAnswers)
-        builder += answerElementsMutable.take(num).toSeq
-        answerElementsMutable.remove(0, num)
-      assert(answerElementsMutable.isEmpty)
-      builder.result()
-    }
-
-    assert(answerElementBlocks.length == item.blocks.length)
-
-    val maps = for ((answerElements, block) <- answerElementBlocks.zip(item.blocks)) yield { block match
+    val maps = for ((answerElements, block) <- blockAssignment.zip(item.blocks)) yield { block match
       case block: StackBlock => getDynexiteAnswersStack(block, answerElements, assessment)
       case block: ClassificationBlock => getDynexiteAnswersClassification(block, answerElements)
       case block: SingleChoiceBlock => getDynexiteAnswersSingleChoiceBlock(block, answerElements)
@@ -316,12 +308,12 @@ object Dynexite {
                                                  (implicit exceptionContext: ExceptionContext): Map[ElementName, String] = {
     val Seq(element) = elements
     val answer = block.answers
-    
+
     if (!element.isInstanceOf[MultipleChoice])
       throw ExceptionWithContext(s"Dynexite content block of type single choice is matched up with input field ${element.name} of type ${element.getClass.getSimpleName}, but must be type MultipleChoice")
     val options = element.asInstanceOf[MultipleChoice].options
 
-    
+
     val answerString = answer match
       case Some(int) =>
         if (int < 0)
@@ -360,8 +352,10 @@ object Dynexite {
       assert(!answers.contains(elementName))
       answers.update(elementName, value)
     }
-
-    // TODO check for answers from expectedNames that were not used
+    
+    for (expected <- expectedNames.values
+         if !answers.contains(expected))
+      answers.put(expected, "")
 
     answers.toMap
   }
@@ -400,6 +394,14 @@ object Dynexite {
   }
 
   object dynexiteQuestionName extends Tag[Assessment, String](default = "")
+  /** In a Dynexite question that has several input blocks, this tag needs to be set.
+   * It assigns the answer elements belonging to each block to that block.
+   * Example: You have a Stack question with answers ans1, ans2, and a multiple choice one with mc1, mc2.
+   * Then set this to Seq(Seq(ans1,ans2),Seq(mc1,mc2)).
+   * For non-stack problems, the order of answer elements matters.
+   * Can also be used it there is just one input block; this can make sure the answer elements are in the right order.
+   * */
+  object dynexiteBlockAssignment extends Tag[Assessment, Seq[Seq[AnswerElement]]](default = Seq.empty)
   /** From links like https://dynexite.rwth-aachen.de/t/companies/cpsippjadbec73a3unm0/courses/XXX/exams/ (the XXX part) */
   object dynexiteCourseId extends Tag[Exam, String](default = null)
 
