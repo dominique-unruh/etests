@@ -126,6 +126,6 @@ object GradeEveryone extends Task {
     for (student <- Dynexite.resultsByLearner(exam).keys)
       makeReport(exam, student, targetDir, errors)
     makeErrorReport(errors, targetDir.resolve("errors.html"))
-    println(s"\n\nReports in $targetDir, errors in ${targetDir.resolve("errors.html")}")
+    println(s"\n\nReports in $targetDir, errors (${errors.length}) in ${targetDir.resolve("errors.html")}")
   }
 }
