@@ -65,7 +65,7 @@ object Docker {
     } } }
 
     val imageId = pulledInThisSession(image)
-    logger.debug(s"Using image $imageId")
+//    logger.debug(s"Using image $imageId")
 
     val filesBytes = files.view.mapValues({
       case content: String => content.getBytes(StandardCharsets.UTF_8)

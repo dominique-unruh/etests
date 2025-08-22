@@ -123,6 +123,7 @@ object GradeEveryone extends Task {
   private def makeReports(): Unit = {
     val targetDir = Utils.getSystemPropertyPath("private.report.dir", "the directory where to write the private reports")
     val errors = mutable.Queue[(String, Assessment, String)]()
+    exam.runTests() // If this fails, let's move it into the error file or something.
     for (student <- Dynexite.resultsByLearner(exam).keys)
       makeReport(exam, student, targetDir, errors)
     makeErrorReport(errors, targetDir.resolve("errors.html"))
