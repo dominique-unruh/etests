@@ -111,7 +111,7 @@ object GradeEveryone extends Task {
         writer.println(s"There were ${errors.length} errors and warnings")
         writer.println("<ul>")
         for ((student, question, message) <- errors) {
-          writer.println(s"""<li><a href="$student/grading.html">$student, ${question.name}</a>:""")
+          writer.println(s"""<li>$student, <a href="$student/grading.html">${question.name}</a>:""")
           //        writer.println(s"""(<a href="http://localhost:9000/preview/${question.getClass.getName}/">Webapp</a>):""")
           writer.println(s"""<span style="color:red">$message</span></li>""")
         }

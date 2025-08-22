@@ -37,6 +37,10 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
 
   def gcd(other: SympyExpr): SympyExpr = SympyExpr(SympyExpr.gcd(python, other.python))
 
+  def cos: SympyExpr = SympyExpr(sympy.cos(python))
+  def sin: SympyExpr = SympyExpr(sympy.sin(python))
+  def tan: SympyExpr = SympyExpr(sympy.tan(python))
+  
   def abs: SympyExpr = SympyExpr(sympy.Abs(python))
 
   def sqrt: SympyExpr = SympyExpr(sympy.sqrt(python))

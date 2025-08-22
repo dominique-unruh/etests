@@ -44,6 +44,9 @@ case class MathContext private (variables: Map[String, VarOptions],
 object MathContext {
   private val sympyFunctions = Map[String | StackMath.Ops, Seq[SympyExpr] => SympyExpr](
     "mod" -> { case Seq(x,y) => x % y },
+    "cos" -> { case Seq(x) => x.cos },
+    "sin" -> { case Seq(x) => x.sin },
+    "tan" -> { case Seq(x) => x.tan },
     "gcd" -> { case Seq(x,y) => x.gcd(y) },
     "sqrt" -> { case Seq(x) => x.sqrt },
     Ops.power -> { case Seq(x,y) => x ** y },
