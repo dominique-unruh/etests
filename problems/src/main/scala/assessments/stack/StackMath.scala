@@ -81,14 +81,17 @@ sealed trait StackMath {
     def to(math: StackMath): SympyExpr = math match
       case Operation(operator, arguments@_*) =>
         mathContext.sympyFunctions(operator)(arguments.map(to))
-      case Funcall(name, arguments@_*) =>
+      case Funcall(name, arguments*) =>
+        def verbatim = SympyExpr(sympy.Function(name).apply(arguments.map(x => to(x).python) *).as[py.Dynamic])
         mathContext.sympyFunctions.get(name) match
-          case Some(f) => f(arguments.map(to))
+          case Some(f) => f.lift(arguments.map(to)) match
+            case Some(result) => result
+            case None =>
+              if (allowUndefinedFunctions) verbatim
+              else throw UndefinedVariableException(s"Undefined function $name (for these arguments) in term $this", name)
           case None =>
-            if (allowUndefinedFunctions)
-              SympyExpr(sympy.Function(name).apply(arguments.map(x => to(x).python) *).as[py.Dynamic])
-            else
-              throw UndefinedVariableException(s"Undefined function $name in term $this", name)
+            if (allowUndefinedFunctions) verbatim
+            else throw UndefinedVariableException(s"Undefined function $name in term $this", name)
       case Variable(name) =>
         if (allowUndefined)
           SympyExpr(sympy.Symbol(name).as[py.Dynamic])

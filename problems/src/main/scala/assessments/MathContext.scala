@@ -10,7 +10,7 @@ import me.shadaj.scalapy.py
 import scala.annotation.constructorOnly
 
 case class MathContext private (variables: Map[String, VarOptions],
-                                sympyFunctions: Map[String | StackMath.Ops, Seq[SympyExpr] => SympyExpr],
+                                sympyFunctions: Map[String | StackMath.Ops, PartialFunction[Seq[SympyExpr], SympyExpr]],
                                 preprocessors: Seq[StackMath => StackMath],
                                ) {
   def symbol(name: String, options: VarOptions): MathContext = {
@@ -24,15 +24,12 @@ case class MathContext private (variables: Map[String, VarOptions],
   def testValues(name: String, values: StackMath*): MathContext =
     symbol(name, VarOptions(testValues = values))
   /** Specifies the behavior of the function or operator `name` by giving an evaluation function. */
-  def sympyFunction(name: String | StackMath.Ops, function: Seq[SympyExpr] => SympyExpr): MathContext =
+  def sympyFunction(name: String | StackMath.Ops, function: PartialFunction[Seq[SympyExpr], SympyExpr]): MathContext =
     copy(sympyFunctions = sympyFunctions + (name -> function))
   def sympyFunction(name: String | StackMath.Ops, function: py.Dynamic, argNumber: Int): MathContext = {
-    def wrapperFunction(args: Seq[SympyExpr]) = {
-      if (args.length != argNumber)
-        throw UndefinedVariableException(s"Sympy function $name called with ${args.length} arguments, not $argNumber", name.toString)
-      SympyExpr(function(args.map(_.python)*))
-    }
-    sympyFunction(name, wrapperFunction)
+    sympyFunction(name, {
+      case args if args.length == argNumber => SympyExpr(function(args.map(_.python)*)) 
+    })
   }
   def preprocessor(preprocessor: StackMath => StackMath): MathContext =
     copy(preprocessors = preprocessors.appended(preprocessor))
@@ -42,7 +39,7 @@ case class MathContext private (variables: Map[String, VarOptions],
 }
 
 object MathContext {
-  private val sympyFunctions = Map[String | StackMath.Ops, Seq[SympyExpr] => SympyExpr](
+  private val sympyFunctions = Map[String | StackMath.Ops, PartialFunction[Seq[SympyExpr], SympyExpr]](
     "mod" -> { case Seq(x,y) => x % y },
     "cos" -> { case Seq(x) => x.cos },
     "sin" -> { case Seq(x) => x.sin },
