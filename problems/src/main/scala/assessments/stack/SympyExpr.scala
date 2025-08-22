@@ -48,10 +48,12 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
     SympyExpr(result)
   }
 
-  /** A xor implemented as addition mod 2. 
+  /** A xor implemented as addition mod 2.
    * Different from sympy.logic.boolalg.Xor which works on Booleans only
    * (`Xor(2,3)` would be interpreted as `XOR(True,True)`) */
   def xorBit(other: SympyExpr) = SympyExpr(SympyExpr.xorBit(python, other.python))
+  /** See [[xorBit]] */
+  def andBit(other: SympyExpr) = SympyExpr(SympyExpr.andBit(python, other.python))
 
   @targetName("substituteString")
   def substitute(map: (String, SympyExpr)*): SympyExpr =
@@ -189,4 +191,5 @@ class gcd(sympy.Function):
   lazy val eulerConstant = SympyExpr(sympy.S.Exp1)
   lazy val pi = SympyExpr(sympy.S.Pi)
   lazy val xorBit: py.Dynamic = Python.define("def xorBit(a,b): from sympy import Integer; return (a+b)%Integer(2)\nreturn xorBit")
+  lazy val andBit: py.Dynamic = Python.define("def xorBit(a,b): from sympy import Integer; return (a*b)%Integer(2)\nreturn xorBit")
 }

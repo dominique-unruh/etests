@@ -17,6 +17,7 @@ object Cache {
 
   @tailrec
   private def openAvailableCache(count: Int = 1, max: Int = 10): RocksDB = {
+    logger.debug(s"Trying to open cache .cache/$count")
     Files.createDirectories(Path.of(".cache"))
     if (count >= max)
       RocksDB.open(options, s".cache/$count")

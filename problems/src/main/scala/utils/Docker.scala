@@ -62,9 +62,7 @@ object Docker {
         val imageId = Process(command = Seq("docker", "build", "-q", "--platform=linux/amd64", "."), cwd = dir.toFile).!!.trim
         logger.debug(s"$dir -> $imageId")
         pulledInThisSession += (image -> imageId)
-    } } } else {
-      println(s"Already pulled docker image $image")
-    }
+    } } }
 
     val imageId = pulledInThisSession(image)
     logger.debug(s"Using image $imageId")
