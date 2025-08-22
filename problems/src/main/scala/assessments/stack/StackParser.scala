@@ -41,14 +41,16 @@ object StackParser {
         case ("-", 1) => (Ops.unaryMinus, false)
         case ("xor", n) if n > 1 => (Ops.xor, true)
         case ("and", n) if n > 1 => (Ops.and, true)
+        case ("not", 1) => (Ops.not, true)
+        case ("or", n) if n > 1 => (Ops.or, true)
         case (".", 2) => (Ops.times, false)
         case _ => throw RuntimeException(s"Unknown maxima atom \"$nameStripped\" of arity ${args.length}")
       if (iter)
         args.tail.foldLeft(maximaToStackMath(args.head))((t,a) => Operation(op, t, maximaToStackMath(a)))
       else
-        StackMath.Operation(op, args.map(maximaToStackMath) *)
+        StackMath.Operation(op, args.map(maximaToStackMath)*)
     case MaximaOperation(MaximaSymbol(name), args*) =>
-      StackMath.Funcall(name, args.map(maximaToStackMath) *)
+      StackMath.Funcall(name, args.map(maximaToStackMath)*)
 
   def parse(input: String): StackMath = {
     if (input.contains(';'))
