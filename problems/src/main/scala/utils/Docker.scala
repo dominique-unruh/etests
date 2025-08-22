@@ -99,6 +99,8 @@ object Docker {
       Files.write(tempDir.resolve(file), content)
     }
 
+    logger.debug(s"Docker inputs: ${files.map((k,v) => k+String(v)).mkString(";")}")
+
     val dockerCommand = Seq(
       "docker", "run", "--rm",
       "-v", s"$tempDir:/workdir",
@@ -106,7 +108,7 @@ object Docker {
       "--platform=linux/amd64",
       imageId) ++ command
 
-    println(s"Running Docker command: ${dockerCommand.mkString(" ")}")
+    logger.debug(s"Running Docker command: ${dockerCommand.mkString(" ")}")
 
     val exitCode = dockerCommand.!
 
