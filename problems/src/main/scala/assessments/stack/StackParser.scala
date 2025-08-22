@@ -41,6 +41,7 @@ object StackParser {
         case ("-", 1) => (Ops.unaryMinus, false)
         case ("xor", n) if n > 1 => (Ops.xor, true)
         case ("and", n) if n > 1 => (Ops.and, true)
+        case (".", 2) => (Ops.times, false)
         case _ => throw RuntimeException(s"Unknown maxima atom \"$nameStripped\" of arity ${args.length}")
       if (iter)
         args.tail.foldLeft(maximaToStackMath(args.head))((t,a) => Operation(op, t, maximaToStackMath(a)))
