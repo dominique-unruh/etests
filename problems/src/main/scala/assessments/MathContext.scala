@@ -4,7 +4,7 @@ import assessments.MathContext.VarOptions
 import assessments.MathContext
 import assessments.stack.StackMath.Ops
 import assessments.stack.SympyExpr.sympy
-import assessments.stack.{StackMath, SympyExpr}
+import assessments.stack.{StackMath, SympyExpr, UndefinedVariableException}
 import me.shadaj.scalapy.py
 
 import scala.annotation.constructorOnly
@@ -29,7 +29,7 @@ case class MathContext private (variables: Map[String, VarOptions],
   def sympyFunction(name: String | StackMath.Ops, function: py.Dynamic, argNumber: Int): MathContext = {
     def wrapperFunction(args: Seq[SympyExpr]) = {
       if (args.length != argNumber)
-        throw RuntimeException(s"Sympy function $name called with ${args.length} arguments, not $argNumber")
+        throw UndefinedVariableException(s"Sympy function $name called with ${args.length} arguments, not $argNumber", name.toString)
       SympyExpr(function(args.map(_.python)*))
     }
     sympyFunction(name, wrapperFunction)
