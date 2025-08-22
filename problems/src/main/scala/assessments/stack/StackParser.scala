@@ -31,14 +31,16 @@ object StackParser {
     case MaximaAtom(name) => ???
     case MaximaInteger(int) => StackMath.Integer(int)
     case MaximaOperation(MaximaAtom(name), args*) =>
-      val (op,iter) = (name, args.length) match
-        case ("\"+\"", 1) => (Ops.unaryPlus, false)
-        case ("\"+\"", n) => (Ops.plus, true)
-        case ("\"*\"", n) => (Ops.times, true)
-        case ("\"/\"", 2) => (Ops.divide, false)
-        case ("\"^\"", 2) => (Ops.power, false)
-        case ("\"-\"", 1) => (Ops.unaryMinus, false)
-        case _ => throw RuntimeException(s"Unknown maxima atom \"$name\" of arity ${args.length}")
+      val nameStripped = name.stripSuffix("\"").stripPrefix("\"")
+      val (op,iter) = (nameStripped, args.length) match
+        case ("+", 1) => (Ops.unaryPlus, false)
+        case ("+", n) => (Ops.plus, true)
+        case ("*", n) => (Ops.times, true)
+        case ("/", 2) => (Ops.divide, false)
+        case ("^", 2) => (Ops.power, false)
+        case ("-", 1) => (Ops.unaryMinus, false)
+        case ("xor", 2) => (Ops.xor, false)
+        case _ => throw RuntimeException(s"Unknown maxima atom \"$nameStripped\" of arity ${args.length}")
       if (iter)
         args.tail.foldLeft(maximaToStackMath(args.head))((t,a) => Operation(op, t, maximaToStackMath(a)))
       else

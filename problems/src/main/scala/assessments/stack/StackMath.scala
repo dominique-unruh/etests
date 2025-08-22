@@ -76,12 +76,19 @@ sealed trait StackMath {
 
   def fix: StackMath = fixUnderscoreInt
 
-  def toSympyMC(allowUndefined: Boolean = false)(using mathContext: MathContext): SympyExpr = {
+  def toSympyMC(allowUndefined: Boolean = false,
+                allowUndefinedFunctions: Boolean = false)(using mathContext: MathContext): SympyExpr = {
     def to(math: StackMath): SympyExpr = math match
       case Operation(operator, arguments@_*) =>
         mathContext.sympyFunctions(operator)(arguments.map(to))
       case Funcall(name, arguments@_*) =>
-        mathContext.sympyFunctions(name)(arguments.map(to))
+        mathContext.sympyFunctions.get(name) match
+          case Some(f) => f(arguments.map(to))
+          case None =>
+            if (allowUndefinedFunctions)
+              SympyExpr(sympy.Function(name).apply(arguments.map(x => to(x).python) *).as[py.Dynamic])
+            else
+              throw UndefinedVariableException(s"Undefined function $name in term $this", name)
       case Variable(name) =>
         if (allowUndefined)
           SympyExpr(sympy.Symbol(name).as[py.Dynamic])

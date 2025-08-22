@@ -1,6 +1,5 @@
 package assessments.pageelements
 
-import MathPreviewElement.mathtextToLatex
 import assessments.{Assessment, ElementName, Html}
 import me.shadaj.scalapy.py
 import me.shadaj.scalapy.py.PyQuote
@@ -37,7 +36,7 @@ object MathPreviewElement {
   private lazy val symbol = py.module("sympy").Symbol
   private lazy val simplify = py.module("sympy").simplify
 
-  def mathtextToLatex(math: String): String = {
+/*  def mathtextToLatex(math: String): String = {
     //    val sympy = py"""$module.parse_expr($math)"""
     try {
       val sympy = parse_expr(math)
@@ -54,5 +53,5 @@ object MathPreviewElement {
         e.printStackTrace()
         "PARSE ERROR"
     }
-  }
+  }*/
 }

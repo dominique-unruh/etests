@@ -5,6 +5,7 @@ import assessments.pageelements.MultipleChoice.Style.select
 import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
 import assessments.stack.{StackMath, SympyAssumption, SympyExpr}
+import exam.y2025.iqc1.Globals
 import utils.Tag.Tags
 import utils.Utils
 
@@ -26,6 +27,7 @@ object DynexiteDefaults {
   }
 
   extension (str: String) {
+    @deprecated("Use .math")
     def sympy: SympyExpr = {
       if (str == "" || str == null)
         SympyExpr.errorTerm("empty")
@@ -53,8 +55,9 @@ object DynexiteDefaults {
   // Not using "extension (pe: PageElement) because that exports additionally methods DynexiteDefault.latex... that may conflict with equally named methods when DynexiteDefaults.* is imported
   implicit class PageElementMethods(pe: PageElement) {
     def stringValue(using gradingContext: GradingContext): String = gradingContext.answers.getOrElse(pe.name, "")
+    @deprecated("Use .math")
     def sympy(using gradingContext: GradingContext): SympyExpr = stringValue.sympy
-    def latex(using gradingContext: GradingContext): String = sympy.latex
+    def latex(using gradingContext: GradingContext, mathContext: MathContext): String = math.toSympyMC(allowUndefined = true).latex
     def math(using gradingContext: GradingContext): StackMath = stringValue.math
     def mathTry(name: String)(using gradingContext: GradingContext): StackMath =
       stringValue.mathTry(name)
@@ -66,14 +69,16 @@ object DynexiteDefaults {
     def latex(using gradingContext: GradingContext): String = sympy.latex
   }*/
 
-  private def stackMathRender(string: String): String =
+  private def stackMathRender(string: String): String = {
+    given MathContext = Globals.mathContext // TODO use something own
     if (string == "")
       ""
     else try
-      string.sympy.latex
+      string.math.toSympyMC(allowUndefined = true, allowUndefinedFunctions = true).latex
     catch
       case e: Exception =>
         s"\\text{ERROR: ${Utils.escapeTeX(e.toString)}}"
+  }
 
   def preview(observed: PageElement)(using name: sourcecode.Name): MathPreviewElement = {
     val name2 = if (name.value == "question" || name.value == "explanation") // Inlined in the markdown, not a good default
