@@ -49,8 +49,8 @@ object Docker {
     if (!pulledInThisSession.contains(image)) { synchronized { image match {
       case image: String =>
         println(s"Pulling docker image $image")
-        Seq("docker", "pull", "--", image).!!
-        val images = Seq("docker", "images", "-q", "--", image).!!
+        Seq("docker", "pull", "--platform=linux/amd64", "--", image).!!
+        val images = Seq("docker", "images", "-q", "--platform=linux/amd64", "--", image).!!
         val images2 = images.split('\n')
         logger.debug(s"$image -> ${images2.mkString(", ")}")
         if (images2.length > 1)
@@ -59,7 +59,7 @@ object Docker {
         pulledInThisSession += (image -> imageId)
       case dir: Path =>
         println(s"Building docker image $dir")
-        val imageId = Process(command = Seq("docker", "build", "-q", "."), cwd = dir.toFile).!!.trim
+        val imageId = Process(command = Seq("docker", "build", "-q", "--platform=linux/amd64", "."), cwd = dir.toFile).!!.trim
         logger.debug(s"$dir -> $imageId")
         pulledInThisSession += (image -> imageId)
     } } } else {
@@ -101,6 +101,7 @@ object Docker {
       "docker", "run", "--rm",
       "-v", s"$tempDir:/workdir",
       "-w", "/workdir",
+      "--platform=linux/amd64",
       imageId) ++ command
 
     println(s"Running Docker command: ${dockerCommand.mkString(" ")}")
