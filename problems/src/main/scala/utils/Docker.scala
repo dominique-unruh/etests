@@ -108,11 +108,7 @@ object Docker {
 
     println(s"Running Docker command: ${dockerCommand.mkString(" ")}")
 
-    Seq("ls", "-lh", tempDir.toString).!
-
     val exitCode = dockerCommand.!
-
-    Seq("ls", "-lh", tempDir.toString).!
 
     val resultFiles = Map.from(requestedOutputs.flatMap { name =>
       val file = tempDir.resolve(name)
