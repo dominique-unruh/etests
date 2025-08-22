@@ -274,13 +274,14 @@ object Dynexite {
     })
 
     assert(Utils.isDistinct(blockAssignment.flatten))
-    
+
     assert(blockAssignment.length == item.blocks.length)
 
     val maps = for ((answerElements, block) <- blockAssignment.zip(item.blocks)) yield { block match
       case block: StackBlock => getDynexiteAnswersStack(block, answerElements, assessment)
       case block: ClassificationBlock => getDynexiteAnswersClassification(block, answerElements)
       case block: SingleChoiceBlock => getDynexiteAnswersSingleChoiceBlock(block, answerElements)
+      case block: ResultInputsBlock => getDynexiteAnswersResultInputsBlock(block, answerElements)
       case _ =>
         throw ExceptionWithContext(s"Dynexite data contained a solution block of unsupported type ${block.getClass.getName}")
     }
@@ -303,6 +304,23 @@ object Dynexite {
     (Map(maps.flatten*), points, reachable)
   }
 
+  private def getDynexiteAnswersResultInputsBlock(block: Dynexite.ResultInputsBlock, elements: Seq[AnswerElement])
+                                                 (implicit exceptionContext: ExceptionContext): Map[ElementName, String] = {
+    val dynexiteAnswers = block.answers.map(_.answers)
+
+    val assessmentNames = elements.map(_.name)
+
+    assert(dynexiteAnswers.length == assessmentNames.length, (dynexiteAnswers, assessmentNames))
+
+    val answers = mutable.Map[ElementName, String]()
+
+    for ((name, answer) <- assessmentNames.zip(dynexiteAnswers)) {
+      assert(!answers.contains(name), (answers, name, assessmentNames))
+      answers.update(name, Option(answer).getOrElse(""))
+    }
+
+    answers.toMap
+  }
 
   private def getDynexiteAnswersSingleChoiceBlock(block: Dynexite.SingleChoiceBlock, elements: Seq[AnswerElement])
                                                  (implicit exceptionContext: ExceptionContext): Map[ElementName, String] = {
@@ -352,7 +370,7 @@ object Dynexite {
       assert(!answers.contains(elementName))
       answers.update(elementName, value)
     }
-    
+
     for (expected <- expectedNames.values
          if !answers.contains(expected))
       answers.put(expected, "")
@@ -363,7 +381,6 @@ object Dynexite {
   private def getDynexiteAnswersClassification(block: Dynexite.ClassificationBlock, elements: Seq[AnswerElement])
                                               (implicit exceptionContext: ExceptionContext):
   Map[ElementName, String] = {
-
     val dynexiteAnswers = block.answers
 
     val assessmentNames = elements.map(_.name)
