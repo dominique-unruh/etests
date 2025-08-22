@@ -70,7 +70,7 @@ object GradeEveryone extends Task {
     (points, output.result())
   }
 
-  private def makeReport(exam: Exam, student: String, targetDir: Path, errors: mutable.Queue[(String, Assessment, String)]): Unit = {
+  private def makeReport(exam: Exam, student: String, targetDir: Path, errors: mutable.Queue[(String, Assessment, String)]): Points = {
     val studentDir = targetDir.resolve(student)
     var totalPoints = Points(0)
     Files.createDirectories(studentDir)
@@ -113,6 +113,8 @@ object GradeEveryone extends Task {
 
       writer.write("</body></html>")
     }
+
+    totalPoints
   }
 
   private def makeErrorReport(errors: mutable.Queue[(String, Assessment, String)], reportPath: Path): Unit = {
@@ -132,15 +134,41 @@ object GradeEveryone extends Task {
       }
     }
   }
-  
+
+  private def makePointsCSV(targetDir: Path, points: Map[String, Points]): Unit = {
+    Using.resource(new PrintWriter(targetDir.resolve("results.csv").toFile)) { writer =>
+      writer.println(s"student;points;grade")
+      for ((student, points) <- points) {
+        val grade =
+          if points >= 95 then 1
+          else if points >= 90 then 1.3
+          else if points >= 85 then 1.7
+          else if points >= 80 then 2
+          else if points >= 75 then 2.3
+          else if points >= 70 then 2.7
+          else if points >= 65 then 3
+          else if points >= 60 then 3.3
+          else if points >= 55 then 3.7
+          else if points >= 50 then 4
+          else 5
+
+        writer.println(s"$student;$points;$grade")
+      }
+    }
+  }
+
   private def makeReports(): Unit = {
     val targetDir = Utils.getSystemPropertyPath("student.report.dir", "the directory where to write the student reports")
     val errors = mutable.Queue[(String, Assessment, String)]()
     exam.runTests() // If this fails, let's move it into the error file or something.
     val students = Dynexite.resultsByLearner(exam).toSeq.collect { case (student, results) if results.nonEmpty => student }
-    for (student <- students)
-      makeReport(exam, student, targetDir, errors)
+    val pointMap = Map.newBuilder[String, Points]
+    for (student <- students) {
+      val points = makeReport(exam, student, targetDir, errors)
+      pointMap += (student -> points)
+    }
     makeErrorReport(errors, targetDir.resolve("errors.html"))
+    makePointsCSV(targetDir, pointMap.result())
     println(s"\n\nReports in $targetDir, errors in ${targetDir.resolve("errors.html")}")
     if (errors.nonEmpty)
       println("***** THERE WERE ERRORS *****")
