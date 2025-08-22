@@ -86,7 +86,7 @@ sealed trait StackMath {
         if (allowUndefined)
           SympyExpr(sympy.Symbol(name).as[py.Dynamic])
         else
-          throw UndefinedVariableException(s"Undefined variable $name in term $this")
+          throw UndefinedVariableException(s"Undefined variable $name in term $this", name)
       case Integer(int) => SympyExpr(sympy.Integer(int.toString).as[py.Dynamic])
       case Bool(true) => SympyExpr.`true`
       case Bool(false) => SympyExpr.`false`
@@ -179,4 +179,4 @@ object StackMath {
   val noAnswer: Operation = Operation(Ops.noAnswer)
 }
 
-case class UndefinedVariableException(message: String) extends Exception(message)
+case class UndefinedVariableException(message: String, varname: String) extends Exception(message)
