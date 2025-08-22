@@ -58,7 +58,7 @@ class Assessment (val name: String,
   def renderStaticHtml(solution: Map[ElementName, String]): (Html, Html, Html) = {
     def render(element: Element, associatedFiles: FileMapBuilder) = element match {
       case element: PageElement =>
-        element.renderHtml // TODO static
+        element.renderStaticHtml(solution)
       case ImageElement(png, basename) =>
 //        val name = associatedFiles.add(basename = basename, extension = "png", mimeType = "image/png", content = png)
         Html(s"""<img src="${Utils.dataUrl("image/png", png)}"/>""")

@@ -6,7 +6,7 @@ import externalsystems.Dynexite
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
-import utils.Utils
+import utils.{IndentedInterpolator, Utils}
 
 import java.io.PrintWriter
 import java.nio.file.{Files, Path}
@@ -28,10 +28,9 @@ object GradeEveryone extends Task {
     val output = new StringBuilder
     var points: Points = 0
 
-    output ++= s"<h1>Problem: ${escapeHtml4(question.name)}</h1>\n"
+    output ++= s"<h1>Question: ${escapeHtml4(question.name)}</h1>\n"
 
     try {
-      // TODO: Render with student input + reference
       val answers = Dynexite.getDynexiteAnswers(question, exam, student)
       val (body, explanation, gradingRules) = question.renderStaticHtml(answers)
 
@@ -53,14 +52,13 @@ object GradeEveryone extends Task {
       points += context.points
       output ++= "<ul>\n"
       for (comment <- context.comments) {
-        if (comment.kind == Kind.warning)
-          errors += ((student, question, s"Warning: ${comment.html}"))
-        val style = comment.kind match {
-          case Kind.feedback => ""
-          case Kind.warning => "color: red"
-          case Kind.debug => "color: gray"
-        }
-        output ++= s"""<li style="$style">${comment.html}</li>\n"""
+        comment.kind match
+          case Comment.Kind.warning =>
+            errors += ((student, question, s"Warning: ${comment.html}"))
+            output ++= s"""<li style="color: red">${comment.html}</li>\n"""
+          case Comment.Kind.debug =>
+          case Comment.Kind.feedback =>
+            output ++= s"""<li>${comment.html}</li>\n"""
       }
       output ++= "</ul>\n"
     } catch {
@@ -68,6 +66,7 @@ object GradeEveryone extends Task {
         output ++= s"""<pre style="color:red">${escapeHtml4(ExceptionUtils.getStackTrace(e))}</pre>\n"""
         errors += ((student, question, s"Exception: <pre>${escapeHtml4(e.toString)}</pre>"))
     }
+    output ++= "<hr>"
     (points, output.result())
   }
 
@@ -76,28 +75,42 @@ object GradeEveryone extends Task {
     var totalPoints = Points(0)
     Files.createDirectories(studentDir)
     val reportFile = studentDir.resolve("grading.html")
+    val questionReports = for (question <- exam.problems) yield {
+      val (points, report) = makeQuestionReport(student, question, errors)
+      totalPoints += points
+      report
+    }
+
     Using.resource(new PrintWriter(reportFile.toFile)) { writer =>
-      writer.println("<html>")
-      writer.println("<head>")
-      writer.println("""<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>""")
-      writer.println("</head>")
-      writer.println("<body>")
-      writer.println("<h1>Summary</h1>")
-      writer.println("<ul>")
-      writer.println(s"<li>Registration number: ${escapeHtml4(student)}</li>\n")
-      writer.println("</ul>")
-      if (Dynexite.resultsByLearner(exam)(student).isEmpty)
-        writer.write("Student did not participate")
-      else {
-        val pdf = Dynexite.getAnswerPDF(exam = exam, registrationNumber = student)
-        Files.write(studentDir.resolve("dynexite.pdf"), pdf)
-        for (question <- exam.problems) {
-          val (points, report) = makeQuestionReport(student, question, errors)
-          totalPoints += points
-          writer.write(report)
-        }
-      }
-      writer.write(s"<h1>Total points: ${totalPoints.decimalFractionString(2)}</h1>")
+      writer.println(
+        ind"""<html>
+          |<head>
+          |    <meta charset="UTF-8">
+          |    <script>
+          |        window.MathJax = {
+          |            tex: {
+          |                inlineMath: [['$$', '$$'], ['\\\\(', '\\\\)']],
+          |                displayMath: [['$$$$', '$$$$'], ['\\\\[', '\\\\]']]
+          |            }
+          |        };
+          |    </script>
+          |    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+          |</head>
+          |<body>
+          |<h1>Summary</h1>
+          |<ul>
+          |  <li>Registration number: ${escapeHtml4(student)}</li>
+          |  <li>Total points: ${totalPoints.decimalFractionString(2)} / ${exam.reachablePoints.decimalFractionString(2)}</li>
+          |  <li><a href="dynexite.pdf">Dynexite PDF</a> (for comparison)</li>
+          |</ul>
+          |<hr>
+          |""")
+
+      val pdf = Dynexite.getAnswerPDF(exam = exam, registrationNumber = student)
+      Files.write(studentDir.resolve("dynexite.pdf"), pdf)
+      for (report <- questionReports)
+        writer.write(report)
+
       writer.write("</body></html>")
     }
   }
@@ -121,12 +134,15 @@ object GradeEveryone extends Task {
   }
   
   private def makeReports(): Unit = {
-    val targetDir = Utils.getSystemPropertyPath("private.report.dir", "the directory where to write the private reports")
+    val targetDir = Utils.getSystemPropertyPath("student.report.dir", "the directory where to write the student reports")
     val errors = mutable.Queue[(String, Assessment, String)]()
     exam.runTests() // If this fails, let's move it into the error file or something.
-    for (student <- Dynexite.resultsByLearner(exam).keys)
+    val students = Dynexite.resultsByLearner(exam).toSeq.collect { case (student, results) if results.nonEmpty => student }
+    for (student <- students)
       makeReport(exam, student, targetDir, errors)
     makeErrorReport(errors, targetDir.resolve("errors.html"))
-    println(s"\n\nReports in $targetDir, errors (${errors.length}) in ${targetDir.resolve("errors.html")}")
+    println(s"\n\nReports in $targetDir, errors in ${targetDir.resolve("errors.html")}")
+    if (errors.nonEmpty)
+      println("***** THERE WERE ERRORS *****")
   }
 }

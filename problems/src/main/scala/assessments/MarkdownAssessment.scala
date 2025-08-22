@@ -23,7 +23,7 @@ abstract class MarkdownAssessment {
   lazy val question: InterpolatedMarkdown[Element]
   lazy val explanation: InterpolatedMarkdown[Element] = md""
   lazy val gradingRules: InterpolatedMarkdown[Element] = md""
-
+  
   def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit
   val reachablePoints: Points
   val grader: Grader = new Grader(ElementName.grader) {
@@ -44,8 +44,9 @@ abstract class MarkdownAssessment {
     val questionTemplate = {
       val date = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
       val clazz = this.getClass.getName.stripSuffix("$")
-      val comment = InterpolatedHtml(Html(s"<!-- Exported via Dominique Unruh's assessment tool. Source class ${StringEscapeUtils.escapeHtml4(clazz)}. Date: ${StringEscapeUtils.escapeHtml4(date)} -->\n"))
-      comment ++ question.toHtml
+//      val comment = InterpolatedHtml(Html(s"<!-- Exported via Dominique Unruh's assessment tool. Source class ${StringEscapeUtils.escapeHtml4(clazz)}. Date: ${StringEscapeUtils.escapeHtml4(date)} -->\n"))
+      //comment ++
+      question.toHtml
     }
 
     val explanationTemplate = explanation.toHtml

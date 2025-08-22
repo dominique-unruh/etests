@@ -18,6 +18,8 @@ class PreviewElement(val name: ElementName, val observed: ElementName) extends P
 
   override val tags: Tag.Tags[PreviewElement.this.type] = Tags.empty
 
+  override def renderStaticHtml(answers: Map[ElementName, String]): Html = ???
+
   override def updateAction(assessment: Assessment, state: Map[ElementName, JsValue]): IterableOnce[ElementAction] = {
     val content = state(observed).asInstanceOf[JsObject].value("content").asInstanceOf[JsString].value
     Seq(ElementAction(name, JsObject(Seq("preview" -> JsString(content)))))

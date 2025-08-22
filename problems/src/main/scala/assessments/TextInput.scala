@@ -16,4 +16,5 @@ final class TextInput(val name: ElementName,
   assert(points > 0)
 
   override def renderHtml: Html = Html("[NOT IMPLEMENTED: MultipleChoice HTML]")
+  override def renderStaticHtml(answers: Map[ElementName, String]): Html = renderHtml
 }

@@ -1,6 +1,7 @@
 package assessments.pageelements
 
 import assessments.{Assessment, ElementName, Html}
+import org.apache.commons.text.StringEscapeUtils
 import play.api.libs.json.{JsObject, JsString, JsValue}
 import utils.{IndentedInterpolator, Utils}
 import utils.Tag.Tags
@@ -20,8 +21,9 @@ class InputElement(val name: ElementName,
          |</script>""")
   }
 
-  s""""""
-
+  override def renderStaticHtml(answers: Map[ElementName, String]): Html = Html(
+    s"""<input type="text" readonly value="${StringEscapeUtils.escapeHtml4(answers(name))}"/>""")
+    
   override def setAction(content: String): Seq[ElementAction] =
     Seq(ElementAction(this.name, JsObject(Seq("content" -> JsString(content)))))
 }

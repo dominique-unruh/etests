@@ -20,6 +20,9 @@ import scala.reflect.runtime.universe.{TypeTag, typeOf}
 object Utils {
   private val logger = Logger[Utils.type]
 
+  private var uniqueIdCounter = 0L
+  def uniqueId(): Long = synchronized { uniqueIdCounter += 1; uniqueIdCounter }
+
   private var systemPropertiesLoaded = false
   def loadSystemProperties(): Unit = synchronized {
     if (!systemPropertiesLoaded) {

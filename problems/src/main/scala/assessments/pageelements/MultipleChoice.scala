@@ -10,6 +10,7 @@ import utils.Tag.Tags
 
 import scala.collection.immutable.SeqMap
 import scala.collection.mutable
+import scala.util.Random
 
 final class MultipleChoice(val name: ElementName,
                            val options: SeqMap[String, String],
@@ -61,6 +62,28 @@ final class MultipleChoice(val name: ElementName,
     case Style.select => renderHtmlSelect
     case Style.radio => renderHtmlRadio
 
+  override def renderStaticHtml(answers: Map[ElementName, String]): Html = style match
+    case Style.select => renderHtmlSelectStatic(selected = answers(name))
+    case Style.radio => renderHtmlRadioStatic(selected = answers(name))
+
+  def renderHtmlRadioStatic(selected: String): Html = {
+    val html = StringBuilder()
+    val groupName = name.jsElementId + Utils.uniqueId()
+    html ++= selected
+    html ++= s"""<fieldset>\n"""
+    html ++= s"""<label><input disabled name="$groupName" type="radio" name="" value=""${if (selected=="") " checked" else ""}/>\n"""
+    html ++= notSelectedString += '\n'
+    html ++= "</label>\n"
+    for ((optionName, optionText) <- options) {
+      html ++= s"""<label><input disabled name="$groupName" type="radio" value="${escapeHtml4(optionName)}"${if (selected==optionName) " checked" else ""}/>\n"""
+      html ++= optionText += '\n'
+      html ++= "</label>\n"
+    }
+    html ++= "</fieldset>\n"
+
+    Html(html.result())
+  }
+
   def renderHtmlRadio: Html = {
     val html = StringBuilder()
     html ++= s"""<fieldset id="${name.jsElementId}">\n"""
@@ -87,6 +110,15 @@ final class MultipleChoice(val name: ElementName,
     Html(html.result())
   }
 
+  def renderHtmlSelectStatic(selected: String): Html = {
+    val html = StringBuilder()
+    html ++= s"""<select readonly>\n"""
+    html ++= s"""<option value=""${if (selected=="") " selected" else ""}>$notSelectedString</option>\n"""
+    for ((optionName, optionText) <- options)
+      html ++= s"""<option value="${escapeHtml4(optionName)}"${if (selected==optionName) " selected" else ""}>$optionText</option>\n"""
+    html ++= "</select>\n"
+    Html(html.result())
+  }
 
   def renderHtmlSelect: Html = {
     val html = StringBuilder()

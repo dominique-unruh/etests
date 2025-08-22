@@ -11,6 +11,8 @@ import play.api.libs.json.{JsNumber, JsObject, JsString, JsValue}
 
 abstract class Grader(val name: ElementName) extends PageElement {
   override def renderHtml: Html = Html.empty
+  override def renderStaticHtml(answers: Map[ElementName, String]): Html = renderHtml
+  
   def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit
   lazy val reachablePoints: Points
 

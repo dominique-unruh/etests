@@ -11,6 +11,8 @@ import scala.jdk.CollectionConverters.IterableHasAsScala
 case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownAssessment*) {
   assert(problems.map(_.name).distinct.length == problems.map(_.name).length)
   
+  lazy val reachablePoints: Points = problems.map(_.reachablePoints).sum
+  
   def assessmentIndex(assessment: Assessment)(implicit exceptionContext: ExceptionContext): Int = {
     given ExceptionContext = ExceptionContext.addToExceptionContext(s"Looking for assessment $assessment in exam", assessment, this)
     val index = problems.indexWhere(_.assessment eq assessment)

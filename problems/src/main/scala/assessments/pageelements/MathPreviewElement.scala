@@ -3,9 +3,13 @@ package assessments.pageelements
 import assessments.{Assessment, ElementName, Html}
 import me.shadaj.scalapy.py
 import me.shadaj.scalapy.py.PyQuote
+import org.apache.commons.text.StringEscapeUtils
+import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import play.api.libs.json.{JsObject, JsString, JsValue}
 import utils.Tag.Tags
 import utils.{IndentedInterpolator, Tag}
+
+import scala.util.Random
 
 /** Example of a preview that interprets the input as LaTeX math */
 class MathPreviewElement(val name: ElementName,
@@ -13,7 +17,7 @@ class MathPreviewElement(val name: ElementName,
                          val latexRenderer: String => String) extends PageElement {
   override val tags: Tag.Tags[MathPreviewElement.this.type] = Tags.empty
   override def renderHtml: Html =
-    Html(ind"""<div style="font-weight: bold; border: solid 1 1 1 1;" id="${name.jsElementId}">Preview...</div><script>
+    Html(ind"""<span style="font-weight: bold; background-color: lightgray;" id="${name.jsElementId}">Preview...</span><script>
          |  function ${name.jsElementCallbackName}(json) {
          |    let span = document.getElementById("${name.jsElementId}");
          |    console.log(span);
@@ -23,9 +27,16 @@ class MathPreviewElement(val name: ElementName,
          |  }
          |</script>""")
 
+  override def renderStaticHtml(answers: Map[ElementName, String]): Html = {
+    val math = latexRenderer(answers(observed))
+    Html(
+      s"""<span class="mathjax-render" style="background-color: lightgray;">\\(${escapeHtml4(math)}\\)</span>"""
+    )
+  }
+
   override def updateAction(assessment: Assessment, state: Map[ElementName, JsValue]): IterableOnce[ElementAction] = {
     val content = state(observed).asInstanceOf[JsObject].value("content").asInstanceOf[JsString].value
-    val text = "\\[" + latexRenderer(content) + "\\]"
+    val text = "\\(" + latexRenderer(content) + "\\)"
     Seq(ElementAction(name, JsObject(Seq("preview" -> JsString(text)))))
   }
 }
