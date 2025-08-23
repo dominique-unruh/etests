@@ -1,7 +1,7 @@
 package externalsystems
 
-import com.github.tototoshi.csv.{CSVFormat, CSVReader, CSVWriter}
-import externalsystems.Spreadsheet.{Format, Index, RowNumberIndex, Row, ValidationRule}
+import com.github.tototoshi.csv.{CSVFormat, CSVReader, CSVWriter, DefaultCSVFormat}
+import externalsystems.Spreadsheet.{Format, Index, Row, RowNumberIndex, ValidationRule}
 import utils.Utils
 
 import java.nio.file.Path
@@ -11,19 +11,19 @@ import scala.jdk.CollectionConverters.ConcurrentMapHasAsScala
 import scala.util.boundary
 
 case class Spreadsheet private (
-                            private val header: Seq[String],
-                            private val content: Vector[Row],
-                            fileFormat: Format,
-                            filePath: Option[Path],
-                            validationRules: Seq[ValidationRule] = Seq.empty,
+                                 headers: Seq[String],
+                                 rows: Vector[Row],
+                                 fileFormat: Format,
+                                 filePath: Option[Path],
+                                 validationRules: Seq[ValidationRule] = Seq.empty,
                  ) {
   private val rowNumberIndices: ConcurrentHashMap[String, RowNumberIndex] = new ConcurrentHashMap[String, RowNumberIndex]()
 
   def rowNumberIndex(column: String): RowNumberIndex =
     rowNumberIndices.computeIfAbsent(column, _ =>
-      assert(header.contains(column))
+      assert(headers.contains(column))
       val index = mutable.Map[String, Seq[Int]]()
-      for ((row, rowNr) <- content.zipWithIndex) {
+      for ((row, rowNr) <- rows.zipWithIndex) {
         val value = row.cells(column)
         index.get(value) match
           case Some(rowNrs) => index.put(value, rowNrs.appended(rowNr))
@@ -42,7 +42,7 @@ case class Spreadsheet private (
   def lookupAll[U](index: Index[U], key: String): Seq[U] =
     val internalIndex = this.rowNumberIndex(index.indexColumn)
     val rowNrs = internalIndex.map.getOrElse(key, Seq.empty)
-    rowNrs.map(nr => index.rowMap(nr, content(nr)))
+    rowNrs.map(nr => index.rowMap(nr, rows(nr)))
 
   def lookup[U](index: Index[U], key: String): U =
     lookupAll(index, key) match
@@ -50,8 +50,7 @@ case class Spreadsheet private (
       case Seq(value) => value
       case _ => throw new IllegalArgumentException(s"key: $key, index ${index.name}, multiple elements")
 
-  def save(path: Path = filePath.getOrElse(throw IllegalArgumentException("no path saved in spreadsheet, give one explicitly")),
-           format: Spreadsheet.Format = fileFormat): Unit = {
+  def assertValid(): Unit =
     if (errors.nonEmpty) {
       val errors2 = errors.take(10).toSeq
       if (errors2.length == 1)
@@ -59,11 +58,13 @@ case class Spreadsheet private (
       else
         throw new RuntimeException("Validation errors: " + errors2.head.mkString(". "))
     }
+  
+  def save(path: Path = filePath.getOrElse(throw IllegalArgumentException("no path saved in spreadsheet, give one explicitly")),
+           format: Spreadsheet.Format = fileFormat): Unit = {
+    val rawRows = for (row <- rows.iterator) yield
+      headers.map(row.cells)
 
-    val rawRows = for (row <- content.iterator) yield
-      header.map(row.cells)
-
-    format.save(path, Iterator.single(header) ++ rawRows)
+    format.save(path, Iterator.single(headers) ++ rawRows)
   }
 
   def addValidationRule(validationRule: ValidationRule): Spreadsheet =
@@ -72,14 +73,14 @@ case class Spreadsheet private (
   def forgetPath: Spreadsheet = copy(filePath = None)
 
   def mapRows(f: Row => Row): Spreadsheet = {
-    val headerSet = header.toSet
-    val newContent = content.map { row =>
+    val headerSet = headers.toSet
+    val newContent = rows.map { row =>
       val newRow = f(row)
       if (newRow ne row)
         assert(newRow.cells.keys == headerSet)
       newRow
     }
-    copy(content = newContent)
+    copy(rows = newContent)
   }
 }
 
@@ -98,7 +99,7 @@ object Spreadsheet {
     val rows = for (rawRow <- rawRows) yield
       assert(rawRow.length == header.length)
       Row(Map(header.zip(rawRow)*))
-    Spreadsheet(header = header, content = Vector.from(rows), fileFormat = format, filePath = Some(path))
+    Spreadsheet(headers = header, rows = Vector.from(rows), fileFormat = format, filePath = Some(path))
   }
 
 
@@ -135,7 +136,12 @@ object Spreadsheet {
         writer.close()
       }
     }
-
+    object CSV {
+      val default: CSV = CSV(new DefaultCSVFormat {
+        override val delimiter: Char = ';'
+        override val lineTerminator: String = "\n"
+      }, "utf8")
+    }
   }
 }
 

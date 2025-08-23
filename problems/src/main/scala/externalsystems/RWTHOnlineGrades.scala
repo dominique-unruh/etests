@@ -1,7 +1,7 @@
 package externalsystems
 
 import com.github.tototoshi.csv.{CSVFormat, CSVReader, CSVWriter, DefaultCSVFormat, QUOTE_ALL, Quoting}
-import RWTHOnlineGrades.{Entry, registrationNumberIndex, given}
+import RWTHOnlineGrades.{Entry, Headers, registrationNumberIndex, given}
 import externalsystems.Spreadsheet.Row
 import externalsystems.Spreadsheet.ValidationRule.UniqueColumn
 import utils.Utils
@@ -16,9 +16,13 @@ class RWTHOnlineGrades private (private val spreadsheet: Spreadsheet) {
   def save(path: Path): Unit = spreadsheet.save(path)
   def map(f: Entry => Entry): RWTHOnlineGrades =
     RWTHOnlineGrades(spreadsheet.mapRows(row => f(Entry(row)).row))
-  @targetName("mapPartialFunction")
-  def map(f: PartialFunction[Entry, Entry]): RWTHOnlineGrades =
-    map(e => f.lift(e).getOrElse(e))
+  @targetName("mapOption")
+  def map(f: Entry => Option[Entry]): RWTHOnlineGrades =
+    map(e => f(e).getOrElse(e))
+  def map(f: PartialFunction[Entry, Entry]): RWTHOnlineGrades = map(f.lift)
+  /** Returns all registration numbers in this table */
+  lazy val students: Seq[String] = spreadsheet.rows.map(_(Headers.registrationNumber))
+  def assertValid(): Unit = spreadsheet.assertValid()
 }
 
 object RWTHOnlineGrades {

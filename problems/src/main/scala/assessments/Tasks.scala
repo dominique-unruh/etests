@@ -2,7 +2,8 @@ package assessments
 
 import assessments.Comment.Kind
 import assessments.ExceptionContext.initialExceptionContext
-import externalsystems.Dynexite
+import externalsystems.Spreadsheet.Index
+import externalsystems.{Dynexite, RWTHOnlineGrades, Sciebo, Spreadsheet}
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
@@ -173,4 +174,36 @@ object GradeEveryone extends Task {
     if (errors.nonEmpty)
       println("***** THERE WERE ERRORS *****")
   }
+}
+
+object GradesToRWTHOnline extends Task {
+  given Conversion[String, Path] = Path.of(_)
+
+  val rwthOnlineExport = RWTHOnlineGrades.load("/home/unruh/cloud/qis/lectures/2025-intro-qc/rwth-exam-registrations-after-exam.csv")
+  rwthOnlineExport.assertValid()
+  val gradeSheet = Spreadsheet.load("/home/unruh/cloud/sciebo/shared/intro-qc-exam1-grading/results.csv", format=Spreadsheet.Format.CSV.default)
+
+  val rwthOnlineStudents = rwthOnlineExport.students
+  val gradeSheetStudents = gradeSheet.rows.map(_("student"))
+  val scheinStudents = gradeSheetStudents.toSet -- rwthOnlineStudents.toSet
+  assert(Utils.isDistinct(gradeSheetStudents))
+  val gradeIndex = Index("grade", "student", (i,r) => r("grade"))
+
+  val toPublish = Map((for (row <- gradeSheet.rows) yield {
+    val student = row("student")
+    assert(raw"[0-9]+".r.matches(student))
+    val grade = row("grade")
+    val link = Sciebo.getPublicReadLink(s"/shared/intro-qc-exam1-grading/$student")
+    student -> (grade, link)
+  })*)
+
+  val rwthOnlineImport = rwthOnlineExport.map { entry =>
+    for ((grade, link) <- toPublish.get(entry.registrationNumber))
+          yield entry.setGrade(grade).setRemark(s"Details (available temporarily): $link")
+  }
+
+  for (student <- scheinStudents)
+    println(s"$student, ${toPublish(student)._1}, ${toPublish(student)._2}")
+
+  rwthOnlineImport.save("/home/unruh/cloud/qis/lectures/2025-intro-qc/rwth-upload.csv")
 }
