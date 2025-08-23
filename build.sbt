@@ -14,7 +14,7 @@ ThisBuild / scalaVersion := "3.6.4"
 lazy val webapp = (project in file("webapp"))
   .settings(
     libraryDependencies += guice,
-//    libraryDependencies += "io.github.classgraph" % "classgraph" % "4.8.181",
+    //    libraryDependencies += "io.github.classgraph" % "classgraph" % "4.8.181",
     libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test,
   )
   .enablePlugins(PlayScala)
@@ -42,9 +42,9 @@ lazy val problems = (project in file("problems"))
     libraryDependencies += "com.github.cb372" %% "scalacache-core" % "0.28.0" cross for3Use2_13,
     libraryDependencies += "com.github.cb372" %% "scalacache-caffeine" % "0.28.0" cross for3Use2_13,
     libraryDependencies += "com.lihaoyi" %% "os-lib" % "0.11.5",
-//      libraryDependencies += "com.github.cb372" %% "scalacache-core" % "1.0.0-M6",
-//      libraryDependencies += "com.github.cb372" %% "scalacache-ehcache" % "0.28.0" cross for3Use2_13,
-//      libraryDependencies += "org.ehcache" % "ehcache" % "3.10.8"
+    //      libraryDependencies += "com.github.cb372" %% "scalacache-core" % "1.0.0-M6",
+    //      libraryDependencies += "com.github.cb372" %% "scalacache-ehcache" % "0.28.0" cross for3Use2_13,
+    //      libraryDependencies += "org.ehcache" % "ehcache" % "3.10.8"
     libraryDependencies += "org.rocksdb" % "rocksdbjni" % "10.2.1",
     libraryDependencies += "org.jsoup" % "jsoup" % "1.17.2",
     libraryDependencies ++= Seq(
@@ -52,10 +52,10 @@ lazy val problems = (project in file("problems"))
       "io.circe" %% "circe-generic" % "0.14.14",
       "io.circe" %% "circe-parser" % "0.14.14"
     ),
-      libraryDependencies += "org.apache.xmlgraphics" % "batik-transcoder" % "1.19",
-      libraryDependencies += "org.apache.xmlgraphics" % "batik-codec" % "1.19",
-      libraryDependencies += "org.apache.xmlgraphics" % "batik-dom" % "1.19",
-      libraryDependencies += "org.apache.xmlgraphics" % "batik-svg-dom" % "1.19",
-      libraryDependencies += "io.github.classgraph" % "classgraph" % "4.8.181",
-    libraryDependencies += "org.aarboard.nextcloud" % "nextcloud-api" % "13.1.0", // Loads extra SLF4J provider?
+    libraryDependencies += "org.apache.xmlgraphics" % "batik-transcoder" % "1.19",
+    libraryDependencies += "org.apache.xmlgraphics" % "batik-codec" % "1.19",
+    libraryDependencies += "org.apache.xmlgraphics" % "batik-dom" % "1.19",
+    libraryDependencies += "org.apache.xmlgraphics" % "batik-svg-dom" % "1.19",
+    libraryDependencies += "io.github.classgraph" % "classgraph" % "4.8.181",
+    libraryDependencies += "org.aarboard.nextcloud" % "nextcloud-api" % "13.1.0" exclude("org.slf4j", "slf4j-simple")
   )
