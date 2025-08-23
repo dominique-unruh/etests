@@ -57,4 +57,5 @@ lazy val problems = (project in file("problems"))
       libraryDependencies += "org.apache.xmlgraphics" % "batik-dom" % "1.19",
       libraryDependencies += "org.apache.xmlgraphics" % "batik-svg-dom" % "1.19",
       libraryDependencies += "io.github.classgraph" % "classgraph" % "4.8.181",
+    libraryDependencies += "org.aarboard.nextcloud" % "nextcloud-api" % "13.1.0",
   )

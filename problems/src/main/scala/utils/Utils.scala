@@ -3,19 +3,21 @@ package utils
 import com.typesafe.scalalogging.Logger
 import sourcecode.{Enclosing, FileName}
 
-import java.awt.Toolkit
+import java.awt.{GridBagConstraints, GridBagLayout, Insets, Toolkit}
 import java.awt.datatransfer.{Clipboard, StringSelection}
 import java.io.{BufferedReader, FileReader}
 import java.nio.file.{Files, Path, Paths}
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.{Base64, Properties}
+import javax.swing.{JLabel, JOptionPane, JPanel, JPasswordField, SwingUtilities}
 import scala.jdk.CollectionConverters.given
 import scala.collection.mutable
 import scala.quoted.{Expr, Quotes, Type}
 import scala.reflect.ClassTag
 import scala.util.Using
 import scala.reflect.runtime.universe.{TypeTag, typeOf}
+import scala.sys.process.stringSeqToProcess
 
 object Utils {
   private val logger = Logger[Utils.type]
@@ -24,7 +26,7 @@ object Utils {
   def uniqueId(): Long = synchronized { uniqueIdCounter += 1; uniqueIdCounter }
 
   private var systemPropertiesLoaded = false
-  def loadSystemProperties(): Unit = synchronized {
+  def loadSystemProperties(): Unit = if (!systemPropertiesLoaded) synchronized {
     if (!systemPropertiesLoaded) {
       val path = os.pwd / "java.properties"
       if (os.exists(path)) {
@@ -104,10 +106,16 @@ object Utils {
     sb.toString()
   }
 
+  def getSystemProperty(property: String, description: String): String = {
+    loadSystemProperties()
+    val prop = System.getProperty(property)
+    if (prop == null)
+      throw new RuntimeException(s"Please configure $property in java.properties ($description)")
+    prop
+  }
+
   def getSystemPropertyPath(property: String, fileDescription: String): Path = {
-    val path = System.getProperty(property)
-    if (path == null)
-      throw new RuntimeException(s"Please configure $property in java.properties (path to $fileDescription)")
+    val path = getSystemProperty(property, s"path to $fileDescription")
     val path2 = Path.of(path)
     if (!path2.isAbsolute)
       throw new RuntimeException(s"$property in java.properties must refer to an absolute path")
@@ -115,9 +123,7 @@ object Utils {
   }
 
   def getSystemPropertyClass[T](property: String, classDescription: String)(implicit typeTag: TypeTag[T]): Class[T] = {
-    val className = System.getProperty(property)
-    if (className == null)
-      throw new RuntimeException(s"Please configure $property in java.properties (class name of $classDescription)")
+    val className = getSystemProperty(property, s"class name of $classDescription")
     val clazz = try
       getClass.getClassLoader.loadClass(className)
     catch
@@ -129,10 +135,7 @@ object Utils {
   }
 
   def getSystemPropertyObject[T](property: String, objectDescription: String)(using classTag: ClassTag[T]): T = {
-    val objectName = System.getProperty(property)
-    if (objectName == null)
-      throw new RuntimeException(s"Please configure $property in java.properties (object name of $objectDescription)")
-
+    val objectName = getSystemProperty(property, s"object name of $objectDescription")
     val clazz = try
       getClass.getClassLoader.loadClass(objectName + "$")
     catch
@@ -193,5 +196,9 @@ object Utils {
           s"Invalid date format: '$dateString'. Expected format: yyyy-MM-dd"
         )
     }
+  }
+
+  def askPassword(passwordDescription: String): String = {
+    Seq("/usr/lib/seahorse/ssh-askpass", "--", passwordDescription).!!
   }
 }
