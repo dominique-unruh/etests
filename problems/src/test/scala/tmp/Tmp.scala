@@ -30,10 +30,6 @@ object Tmp {
 
 
   def main(args: Array[String]): Unit = {
-    given MathContext = Globals.mathContext
-
-    val term = StackParser.parse("1/sqrt(2)*-3/2+1/sqrt(2)*1/2")
-    val sympy = term.toSympyMC()
-    println(sympy.latex)
+    println((4 : Double).toString)
   }
 }

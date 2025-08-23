@@ -24,6 +24,23 @@ object GradeEveryone extends Task {
 
   makeReports()
 
+  def pointsToGrade(points: Points, reachable: Points) = {
+    val percent = points / reachable * 100
+    val grade: Double =
+      if percent >= 95 then 1
+      else if percent >= 90 then 1.3
+      else if percent >= 85 then 1.7
+      else if percent >= 80 then 2
+      else if percent >= 75 then 2.3
+      else if percent >= 70 then 2.7
+      else if percent >= 65 then 3
+      else if percent >= 60 then 3.3
+      else if percent >= 55 then 3.7
+      else if percent >= 50 then 4
+      else 5
+    grade
+  }
+  
   private def makeQuestionReport(student: String, question: Assessment, errors: mutable.Queue[(String, Assessment, String)]): (Points, String) = {
     given ExceptionContext = initialExceptionContext(s"Creating report for $student, question '${question.name}'")
     val output = new StringBuilder
@@ -136,22 +153,11 @@ object GradeEveryone extends Task {
     }
   }
 
-  private def makePointsCSV(targetDir: Path, points: Map[String, Points]): Unit = {
+  private def makePointsCSV(targetDir: Path, points: Map[String, Points], reachable: Points): Unit = {
     Using.resource(new PrintWriter(targetDir.resolve("results.csv").toFile)) { writer =>
       writer.println(s"student;points;grade")
       for ((student, points) <- points) {
-        val grade =
-          if points >= 95 then 1
-          else if points >= 90 then 1.3
-          else if points >= 85 then 1.7
-          else if points >= 80 then 2
-          else if points >= 75 then 2.3
-          else if points >= 70 then 2.7
-          else if points >= 65 then 3
-          else if points >= 60 then 3.3
-          else if points >= 55 then 3.7
-          else if points >= 50 then 4
-          else 5
+        val grade = pointsToGrade(points, reachable)
 
         writer.println(s"$student;$points;$grade")
       }
@@ -169,7 +175,7 @@ object GradeEveryone extends Task {
       pointMap += (student -> points)
     }
     makeErrorReport(errors, targetDir.resolve("errors.html"))
-    makePointsCSV(targetDir, pointMap.result())
+    makePointsCSV(targetDir, pointMap.result(), reachable = exam.reachablePoints)
     println(s"\n\nReports in $targetDir, errors in ${targetDir.resolve("errors.html")}")
     if (errors.nonEmpty)
       println("***** THERE WERE ERRORS *****")
