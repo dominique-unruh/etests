@@ -34,4 +34,8 @@ class StackParserTest extends AnyFunSuiteLike {
     assert(result.toString == "plus(plus(a, plus(b, c)), d)")
   }
 
+  test("a÷b (unicode)") {
+    val result = StackParser.parse("a÷b")
+    assert(result.toString == "divide(a, b)")
+  }
 }
