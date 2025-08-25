@@ -27,11 +27,11 @@ object GradeEveryone extends Task {
   def pointsToGrade(points: Points, reachable: Points) = {
     val percent = points / reachable * 100
     val grade: Double =
-      if percent >= 95 then 1
-      else if percent >= 90 then 1.3
-      else if percent >= 85 then 1.7
-      else if percent >= 80 then 2
-      else if percent >= 75 then 2.3
+      if      percent >= 94 then 1
+      else if percent >= 88 then 1.3
+      else if percent >= 83 then 1.7
+      else if percent >= 78 then 2
+      else if percent >= 74 then 2.3
       else if percent >= 70 then 2.7
       else if percent >= 65 then 3
       else if percent >= 60 then 3.3
@@ -40,7 +40,7 @@ object GradeEveryone extends Task {
       else 5
     grade
   }
-  
+
   private def makeQuestionReport(student: String, question: Assessment, errors: mutable.Queue[(String, Assessment, String)]): (Points, String) = {
     given ExceptionContext = initialExceptionContext(s"Creating report for $student, question '${question.name}'")
     val output = new StringBuilder
@@ -187,7 +187,7 @@ object GradesToRWTHOnline extends Task {
 
   val rwthOnlineExport = RWTHOnlineGrades.load("/home/unruh/cloud/qis/lectures/2025-intro-qc/rwth-exam-registrations-after-exam.csv")
   rwthOnlineExport.assertValid()
-  val gradeSheet = Spreadsheet.load("/home/unruh/cloud/sciebo/shared/intro-qc-exam1-grading/results.csv", format=Spreadsheet.Format.CSV.default)
+  val gradeSheet = Spreadsheet.load("/home/unruh/cloud/sciebo/shared/intro-qc-exam1-grading/reports/results.csv", format=Spreadsheet.Format.CSV.default)
 
   val rwthOnlineStudents = rwthOnlineExport.students
   val gradeSheetStudents = gradeSheet.rows.map(_("student"))
@@ -199,7 +199,7 @@ object GradesToRWTHOnline extends Task {
     val student = row("student")
     assert(raw"[0-9]+".r.matches(student))
     val grade = row("grade")
-    val link = Sciebo.getPublicReadLink(s"/shared/intro-qc-exam1-grading/$student")
+    val link = Sciebo.getPublicReadLink(s"/shared/intro-qc-exam1-grading/reports/$student")
     student -> (grade, link)
   })*)
 
@@ -208,8 +208,9 @@ object GradesToRWTHOnline extends Task {
           yield entry.setGrade(grade).setRemark(s"Details (available temporarily): $link")
   }
 
+  rwthOnlineImport.save("/home/unruh/cloud/qis/lectures/2025-intro-qc/rwth-upload.csv")
+
+  println("Schein:\n\n")
   for (student <- scheinStudents)
     println(s"$student, ${toPublish(student)._1}, ${toPublish(student)._2}")
-
-  rwthOnlineImport.save("/home/unruh/cloud/qis/lectures/2025-intro-qc/rwth-upload.csv")
 }
