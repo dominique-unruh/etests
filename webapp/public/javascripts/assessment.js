@@ -106,21 +106,6 @@ function performSendState() {
         .done(successCallback);
 }
 
-/*// TODO debounce this!
-function sendState() {
-    clearErrors()
-    function failCallback(obj, statusMessage) {
-        log_error("Failed to send updated state to server")
-        console.log("Failed AJAX call: ", state, obj, statusMessage)
-    }
-    $.ajax(jsRoutes.controllers.AssessmentController.updateAction(examName, assessmentName).url,
-        {method: "POST", dataType: 'json', data: JSON.stringify(state), contentType: 'application/json',
-            timeout: 30000,
-            headers: {'CSRF-Token': csrfToken}})
-        .fail(failCallback)
-        .done(doActions)
-}*/
-
 function randomStudent() {
     clearErrors()
     function failCallback(obj, statusMessage) {
@@ -176,3 +161,26 @@ function dynexiteAnswers() {
         .done(successCallback)
 }
 
+function setCookie(name, value) {
+    // const expires = new Date();
+    // expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+    document.cookie = name + '=' + encodeURIComponent(value)/* + ';expires=' + expires.toUTCString()*/ + ';path=/';
+}
+
+
+function getCookie(name) {
+    const nameEQ = name + '=';
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) {
+            return decodeURIComponent(c.substring(nameEQ.length, c.length));
+        }
+    }
+    return null;
+}
+
+function onLoad() {
+    document.getElementById("registration").value = getCookie("registrationNumber");
+}

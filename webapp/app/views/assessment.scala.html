@@ -74,7 +74,7 @@
             }
         </style>
     </head>
-    <body>
+    <body onload="onLoad()">
         <div class="two-column-container">
             <div class="left-column">
                 <h1>@(title) <span id="working" style="color:blue"></span></h1>
@@ -93,7 +93,7 @@
 
             <div class="right-column">
                 <label for="registration">Registration number</label>
-                <input id="registration" oninput="updateState('@(ElementName.registrationNumber)', this.value)"/>
+                <input id="registration" oninput="setCookie('registrationNumber', this.value); updateState('@(ElementName.registrationNumber)', this.value)"/>
                 <br>
                 <a href="javascript:randomStudent()">Random student...</a> |
                 <a href="javascript:showDynexitePdf()">Show Dynexite PDF...</a> |
