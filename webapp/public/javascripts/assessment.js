@@ -34,6 +34,11 @@ function loadAnswers() {
         document.getElementById("registration").focus()
         return
     }
+    if (regno !== regno.trim()) {
+        log_error("Registration number contains leading/trailing spaces.")
+        document.getElementById("registration").focus()
+        return
+    }
     $.ajax(jsRoutes.controllers.AssessmentController.loadAnswers(examName, assessmentName, regno).url,
         {method: "GET", dataType: 'json', headers: {'CSRF-Token': csrfToken}})
         .fail(failCallback)
