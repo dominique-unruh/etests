@@ -147,7 +147,7 @@ abstract class MarkdownAssessment {
   def main(args: Array[String]): Unit = {
     Utils.loadSystemProperties()
     given ExceptionContext = initialExceptionContext(s"Running main for problem '$name'")
-    println(s"Running the main method of \"$name\", with run option $runOption.")
+    println(s"Running the main method of \"$name\", with run option $runOption (configured in java.properties).")
     if (MarkdownAssessmentRun.values.length > 1)
       println(s"To configure a different action, set MarkdownAssessment.runOption to one of: ${(MarkdownAssessmentRun.values.toSet - runOption).mkString(", ")}")
 
@@ -156,7 +156,13 @@ abstract class MarkdownAssessment {
       case MarkdownAssessmentRun.extractStack => mainExtractStack()
     }
   }
-  private val runOption = MarkdownAssessmentRun.runTests
+  private lazy val runOption = {
+    val string = Utils.getSystemProperty("run.option.for.problem", s"What to do when a problem is executed in the IDE. One of ${MarkdownAssessmentRun.values.mkString(", ")}")
+    try
+      MarkdownAssessmentRun.valueOf(string)
+    catch
+      case _ : IllegalArgumentException => throw RuntimeException(s"System property run.option.for.problem contains illegal value. Should be one of ${MarkdownAssessmentRun.values.mkString(", ")}")
+  }
 
   def mainRunTests(implicit exceptionContext: ExceptionContext): Unit = {
     runTests()

@@ -31,7 +31,8 @@ object MoodleStack {
      */
     /** Don't insert stars */
     case dontInsert extends InsertStars(0)
-    /** Insert stars for implied multiplication only */
+    /** Insert stars for implied multiplication only.
+     * Warning: Currently unclear how to mimic that when grading and in our previews. */
     case impliedMultiplication extends InsertStars(1)
   }
 
@@ -39,6 +40,7 @@ object MoodleStack {
   case class Input(typ: InputType,
                    name: String,
                    reference: String,
+                   forbidWords: Iterable[String],
                    allowWords: Iterable[String],
                    extraOptions: Iterable[String],
                    insertStars: InsertStars,
@@ -58,7 +60,7 @@ object MoodleStack {
         <insertstars>{insertStars.integerValue}</insertstars>
         <syntaxhint></syntaxhint>
         <syntaxattribute>0</syntaxattribute>
-        <forbidwords></forbidwords>
+        <forbidwords>{forbidWords.mkString(", ")}</forbidwords>
         <allowwords>{allowWords.mkString(", ")}</allowwords>
         <forbidfloat>1</forbidfloat>
         <requirelowestterms>0</requirelowestterms>
@@ -162,17 +164,30 @@ object MoodleStack {
       """<?xml version="1.0" encoding="UTF-8"?>""" + "\n" + PrettyPrinter(80, 2).format(xml)
   }
 
+  lazy val defaultForbiddenWords = {
+    val letters = ('a' to 'z') ++ ('A' to 'Z')
+    val result = Set.newBuilder[String]
+    for (x <- letters)
+      result += x.toString
+      for (y <- letters)
+        result += s"$x$y"
+    result.result()
+  }
+
   def assessmentToQuestion(assessment: Assessment): Question = {
     val inputs = Seq.newBuilder[Input]
     val (questionText, explanation, gradingRules, associatedFiles) = assessment.renderHtml { (element, associatedFiles) =>
       element match {
         case pageElement: InputElement =>
           val name = pageElement.name.toString
+          val allowWords = pageElement.tags(moodleAllowWords)
+          val forbidWords = defaultForbiddenWords -- allowWords
           val input = Input(
             typ = pageElement.tags(moodleInputType),
             name = name,
             reference = pageElement.reference,
-            allowWords = pageElement.tags(moodleAllowWords),
+            forbidWords = forbidWords,
+            allowWords = allowWords,
             extraOptions = pageElement.tags(moodleExtraOptions),
             insertStars = pageElement.tags(moodleInsertStars))
           inputs += input
