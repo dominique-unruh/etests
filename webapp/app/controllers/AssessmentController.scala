@@ -67,7 +67,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     val html = StringBuilder()
     html ++= s"<h1>Exam ${exam.name}</h1>\n"
     html ++= "<ul>\n"
-    for (problem <- exam.problems)
+    for (problem <- exam.problems.sortBy(_.name))
       val escapedName = StringEscapeUtils.escapeHtml4(problem.name)
       val link = routes.AssessmentController.assessment(examName, problem.name).url
       html ++= s"""  <li><a href="$link">$escapedName</a> (${problem.getClass.getSimpleName.stripSuffix("$")})</li>\n"""
