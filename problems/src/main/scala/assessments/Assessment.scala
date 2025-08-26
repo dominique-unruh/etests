@@ -15,7 +15,8 @@ import utils.Utils
 
 import java.nio.file.{Files, Path}
 import scala.collection.mutable.ListBuffer
-import scala.util.{Random, Using}
+import scala.util.boundary.break
+import scala.util.{Random, Using, boundary}
 import scala.xml.*
 
 class Assessment (val name: String,
@@ -120,14 +121,14 @@ object Assessment {
       add(basename = basename, extension = extension, mimeType = mimeType, content = content)
     }
     def add(basename: String, extension: String, mimeType: String, content: Array[Byte]): String = {
-      def freshName: String = {
+      def freshName: String = boundary {
         val name = s"$basename.$extension"
         if (!hasName(name))
-          return name
+          break(name)
         for (i <- 1 until Int.MaxValue) {
           val namei = s"$basename$i.$extension"
           if (!hasName(namei))
-            return namei
+            break(namei)
         }
         assert(false) // Unreachable unless there are Int.MaxValue many files
       }
