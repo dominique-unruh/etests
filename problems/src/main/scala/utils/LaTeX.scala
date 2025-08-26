@@ -1,6 +1,7 @@
 package utils
 
 import Docker.runInDocker
+import com.typesafe.scalalogging.Logger
 import utils.{IndentedInterpolator, Utils}
 
 import java.awt.image.BufferedImage
@@ -48,8 +49,12 @@ object LaTeX {
 
     if (dockerResult.exitCode != 0) {
       (dockerResult.fileString("latex.log"), dockerResult.fileString("convert.log")) match {
-        case (None, None) => throw IOException(s"Failed to run latex.\n$document")
-        case (Some(latexLog), None) => throw IOException(s"Failed to run latex.\n$document\n$latexLog")
+        case (None, None) =>
+          logger.debug(s"Latex error:$document")
+          throw IOException(s"Failed to run latex.")
+        case (Some(latexLog), None) =>
+          logger.debug(s"Latex error:$document")
+          throw IOException(s"Failed to run latex.")
         case (_, Some(convertLog)) => throw IOException("Failed to convert PDF to PNG.\n"+convertLog)
       }
     }
@@ -88,5 +93,7 @@ object LaTeX {
     showPngImage(result)
 
   }
+
+  private val logger = Logger[LaTeX.type]
 }
 
