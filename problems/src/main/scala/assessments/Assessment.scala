@@ -1,9 +1,10 @@
 package assessments
 
 import assessments.Assessment.FileMapBuilder
-import assessments.pageelements.{AnswerElement, Element, ElementAction, ImageElement, PageElement}
+import assessments.pageelements.{AnswerElement, Element, ElementAction, ErrorElement, ImageElement, PageElement}
 import com.eed3si9n.eval.Eval
 import org.apache.commons.text.StringEscapeUtils
+import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import org.commonmark.parser.Parser
 
 import scala.collection.{SeqMap, mutable}
@@ -74,9 +75,14 @@ class Assessment (val name: String,
     def render(element: Element, associatedFiles: FileMapBuilder) = element match {
       case element: PageElement =>
         element.renderHtml
+      // TODO ImageElement and ErrorElement could be handled the same as PageElement if we extend renderHtml to return associated files or something. Or take a FileMapBuilder.
       case ImageElement(png, basename) =>
         val name = associatedFiles.add(basename = basename, extension = "png", mimeType = "image/png", content = png)
-        Html(s"""<img src="${StringEscapeUtils.escapeHtml4(name)}"/>""")
+        Html(s"""<img src="${escapeHtml4(name)}"/>""")
+      case ErrorElement(message, files) =>
+        val fileNames = files.toSeq map { (name, content) => associatedFiles.add(filename = name, mimeType = "text/plain", content = content) }
+        val fileLinks = fileNames map { filename => s""" [<a href="${escapeHtml4(filename)}" target="_blank">${escapeHtml4(filename)}</a>]"""}
+        Html(s"""<div style="background-color: red">ERROR: ${escapeHtml4(message)}${fileLinks}</div>""")
     }
 
     renderHtml(render)
@@ -109,6 +115,10 @@ object Assessment {
     private val map = mutable.Map[String, (String, Array[Byte])]()
     def hasName(name: String): Boolean = map.contains(name)
     def result(): Map[String, (String, Array[Byte])] = map.toMap
+    def add(filename: String, mimeType: String, content: Array[Byte]): String = {
+      val (basename, extension) = Utils.splitExtFilename(filename)
+      add(basename = basename, extension = extension, mimeType = mimeType, content = content)
+    }
     def add(basename: String, extension: String, mimeType: String, content: Array[Byte]): String = {
       def freshName: String = {
         val name = s"$basename.$extension"

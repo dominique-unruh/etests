@@ -1,8 +1,8 @@
 package assessments
 
-import assessments.pageelements.ImageElement
+import assessments.pageelements.{ErrorElement, ImageElement, StaticElement}
 import utils.LaTeX.Preambles
-import utils.{LaTeX, Utils}
+import utils.{LaTeX, LaTeXException, Utils}
 
 object Common {
   def latexPreamble = raw"""${LaTeX.Preambles.standard}
@@ -10,12 +10,20 @@ object Common {
 \usepackage{quantikz}
 """
 
-  def latex(code: String): ImageElement = { ImageElement(LaTeX.latexToPng(code, preamble = latexPreamble), "latexpicture") }
-  def quantikz(code: String, options: String = "", extraPreamble: String = ""): ImageElement = {
+  private def catchLatexError(element: => StaticElement): StaticElement = {
+    try
+      element
+    catch
+      case e: LaTeXException =>
+        ErrorElement(e.toString, e.files)
+  }
+
+  def latex(code: String): StaticElement = catchLatexError { ImageElement(LaTeX.latexToPng(code, preamble = latexPreamble), "latexpicture") }
+  def quantikz(code: String, options: String = "", extraPreamble: String = ""): StaticElement = catchLatexError {
     ImageElement(LaTeX.latexToPng(s"\\begin{quantikz}[$options]\n${Utils.stripLeadingTrailingEmptyLines(code)}\\end{quantikz}",
       preamble = latexPreamble+"\n"+extraPreamble), "quantikz")
   }
-  def tikz(code: String, options: String = "", extraPreamble: String = ""): ImageElement = {
+  def tikz(code: String, options: String = "", extraPreamble: String = ""): StaticElement = catchLatexError {
     ImageElement(LaTeX.latexToPng(s"\\begin{tikzpicture}[$options]\n${Utils.stripLeadingTrailingEmptyLines(code)}\\end{tikzpicture}",
       preamble = latexPreamble+"\n"+extraPreamble), "tikz")
   }

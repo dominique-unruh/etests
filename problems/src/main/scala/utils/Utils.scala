@@ -201,4 +201,16 @@ object Utils {
   def askPassword(passwordDescription: String): String = {
     Seq("/usr/lib/seahorse/ssh-askpass", "--", passwordDescription).!!
   }
+
+
+  def splitExtFilename(filename: String): (String, String) = {
+    val dotIndex = filename.lastIndexOf('.')
+    if (dotIndex >= 0 && dotIndex < filename.length - 1) {
+      val basename = filename.substring(0, dotIndex)
+      val extension = filename.substring(dotIndex + 1)
+      (basename, extension)
+    } else {
+      (filename, "") // No extension found
+    }
+  }
 }

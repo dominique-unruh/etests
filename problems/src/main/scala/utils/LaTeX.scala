@@ -6,6 +6,7 @@ import utils.{IndentedInterpolator, Utils}
 
 import java.awt.image.BufferedImage
 import java.io.*
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.charset.{Charset, StandardCharsets}
 import java.nio.file.{Files, Paths, StandardCopyOption}
 import java.util.UUID
@@ -50,12 +51,11 @@ object LaTeX {
     if (dockerResult.exitCode != 0) {
       (dockerResult.fileString("latex.log"), dockerResult.fileString("convert.log")) match {
         case (None, None) =>
-          logger.debug(s"Latex error:$document")
-          throw IOException(s"Failed to run latex.")
+          throw LaTeXException(s"Failed to run LaTeX (no log file produced)", Map ("latex.tex" -> document.getBytes(UTF_8)))
         case (Some(latexLog), None) =>
-          logger.debug(s"Latex error:$document")
-          throw IOException(s"Failed to run latex.")
-        case (_, Some(convertLog)) => throw IOException("Failed to convert PDF to PNG.\n"+convertLog)
+          throw LaTeXException(s"Failed to run latex", Map ("latex.tex" -> document.getBytes(UTF_8), "latex.log" -> latexLog.getBytes(UTF_8)))
+        case (_, Some(convertLog)) =>
+          throw LaTeXException("Failed to convert PDF to PNG", Map ("latex.tex" -> document.getBytes(UTF_8), "convert.log" -> convertLog.getBytes(UTF_8)))
       }
     }
 
@@ -97,3 +97,4 @@ object LaTeX {
   private val logger = Logger[LaTeX.type]
 }
 
+case class LaTeXException(message: String, files: Map[String, Array[Byte]]) extends IOException(message)
