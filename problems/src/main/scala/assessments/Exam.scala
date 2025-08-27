@@ -25,7 +25,7 @@ case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownA
     given ExceptionContext = ExceptionContext.addToExceptionContext(s"Looking for assessment $name in exam ${this.name}", name, this)
     val assessment = problems.find(_.name == name)
     assessment.getOrElse {
-      throw ExceptionWithContext(s"Assessment ${name} not found in exam ${this.name} (did you include the question in the exam object?)")
+      throw ExceptionWithContext(s"Assessment \"${name}\" not found in exam ${this.name}. Exact spelling matters! Available: ${problems.map(p => s"\"${p.name}\"").mkString(", ")}.")
     }
   }
 
