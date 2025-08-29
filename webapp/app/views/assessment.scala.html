@@ -93,7 +93,7 @@
 
             <div class="right-column">
                 <label for="registration">Registration number</label>
-                <input id="registration" oninput="setCookie('registrationNumber', this.value); updateState('@(ElementName.registrationNumber)', this.value)"/>
+                <input id="registration" oninput="this.value = this.value.trim(); setCookie('registrationNumber', this.value); updateState('@(ElementName.registrationNumber)', this.value)"/>
                 <br>
                 <a href="javascript:randomStudent()">Random student...</a> |
                 <a href="javascript:showDynexitePdf()">Show Dynexite PDF...</a> |
