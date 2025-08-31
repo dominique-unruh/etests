@@ -1,4 +1,4 @@
-package assessments
+package exam.y2025.iqc1
 
 import exam.y2025.iqc1.Iqc1Exam
 import org.scalatest.funsuite.AnyFunSuiteLike

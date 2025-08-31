@@ -1,7 +1,9 @@
 import sbt.librarymanagement
 import sbt.librarymanagement.CrossVersion.{for2_13Use3, for3Use2_13}
 
-name := """assessments"""
+import java.nio.file.{Path, Paths}
+
+name := """etests"""
 
 version := "1.0-SNAPSHOT"
 
@@ -19,6 +21,7 @@ lazy val webapp = (project in file("webapp"))
   )
   .enablePlugins(PlayScala)
   .dependsOn(problems)
+  .dependsOn(exams)
 
 lazy val problems = (project in file("problems"))
   .settings(
@@ -60,3 +63,17 @@ lazy val problems = (project in file("problems"))
     libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.17.0", // Used to make Play happy with the nextcloud-api jackson dependency
     libraryDependencies += "org.aarboard.nextcloud" % "nextcloud-api" % "13.1.0" exclude("org.slf4j", "slf4j-simple")
   )
+
+lazy val exams = (project in file("exams"))
+  .settings (
+      Compile / scalaSource := baseDirectory.value,
+      Compile / excludeFilter := {
+        val broken = (baseDirectory.value / "broken").toPath
+        val test = (baseDirectory.value / "test").toPath
+        new SimpleFileFilter(p => p.toPath.startsWith(broken) || p.toPath.startsWith(test)) || HiddenFileFilter
+      },
+      Test / scalaSource := baseDirectory.value / "test",
+//      Test / excludeFilter := new SimpleFileFilter(_.toPath.startsWith((baseDirectory.value / "broken").toPath)) || HiddenFileFilter,
+  )
+  .dependsOn(problems)
+

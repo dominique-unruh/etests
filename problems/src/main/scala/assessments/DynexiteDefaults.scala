@@ -5,7 +5,6 @@ import assessments.pageelements.MultipleChoice.Style.select
 import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
 import assessments.stack.{StackMath, SympyAssumption, SympyExpr}
-import exam.y2025.iqc1.Globals
 import utils.Tag.Tags
 import utils.Utils
 
@@ -69,8 +68,13 @@ object DynexiteDefaults {
     def latex(using gradingContext: GradingContext): String = sympy.latex
   }*/
 
+  private val renderMathContext: MathContext = MathContext.default
+    .fixVar("i", StackMath.imaginaryUnit)
+    .fixVar("e", StackMath.eulerConstant)
+    .fixVar("pi", StackMath.pi)
+  
   private def stackMathRender(string: String): String = {
-    given MathContext = Globals.mathContext // TODO use something own
+    given MathContext = renderMathContext
     if (string == "")
       ""
     else try

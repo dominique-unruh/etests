@@ -1,0 +1,3 @@
+[submodule "exams"]
+	path = exams
+	url = git@git.rwth-aachen.de:unruh/qis-exams.git
