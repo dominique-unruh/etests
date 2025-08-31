@@ -15,7 +15,6 @@ import play.api.libs.json.{JsArray, JsBoolean, JsObject, JsString, JsValue}
 import play.mvc.BodyParser.Json
 import play.twirl.api.{Html, HtmlFormat}
 import com.typesafe.scalalogging.Logger
-import exam.y2025.iqc2.CnotConstruction
 import externalsystems.Dynexite
 import io.github.classgraph.{ClassGraph, ClassInfoList}
 import org.apache.commons.lang3.exception.ExceptionUtils
