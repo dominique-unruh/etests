@@ -185,7 +185,7 @@ object GradeEveryone extends Task {
 object GradesToRWTHOnline extends Task {
   given Conversion[String, Path] = Path.of(_)
 
-  val rwthOnlineExport = RWTHOnlineGrades.load("/home/unruh/cloud/qis/lectures/2025-intro-qc/rwth-exam-registrations-after-exam.csv")
+  val rwthOnlineExport = RWTHOnlineGrades.load("/home/unruh/cloud/qis/lectures/2025-intro-qc/rwth-upload.csv")
   rwthOnlineExport.assertValid()
   val gradeSheet = Spreadsheet.load("/home/unruh/cloud/sciebo/shared/intro-qc-exam1-grading/reports/results.csv", format=Spreadsheet.Format.CSV.default)
 
@@ -204,11 +204,11 @@ object GradesToRWTHOnline extends Task {
   })*)
 
   val rwthOnlineImport = rwthOnlineExport.map { entry =>
-    for ((grade, link) <- toPublish.get(entry.registrationNumber))
-          yield entry.setGrade(grade).setRemark(s"Details (available temporarily): $link")
+    for ((grade, link) <- toPublish.get(entry.registrationNumber)) yield
+      entry.setGrade(grade).setRemark(s"Details (available temporarily): $link")
   }
 
-  rwthOnlineImport.save("/home/unruh/cloud/qis/lectures/2025-intro-qc/rwth-upload.csv")
+  rwthOnlineImport.save("/home/unruh/cloud/qis/lectures/2025-intro-qc/rwth-upload-after-inspection.csv")
 
   println("Schein:\n\n")
   for (student <- scheinStudents)

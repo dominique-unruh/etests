@@ -45,7 +45,18 @@ object RWTHOnlineGrades {
     def grade: String = row(Headers.grade)
     def remark: String = row(Headers.remark)
     private def setCell(header: String, value: String) = Entry(Row(row.cells.updated(header, value)))
-    def setGrade(grade: String): Entry = setCell(Headers.grade, grade)
+    /** Sets the grade.
+     * Ensures that the grade does not become worse (larger number).
+     *
+     * @param allowWorse Allow the grade to become worse. */
+    def setGrade(grade: String, allowWorse: Boolean = false): Entry = {
+      if (!allowWorse) {
+        val oldGrade = grade
+        if (oldGrade != "" && oldGrade.toDouble < grade.toDouble)
+          throw RuntimeException(s"Worsening of grade from $oldGrade to $grade (reg.no. $registrationNumber)")
+      }
+      setCell(Headers.grade, grade)
+    }
     def setRemark(remark: String): Entry = setCell(Headers.remark, remark)
     def setFamilyName(familyName: String): Entry = setCell(Headers.familyName, familyName)
   }

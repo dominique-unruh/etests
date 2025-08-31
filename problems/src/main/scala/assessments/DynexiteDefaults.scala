@@ -5,7 +5,6 @@ import assessments.pageelements.MultipleChoice.Style.select
 import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
 import assessments.stack.{StackMath, SympyAssumption, SympyExpr}
-import exam.y2025.iqc1.Globals
 import utils.Tag.Tags
 import utils.Utils
 
