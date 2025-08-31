@@ -1,7 +1,6 @@
 package externalsystems
 
-import assessments.ExceptionContext
-import exam.y2025.iqc1.{ApplyCNOTLike, Factor, Iqc1Exam}
+import assessments.{Exam, ExceptionContext}
 import org.scalatest.funsuite.AnyFunSuiteLike
 import utils.Utils
 
@@ -10,7 +9,7 @@ import scala.util.control.Breaks.{break, breakable}
 
 class DynexiteTest extends AnyFunSuiteLike {
   Utils.loadSystemProperties()
-  val exam: Iqc1Exam.type = Iqc1Exam
+  val exam: Exam = Utils.getSystemPropertyObject[Exam]("current.exam", "the current exam")
 
   private def resultsAvailable: Boolean = {
     try
@@ -30,7 +29,8 @@ class DynexiteTest extends AnyFunSuiteLike {
   test("get answers") {
     given ExceptionContext = ExceptionContext.initialExceptionContext("Test case")
     if (resultsAvailable) {
-      val results = Dynexite.getDynexiteAnswers(Factor.assessment, Iqc1Exam, "***REMOVED***")
+      val regno = Dynexite.randomLearner(exam)
+      val results = Dynexite.getDynexiteAnswers(exam.problems.head.assessment, exam, regno)
       print(results)
     }
   }

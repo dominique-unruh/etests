@@ -2,15 +2,26 @@ package assessments
 
 import assessments.Comment.Format.markdown
 import assessments.Comment.Kind.feedback
-import assessments.GradingContext.{Case, Reachable}
+import assessments.GradingContext.{Case, GradeBlockExit}
 
 import scala.annotation.targetName
 import scala.util.boundary
-import scala.util.boundary.{Label, break}
+import scala.util.boundary.{Break, Label, break}
 
-case class GradingContext(answers: Map[ElementName, String], registrationNumber: String) {
+case class GradingContext private (answers: Map[ElementName, String], registrationNumber: String, reachable: Points, label: Option[Label[GradeBlockExit]]) {
   var points: Points = 0
   private val builder = Seq.newBuilder[Comment]
+
+  private [GradingContext] def subcontext(reachable: Points, label: Label[GradeBlockExit]): GradingContext =
+    copy(answers=answers, registrationNumber = registrationNumber, reachable = reachable, label = Some(label))
+
+  private [GradingContext] def mergeSubcontext(context: GradingContext): Unit =
+    points += context.points
+    builder ++= context.builder.result()
+
+  private [GradingContext] def assertLabel(label: Label[GradeBlockExit])
+                                          (using exceptionContext: ExceptionContext): Unit =
+    assert(this.label.isDefined && (this.label.get eq label))
 
   @targetName("addString")
   def +=(comment: String): Unit = builder += Comment(text = comment, format = markdown, kind = feedback)
@@ -45,16 +56,36 @@ case class GradingContext(answers: Map[ElementName, String], registrationNumber:
    * }
    * }}}
    *
+   *
+   *
    * @param max  Number of reachable points for this subproblem.
    * @param body A block which does grading for the subproblem
    * */
-  def gradeBlock(max: Points)(body: Label[Points] ?=> Reachable ?=> Nothing): Unit = {
-    given Reachable = new Reachable(max)
-
-    val reached = boundary(body)
+  def gradeBlock(max: Points)(body: (GradingContext, Label[GradeBlockExit], ExceptionContext) ?=> Unit)
+                (using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
+    val (result, subcontext) = bareGradeBlock(max)(body)
+    if (result.abort) return
+    val reached = subcontext.points
     assert(reached <= max)
+    mergeSubcontext(subcontext)
     this += s"$reached out of $max points"
-    points += reached
+  }
+
+  def bareGradeBlock(max: Points)(body: (GradingContext, Label[GradeBlockExit], ExceptionContext) ?=> Unit)
+                    (using context: GradingContext, exceptionContext: ExceptionContext): (GradeBlockExit, GradingContext) = {
+    val local = Label[GradeBlockExit]()
+    val subcontext = context.subcontext(max, local)
+
+    val result =
+      try {
+        body(using subcontext, local, exceptionContext)
+        throw ExceptionWithContext(s"Grade block returned without using done() / abort()")
+      } catch {
+        case ex: Break[GradeBlockExit] @unchecked =>
+          if ex.label eq local then ex.value
+          else throw ex
+      }
+    (result, subcontext)
   }
 
   /** Allows to give grades based on trying out various combinations of criteria.
@@ -87,8 +118,8 @@ case class GradingContext(answers: Map[ElementName, String], registrationNumber:
   //noinspection ScalaUnreachableCode
   def combinatorialGrader(max: Points, distinctions: Seq[Seq[(String, String)]],
                           grades: Seq[(String, Points)])
-                         (checker: Label[Boolean] ?=> Seq[Case] => Unit)
-                         (implicit exceptionContext: ExceptionContext): Unit = {
+                         (checker: (GradingContext, Label[GradeBlockExit], ExceptionContext) ?=> Seq[Case] => Unit)
+                         (implicit exceptionContext: ExceptionContext, context: GradingContext): Unit = {
     // Get the distinctions uses Case objects
     val distinctions2 = distinctions
       .map(options => options.map((name, description) => Case(name, description, options.map(_._1).toSet)))
@@ -115,24 +146,24 @@ case class GradingContext(answers: Map[ElementName, String], registrationNumber:
     // for each combo, get whether it fits, the grade, and a comment string
     val evaluated = for (combo <- combos)
       yield {
-        val accepted = boundary[Boolean] {
-          checker(combo)
-          throw ExceptionWithContext(s"Checker in combinatorial grader returned without using break(true/false), for case ${combo.mkString("-")}")
-        }
+        val (result, subcontext) = bareGradeBlock(max)(checker(combo))
+        val accepted = !result.abort
+        assert(subcontext.points == Points.zero)
         val points = getPoints(combo)
         val comment = combo.map(_.description).filter(_.nonEmpty) match
           case Seq() => "Correct solution"
           case cases => "Correct solution, except: " + cases.mkString(", ")
-        (combo, accepted, points, comment)
+        (combo, accepted, points, comment, subcontext)
       }
     //    println(evaluated)
     evaluated
-      .filter((combo, accepted, points, comment) => accepted)
-      .maxByOption((combo, accepted, points, comment) => (points, -comment.length)) // Most points, from those shortest comment
+      .filter((combo, accepted, points, comment, subcontext) => accepted)
+      .maxByOption((combo, accepted, points, comment, subcontext) => (points, -comment.length)) // Most points, from those shortest comment
     match {
-      case Some((_, _, points, comment)) =>
-        this += s"$comment. $points out of $max points."
-        this.points += points
+      case Some((_, _, points, comment, subcontext)) =>
+        subcontext += s"$comment. $points out of $max points."
+        subcontext.points += points
+        mergeSubcontext(subcontext)
       case None =>
         this += s"Incorrect. 0 out of $max points."
     }
@@ -143,17 +174,34 @@ case class GradingContext(answers: Map[ElementName, String], registrationNumber:
 }
 
 object GradingContext {
+  case class GradeBlockExit private[GradingContext] (abort: Boolean)
+
+  def apply(answers: Map[ElementName, String], registrationNumber: String, reachable: Points): GradingContext =
+    new GradingContext(answers, registrationNumber, reachable, label = None)
 
   /** To be used inside [[Commenter.gradeBlock]] */
-  def max(using reachable: Reachable): Points = reachable.points
+  def max(using context: GradingContext): Points = context.reachable
 
   /** To be used inside [[Commenter.gradeBlock]] */
-  def done(points: Points)(using label: Label[Points]): Nothing = {
-    break(points)
+  def done(points: Points = null, comment: String = null, condition: Boolean | Null = null)
+          (using context: GradingContext, label: Label[GradeBlockExit], exceptionContext: ExceptionContext): Nothing = {
+    if (condition == false)
+      abort()
+    context.assertLabel(label)
+    if (points != null) {
+      if (context.points != Points.zero)
+        throw ExceptionWithContext(s"done(points=...) called after context.points += .... Use one or the other within a grade block")
+      context.points += points
+    }
+    if (comment != null)
+      context += comment
+    break(GradeBlockExit(abort = false))
   }
 
-  /** For internal use by [[Commenter.gradeBlock]] */
-  final class Reachable private[GradingContext](private[GradingContext] val points: Points) extends AnyVal
+  def abort()(using context: GradingContext, label: Label[GradeBlockExit], exceptionContext: ExceptionContext): Nothing = {
+    context.assertLabel(label)
+    break(GradeBlockExit(abort = true))
+  }
 
   final class Case(val name: String, val description: String, options: Set[String]) {
     override def equals(obj: Any): Boolean =

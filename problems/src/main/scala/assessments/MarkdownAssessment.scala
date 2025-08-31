@@ -90,7 +90,7 @@ abstract class MarkdownAssessment {
         changedReference.addOne(name -> value)
 
       println(s"Reference solution: ${changedReference.map((k, v) => s"$k -> $v").mkString(", ")}")
-      val context = GradingContext(answers = changedReference.toMap, registrationNumber = "TEST")
+      val context = GradingContext(answers = changedReference.toMap, registrationNumber = "TEST", reachablePoints)
       try {
         grader.grade()(using context)
         println("Resulting comments:")

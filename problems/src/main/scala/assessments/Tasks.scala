@@ -64,7 +64,8 @@ object GradeEveryone extends Task {
       output ++= "<h2>Your grading</h2>\n"
       val context = GradingContext(
         answers = answers,
-        registrationNumber = student)
+        registrationNumber = student,
+        question.reachablePoints)
       question.pageElements(ElementName.grader).asInstanceOf[Grader].grade()(using context)
       output ++= s"Points: ${context.points.decimalFractionString(2)} of ${question.reachablePoints}\n"
       points += context.points

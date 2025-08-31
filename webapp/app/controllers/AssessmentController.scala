@@ -150,9 +150,8 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
 
   def randomStudent(examName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     val exam = getExam(examName)
-    val learners = Dynexite.resultsByLearner(exam).view.collect({ case (regno, Some(_)) => regno }).toVector
-    val index = Random.nextInt(learners.length)
-    Ok(JsObject(Map("registration" -> JsString(learners(index)))))
+    val regno = Dynexite.randomLearner(exam)
+    Ok(JsObject(Map("registration" -> JsString(regno))))
   }
 
   def dynexiteAnswers(examName: String, assessmentName: String, regno: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>

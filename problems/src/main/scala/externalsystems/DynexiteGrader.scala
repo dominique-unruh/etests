@@ -86,7 +86,8 @@ object DynexiteGrader {
 
     val context = GradingContext(
       answers = answers.map { (k, v) => (k, v) },
-      registrationNumber = registrationNumber
+      registrationNumber = registrationNumber,
+      reachable = grader.reachablePoints
     )
     grader.grade()(using context)
 

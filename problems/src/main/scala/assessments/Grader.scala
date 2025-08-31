@@ -29,7 +29,7 @@ abstract class Grader(val name: ElementName) extends PageElement {
           element.name -> elementState("content").asInstanceOf[JsString].as[String]
         case None => element.name -> ""
     }
-    val context = GradingContext(answers.toMap, registrationNumber)
+    val context = GradingContext(answers.toMap, registrationNumber, reachablePoints)
     try {
       grade()(using context)
       val report = StringBuilder()

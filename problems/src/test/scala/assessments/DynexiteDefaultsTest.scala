@@ -8,7 +8,7 @@ class DynexiteDefaultsTest extends AnyFunSuiteLike {
   private def gc(x: String = null): GradingContext = {
     val map = Map.newBuilder[ElementName, String]
     if (x != null) map += ElementName("x") -> x
-    GradingContext(map.result(), "123456")
+    GradingContext(map.result(), "123456", 10)
   }
 
   test("mathTry, valid parse") {

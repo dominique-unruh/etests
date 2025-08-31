@@ -3,7 +3,6 @@ package tmp
 import assessments.stack.{StackMath, StackParser}
 import assessments.stack.StackMath.Ops
 import assessments.{Exam, MathContext, SyntaxError}
-import exam.y2025.iqc1.Globals
 import ujson.{Arr, Bool, Null, Num, Obj, Str, Value}
 import utils.Docker
 

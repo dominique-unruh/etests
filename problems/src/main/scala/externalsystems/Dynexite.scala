@@ -14,6 +14,7 @@ import java.util.zip.ZipFile
 import scala.annotation.experimental
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.given
+import scala.util.Random
 
 object Dynexite {
   private val resultJsonPaths = mutable.Map[String, Path]()
@@ -437,5 +438,11 @@ object Dynexite {
     }
     assert(pdf != null)
     pdf
+  }
+  
+  def randomLearner(exam: Exam): String = {
+    val learners = resultsByLearner(exam).view.collect({ case (regno, Some(_)) => regno }).toVector
+    val index = Random.nextInt(learners.length)
+    learners(index)
   }
 }
