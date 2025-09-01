@@ -15,7 +15,10 @@ object MoodleStack {
   enum InputType {
     case algebraic
     case string
+    /** Matrix of fixed size. The size is automatically determined from the reference solution. */
     case matrix
+    /** Matrix of variable size. */
+    case varmatrix
   }
 
   enum InsertStars(val integerValue: Int) {
@@ -47,7 +50,7 @@ object MoodleStack {
                   ) {
     assert(name.nonEmpty)
     assert(reference.nonEmpty)
-    assert(allowWords.forall(identifierRegex.matches))
+    assert(allowWords.forall(identifierRegex.matches), allowWords)
     assert(extraOptions.forall(identifierRegex.matches))
 
     def xml: Elem =
@@ -164,7 +167,7 @@ object MoodleStack {
       """<?xml version="1.0" encoding="UTF-8"?>""" + "\n" + PrettyPrinter(80, 2).format(xml)
   }
 
-  lazy val defaultForbiddenWords = {
+  lazy val defaultForbiddenWords: Set[String] = {
     val letters = ('a' to 'z') ++ ('A' to 'Z')
     val result = Set.newBuilder[String]
     for (x <- letters)
@@ -180,15 +183,17 @@ object MoodleStack {
       element match {
         case pageElement: InputElement =>
           val name = pageElement.name.toString
-          val allowWords = pageElement.tags(moodleAllowWords)
-          val forbidWords = defaultForbiddenWords -- allowWords
+          val (allowWords, forbidWords) = pageElement.tags.get(moodleAllowWords) match
+            case Some(allow) => (allow, (defaultForbiddenWords -- allow).toSeq.sortBy(_.toLowerCase))
+            case None => (Seq.empty, Seq.empty)
+
           val input = Input(
             typ = pageElement.tags(moodleInputType),
             name = name,
-            reference = pageElement.reference,
+            reference = pageElement.tags.getOrElse(moodleReferenceSolution, pageElement.reference),
             forbidWords = forbidWords,
             allowWords = allowWords,
-            extraOptions = pageElement.tags(moodleExtraOptions),
+            extraOptions = pageElement.tags(moodleExtraOptions) appended moodleExtraOptions.allowEmpty,
             insertStars = pageElement.tags(moodleInsertStars))
           inputs += input
           if (pageElement.tags(moodleNoPreview))
@@ -217,11 +222,15 @@ object MoodleStack {
   object moodleAllowWords extends Tag[InputElement, Seq[String]](default=Seq.empty)
   object moodleQuestionVariables extends Tag[Assessment, String](default="")
   object moodleExtraOptions extends Tag[InputElement, Seq[String]](default=Seq.empty) {
+    @deprecated("Automatically added")
     val allowEmpty = "allowEmpty"
     val simp = "simp"
   }
-  object moodleNoPreview extends Tag[InputElement, Boolean](default=false)
+  @deprecated("Simply always add previews manually.")
+  object moodleNoPreview extends Tag[InputElement, Boolean](default=true)
   /** Which input field type should this be in Moodle/Stack? */
   object moodleInputType extends Tag[InputElement, InputType](default=InputType.algebraic)
+  /** Reference answer given to Moodle (if the one from the answer element is not accepted for some reason) */
+  object moodleReferenceSolution extends Tag[InputElement, String](default = "")
   object moodleInsertStars extends Tag[InputElement, InsertStars](default=InsertStars.dontInsert)
 }

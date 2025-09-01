@@ -2,25 +2,31 @@ package utils
 
 import utils.Tag.Tagged
 
-class Tag[+Owner, Value](explicitName: String = "", val default: Value)(implicit sourceCodeName: sourcecode.Name) {
+class Tag[Owner, Value](explicitName: String = "", val default: Value)(implicit sourceCodeName: sourcecode.Name) {
   val name: String = if (explicitName.nonEmpty) then explicitName else sourceCodeName.value
   def :=(value: Value) : Tagged[Owner, Value] = Tagged(this, value)
 }
 
 object Tag {
   class Tags[-Owner] private (private val map: Map[Tag[?, ?], Any]) extends AnyVal {
-    def get[Value](tag: Tag[Owner, Value]): Option[Value] =
+    def get[Value](tag: Tag[?, Value]): Option[Value] =
       map.get(tag).asInstanceOf[Option[Value]]
-    def getOrElse[Value](tag: Tag[Owner, Value], default: => Value): Value =
+    def getOrElse[Value](tag: Tag[?, Value], default: => Value): Value =
       get(tag).getOrElse(default)
-    def apply[Value](tag: Tag[Owner, Value]): Value =
+    def apply[Value](tag: Tag[?, Value]): Value =
       get(tag).getOrElse(tag.default)
-    def +[Value](tagged: Tagged[Owner, Value]): Tags[Owner] = {
+    def +[Value](tagged: Tagged[?, Value]): Tags[Owner] = {
       assert(!map.contains(tagged.tag))
       new Tags(map + (tagged.tag.asInstanceOf[Tag[?, ?]] -> tagged.value))
     }
   }
-  case class Tagged[+Owner, Value](val tag: Tag[Owner, Value], val value: Value)
+  case class Tagged[Owner, Value](tag: Tag[Owner, Value], val value: Value) {
+//    def +(tagged: Tagged[Owner, ?]): Tags[Owner] = Tags(this) + tagged
+  }
+
+  object Tagged {
+    given [Owner, Value]: Conversion[Tagged[Owner, Value], Tags[Owner]] = Tags(_)
+  }
 
   object Tags {
     def apply[Owner](tags: Tagged[Owner, ?]*): Tags[Owner] = {
@@ -43,7 +49,7 @@ object Tag {
       def +=[Value](tagValue: (Tag[Owner, Value], Value)) : Unit =
         builder += tagValue
 
-      def result() = new Tags(builder.result())
+      def result(): Tags[Owner] = new Tags(builder.result())
     }
   }
 
