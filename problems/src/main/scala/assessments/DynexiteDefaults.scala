@@ -1,5 +1,7 @@
 package assessments
 
+import scala.language.implicitConversions
+
 import assessments.pageelements.*
 import assessments.pageelements.MultipleChoice.Style.select
 import assessments.stack.StackParser.parse

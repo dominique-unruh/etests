@@ -1,10 +1,13 @@
 package assessments
 
+import scala.language.implicitConversions
+
 import assessments.pageelements.{ElementAction, PageElement}
 import play.api.libs.json.JsValue
 import utils.Tag.Tags
 
 // TODO what is this? Used?
+@deprecated
 final class TextInput(val name: ElementName,
                       val reference: String,
                       val correct: Seq[String] = Nil,

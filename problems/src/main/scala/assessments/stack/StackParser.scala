@@ -25,6 +25,7 @@ object StackParser {
       MaximaSymbol(name)
     case Arr(ArrayBuffer(Str("integer"), Str(int))) =>
       MaximaInteger(BigInt(int))
+    case _ => throw RuntimeException(s"Invalid json found coming from maxima: $json")
 
   def maximaToStackMath(maximaTerm: MaximaTerm): StackMath = maximaTerm match
     case MaximaSymbol(name) => StackMath.Variable(name)

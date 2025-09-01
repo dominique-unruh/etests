@@ -9,8 +9,9 @@ sealed trait StackMath {
   def variables: Set[String] = {
     val builder = Set.newBuilder[String]
     def collect(math: StackMath): Unit = math match
-      case Operation(operator, arguments@_*) => arguments.foreach(collect)
-      case Funcall(name, arguments@_*) => arguments.foreach(collect)
+      case Operation(operator, arguments*) => arguments.foreach(collect)
+      case Funcall(name, arguments*) => arguments.foreach(collect)
+      case Sympy(op, arguments*) => arguments.foreach(collect)
       case Variable(name) => builder += name
       case Integer(int) =>
       case Bool(bool) =>
@@ -32,14 +33,19 @@ sealed trait StackMath {
       builder ++= name += '('
       addToStringBuilderCommaSep(builder, arguments)
       builder += ')'
+    case Sympy(operator, arguments*) =>
+      builder ++= "<py:" ++= operator.toString ++= ">("
+      addToStringBuilderCommaSep(builder, arguments)
+      builder += ')'
     case Variable(name) => builder ++= name
     case Integer(int) => builder ++= int.toString
     case Bool(bool) => builder ++= bool.toString
   }
 
   def mapIdentifiers(f: String => String): StackMath = this match {
-    case Operation(operator, arguments@_*) => Operation(operator, arguments.map(_.mapIdentifiers(f))*)
-    case Funcall(name, arguments@_*) => Funcall(f(name), arguments.map(_.mapIdentifiers(f))*)
+    case Operation(operator, arguments*) => Operation(operator, arguments.map(_.mapIdentifiers(f))*)
+    case Funcall(name, arguments*) => Funcall(f(name), arguments.map(_.mapIdentifiers(f))*)
+    case Sympy(op, arguments*) => Sympy(op, arguments.map(_.mapIdentifiers(f))*)
     case Variable(name) => Variable(f(name))
     case Integer(int) => this
     case Bool(bool) => this
@@ -48,6 +54,7 @@ sealed trait StackMath {
 
   def mapVariables(f: String => Option[StackMath]): StackMath = this match
     case Operation(operator, arguments*) => Operation(operator, arguments.map(_.mapVariables(f))*)
+    case Sympy(op, arguments*) => Sympy(op, arguments.map(_.mapVariables(f))*)
     case Funcall(name, arguments*) => Funcall(name, arguments.map(_.mapVariables(f))*)
     case Variable(name) => f(name).getOrElse(this)
     case Integer(int) => this
@@ -124,6 +131,7 @@ sealed trait StackMath {
       case Operation(name, arguments*) => throw UserError(s"Unsupported operation $name with ${arguments.length} arguments")
       case Variable(name) => sympy.Symbol(name).as[py.Dynamic]
       case Integer(int) => sympy.Integer(int.toString).as[py.Dynamic]
+      case missing => throw RuntimeException(s".toSympy does not support ${missing.getClass} objects. Use .toSympyMC")
     }
 
     SympyExpr(toSympy(this.fix))
@@ -134,10 +142,10 @@ sealed trait StackMath {
       f(arguments)
     case Operation(operator, arguments*) =>
       Operation(operator, arguments.map(_.mapFunction(name, f))*)
+    case Sympy(op, arguments*) =>
+      Sympy(op, arguments.map(_.mapFunction(name, f))*)
     case Funcall(fname, arguments*) if fname == name =>
-//      println(("XXX", fname, name, arguments))
       val res = f(arguments)
-//      println(res)
       res
     case Funcall(fname, arguments*) =>
       Funcall(fname, arguments.map(_.mapFunction(name, f))*)

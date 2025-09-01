@@ -1,5 +1,7 @@
 package assessments
 
+import scala.language.implicitConversions
+
 import assessments.InterpolatedMarkdown.md
 import assessments.pageelements.Element
 import org.apache.commons.text.StringEscapeUtils

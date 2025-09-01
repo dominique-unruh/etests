@@ -1,5 +1,7 @@
 package assessments
 
+import scala.language.implicitConversions
+
 import assessments.Comment.Format.markdown
 import assessments.Comment.Kind.feedback
 import assessments.GradingContext.{Case, GradeBlockExit}

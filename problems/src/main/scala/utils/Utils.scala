@@ -15,7 +15,7 @@ import scala.jdk.CollectionConverters.given
 import scala.collection.mutable
 import scala.quoted.{Expr, Quotes, Type}
 import scala.reflect.ClassTag
-import scala.util.Using
+import scala.util.{Using, boundary}
 import scala.reflect.runtime.universe.{TypeTag, typeOf}
 import scala.sys.process.stringSeqToProcess
 
@@ -47,11 +47,11 @@ object Utils {
       set += k
     Map(elems*)
 
-  def isDistinct[A](values: IterableOnce[A]): Boolean = {
+  def isDistinct[A](values: IterableOnce[A]): Boolean = boundary {
     val set = new mutable.HashSet[A]
     for (v <- values) {
       if (set.contains(v))
-        return false
+        boundary.break(false)
       set += v
     }
     true

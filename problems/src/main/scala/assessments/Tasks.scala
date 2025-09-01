@@ -1,5 +1,7 @@
 package assessments
 
+import scala.language.implicitConversions
+
 import assessments.Comment.Kind
 import assessments.ExceptionContext.initialExceptionContext
 import externalsystems.Spreadsheet.Index

@@ -64,6 +64,7 @@ class Assessment (val name: String,
       case ImageElement(png, basename) =>
 //        val name = associatedFiles.add(basename = basename, extension = "png", mimeType = "image/png", content = png)
         Html(s"""<img src="${Utils.dataUrl("image/png", png)}"/>""")
+      case _ => throw RuntimeException(s"Element of type ${element.getClass} not supported when rendering static HTML")
     }
 
     val (body, explanation, gradingRules, files) = renderHtml(render)
@@ -84,6 +85,7 @@ class Assessment (val name: String,
         val fileNames = files.toSeq map { (name, content) => associatedFiles.add(filename = name, mimeType = "text/plain", content = content) }
         val fileLinks = fileNames map { filename => s""" [<a href="${escapeHtml4(filename)}" target="_blank">${escapeHtml4(filename)}</a>]"""}
         Html(s"""<div style="background-color: red">ERROR: ${escapeHtml4(message)}${fileLinks}</div>""")
+      case _ => throw RuntimeException(s"Element of type ${element.getClass} not supported when rendering dynamic HTML")
     }
 
     renderHtml(render)

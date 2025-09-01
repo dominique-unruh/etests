@@ -1,5 +1,7 @@
 package externalsystems
 
+import scala.language.implicitConversions
+
 import assessments.pageelements.{AnswerElement, MultipleChoice}
 import assessments.{Assessment, ElementName, Exam, ExceptionContext, ExceptionWithContext, MarkdownAssessment, Points}
 import externalsystems.Dynexite.ResultInputFieldKey
@@ -283,8 +285,6 @@ object Dynexite {
       case block: ClassificationBlock => getDynexiteAnswersClassification(block, answerElements)
       case block: SingleChoiceBlock => getDynexiteAnswersSingleChoiceBlock(block, answerElements)
       case block: ResultInputsBlock => getDynexiteAnswersResultInputsBlock(block, answerElements)
-      case _ =>
-        throw ExceptionWithContext(s"Dynexite data contained a solution block of unsupported type ${block.getClass.getName}")
     }
 
   /*  item.blocks match {
