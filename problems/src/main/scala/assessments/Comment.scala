@@ -91,7 +91,7 @@ object Comment {
          comment2 <- comment.filterFeedback)
       yield comment
 
-  protected [assessments] def wrapLi(html: Html, withLi: Boolean) = {
+  protected [assessments] def wrapLi(html: Html, withLi: Boolean): Html = {
     if (withLi)
       Html(ind"<li>${html.html}</li>")
     else

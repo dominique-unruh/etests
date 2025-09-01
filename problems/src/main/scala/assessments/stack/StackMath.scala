@@ -1,7 +1,7 @@
 package assessments.stack
 
 import assessments.{MathContext, UserError}
-import assessments.stack.StackMath.{Bool, Funcall, Integer, Operation, Ops, Variable, addToStringBuilderCommaSep}
+import assessments.stack.StackMath.{Bool, Funcall, Integer, Operation, Ops, Sympy, Variable, addToStringBuilderCommaSep}
 import assessments.stack.SympyExpr.sympy
 import me.shadaj.scalapy.py
 
@@ -100,6 +100,8 @@ sealed trait StackMath {
       case Integer(int) => SympyExpr(sympy.Integer(int.toString).as[py.Dynamic])
       case Bool(true) => SympyExpr.`true`
       case Bool(false) => SympyExpr.`false`
+      case Sympy(op, arguments*) => op.function(arguments.map(to))
+
     to(this.fixValues)
   }
 
@@ -171,6 +173,11 @@ object StackMath {
   case class Variable(name: String) extends StackMath
   case class Integer(int: BigInt) extends StackMath
   case class Bool(bool: Boolean) extends StackMath
+  case class Sympy(op: SympyOperator, arguments: StackMath*) extends StackMath
+
+  class SympyOperator(val name: String, val function: MathContext ?=> Seq[SympyExpr] => SympyExpr) {
+    override def toString: String = name
+  }
 
   def addToStringBuilderCommaSep(builder: StringBuilder, items: IterableOnce[StackMath]): Unit = {
     val iterator = items.iterator
