@@ -65,7 +65,7 @@ object Comment {
     val result = new StringBuilder
     result ++= "<ul>\n"
     for (comment <- comments) {
-      result ++= s"  <li>${comment.toHtmlColored}</li>\n"
+      result ++= s"  <li>${comment.toHtmlColored.html}</li>\n"
     }
     result ++= "</ul>\n"
     Html(result.result())
