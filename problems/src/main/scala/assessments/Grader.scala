@@ -39,15 +39,7 @@ abstract class Grader(val name: ElementName) extends PageElement {
         report ++= s"<p>Points: $pointsString / ${assessment.reachablePoints.decimalFractionString}</p>\n"
       else
         report ++= s"<p>Points: $pointsString / ${assessment.reachablePoints.decimalFractionString}  (precise number: ${context.points.fractionHtml})</p>\n"
-      report ++= "<ul>\n"
-      for (comment <- context.comments) {
-        val line = comment.kind match
-          case Kind.feedback => s"  <li>${comment.html}</li>\n"
-          case Kind.debug => s"""  <li style="color:gray">${comment.html}</li>\n"""
-          case Kind.warning => s"""  <li style="color:red">${comment.html}</li>\n"""
-        report ++= line
-      }
-      report ++= "</ul>\n"
+      report ++= Comment.seqToHtml(context.comments).html
       Seq(ElementAction(name, JsObject(Map("points" -> JsString(context.points.decimalFractionString(2)), "report" -> JsString(report.result())))))
     } catch {
       case e : Throwable =>

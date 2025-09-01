@@ -1,5 +1,8 @@
 package assessments
 
+import org.apache.commons.text.StringEscapeUtils
+import org.apache.commons.text.StringEscapeUtils.escapeHtml4
+
 final class InterpolatedHtml[+T](val interpolatedString: InterpolatedString[T])
   extends InterpolatedText[T, Html, InterpolatedHtml] {
 
@@ -47,4 +50,5 @@ case class Html(html: String)
 
 object Html {
   val empty: Html = Html("")
+  def fromPlaintext(text: String): Html = Html(escapeHtml4(text))
 }

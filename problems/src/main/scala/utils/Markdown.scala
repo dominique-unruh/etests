@@ -6,6 +6,7 @@ import org.commonmark.renderer.html.HtmlRenderer
 
 import scala.jdk.CollectionConverters.SeqHasAsJava
 
+// TODO Move to where class Markdown is
 object Markdown {
   private val extensions = Seq(TablesExtension.create()).asJava
   private val markdownParser = Parser.builder

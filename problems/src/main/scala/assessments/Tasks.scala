@@ -69,17 +69,7 @@ object GradeEveryone extends Task {
       question.pageElements(ElementName.grader).asInstanceOf[Grader].grade()(using context)
       output ++= s"Points: ${context.points.decimalFractionString(2)} of ${question.reachablePoints}\n"
       points += context.points
-      output ++= "<ul>\n"
-      for (comment <- context.comments) {
-        comment.kind match
-          case Comment.Kind.warning =>
-            errors += ((student, question, s"Warning: ${comment.html}"))
-            output ++= s"""<li style="color: red">${comment.html}</li>\n"""
-          case Comment.Kind.debug =>
-          case Comment.Kind.feedback =>
-            output ++= s"""<li>${comment.html}</li>\n"""
-      }
-      output ++= "</ul>\n"
+      output ++= Comment.seqToHtml(Comment.filterFeedback(context.comments)).html
     } catch {
       case e: Throwable =>
         output ++= s"""<pre style="color:red">${escapeHtml4(ExceptionUtils.getStackTrace(e))}</pre>\n"""
