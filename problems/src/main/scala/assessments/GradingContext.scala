@@ -15,9 +15,10 @@ case class GradingContext private (answers: Map[ElementName, String], registrati
   private [GradingContext] def subcontext(reachable: Points, label: Label[GradeBlockExit]): GradingContext =
     copy(answers=answers, registrationNumber = registrationNumber, reachable = reachable, label = Some(label))
 
-  private [GradingContext] def mergeSubcontext(context: GradingContext): Unit =
+  private [GradingContext] def mergeSubcontext(context: GradingContext): Unit = {
     points += context.points
-    builder ++= context.builder.result()
+    builder += NestedComment(context.builder.result(), kind=feedback)
+  }
 
   private [GradingContext] def assertLabel(label: Label[GradeBlockExit])
                                           (using exceptionContext: ExceptionContext): Unit =
