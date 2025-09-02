@@ -1,0 +1,230 @@
+diff --git a/.gitignore b/.gitignore
+index c13167a2..f8f5712e 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,4 +1,5 @@
+ site/*
+ 
+ # Ignore macOS .DS_Store files
+-.DS_Store 
+\ No newline at end of file
++.DS_Store 
++/.idea/
+diff --git a/api/config.php b/api/config.php
+new file mode 100644
+index 00000000..12662aad
+--- /dev/null
++++ b/api/config.php
+@@ -0,0 +1,87 @@
++<?php
++
++/**
++ * Simulating Moodle global configuration variables.
++ */
++
++$CFG = new stdClass;
++$PAGE = new stdClass;
++
++$CFG->stackapi = true;
++
++// This is the directory into which you put the PHP scripts (no trailing slash).
++// (If using Docker, this will be the location of the STACK code in the image.)
++$CFG->wwwroot = "/var/www/html";
++// The base url of the installation.
++// The server path of the installation.
++$CFG->dirroot = realpath(dirname(__FILE__));
++// You must have a data directory into which the webserver can write.  Don't put this in your web directory.
++$CFG->dataroot = "/home/unruh/tmp/moodle-qtype_stack";
++$CFG->dataroot = realpath(dirname(__DIR__));
++
++// URL of your web server, e.g.
++$CFG->dataurl = "http://localhost/";
++
++$CFG->maximacommand = 'maxima';
++$CFG->maximaversion = '5.44.0';
++// If you have compiled maxima yourself you will need to change this.
++$CFG->platform            = 'linux';
++//$CFG->maximacommandopt    = 'timeout --kill-after=10s 10s ' . $CFG->dataroot . '/stack/maxima_opt_auto';
++//$CFG->maximacommandserver = getenv('MAXIMA_URL') ?: 'http://maxima:8080/maxima';
++/*
++ * These settings are hard-wired here.  See settings.php for more details.
++ * You probably don't need to change many of the following.
++ */
++$CFG->maximalocalfolder = $CFG->dataroot . 'maxima/';
++
++// Type (int).
++$CFG->castimeout = 10;
++$CFG->casdebugging = 1;
++$CFG->casresultscache = 'none';
++$CFG->maximalibraries = '';
++$CFG->serveruserpass = '';
++
++// Do not change this from zero.  The API has no parser cache.
++$CFG->parsercacheinputlength = 0;
++
++$CFG->caspreparse = 'true';
++$CFG->plotcommand = "gnuplot";
++$CFG->ajaxvalidation = 0;
++$CFG->replacedollars = false;
++
++$CFG->questionsimplify = 1;
++$CFG->assumepositive = 0;
++$CFG->assumereal = 0;
++$CFG->prtcorrect = '';
++$CFG->prtpartiallycorrect = '';
++$CFG->prtincorrect = '';
++$CFG->multiplicationsign = 'dot';
++$CFG->sqrtsign = 1;
++$CFG->complexno = 'i';
++$CFG->logicsymbol = 'lang';
++$CFG->inversetrig = 'cos-1';
++$CFG->matrixparens = "[";
++$CFG->decimals = ".";
++$CFG->scientificnotation = "*10";
++
++$CFG->inputtype = 'algebraic';
++$CFG->inputboxsize = 30;
++$CFG->inputinsertstars = 0;
++$CFG->inputforbidwords = '';
++$CFG->inputforbidfloat = 0;
++$CFG->inputrequirelowestterms = 1;
++$CFG->inputcheckanswertype = 1;
++$CFG->inputmustverify = 1;
++$CFG->inputshowvalidation = 1;
++
++// These should match the version of goemaxima in docker-compose.
++$CFG->stackmaximaversion = "2025073100";
++$CFG->version = "2025073100";
++
++// Do not change this setting.
++$CFG->mathsdisplay = 'api';
++
++$CFG->libdir = $CFG->dirroot . '/emulation/libdir';
++
++// MathJax URL.
++$CFG->httpsurl = 'https://cdn.jsdelivr.net/npm/mathjax@2.7.9/MathJax.js?config=TeX-AMS-MML_HTMLorMML';
+diff --git a/api/public/init.php b/api/public/init.php
+new file mode 100644
+index 00000000..ce4145f9
+--- /dev/null
++++ b/api/public/init.php
+@@ -0,0 +1,21 @@
++<?php
++
++function locale_lookup() { return "en-US"; }
++
++require_once('../config.php');
++require_once(__DIR__ . '/../emulation/MoodleEmulation.php');
++require_once(__DIR__ . '/../../question.php');
++require_once(__DIR__ . '/../../stack/questiontest.php');
++require_once(__DIR__ . '/../../stack/potentialresponsetreestate.class.php');
++
++function make_upload_directory() {}
++stack_cas_configuration::create_maximalocal();
++
++$options = new stack_options();  // Maybe useful for tweaking parser
++$el = stack_input_factory::make('algebraic', 'sans1', "");  // There are some extra arguments here, maybe useful for tweaking parser
++$expression = "x";
++$state = $el->validate_student_response(['sans1' => $expression], $options, '', new stack_cas_security());
++print_r($state->status);
++if ($state->status != "valid") {
++    throw new Exception("not valid");
++}
+\ No newline at end of file
+diff --git a/api/public/parseexpression.php b/api/public/parseexpression.php
+new file mode 100644
+index 00000000..2b56d8ef
+--- /dev/null
++++ b/api/public/parseexpression.php
+@@ -0,0 +1,41 @@
++<?php
++
++function locale_lookup() { return "en-US"; }
++
++require_once('../config.php');
++require_once(__DIR__ . '/../emulation/MoodleEmulation.php');
++require_once(__DIR__ . '/../../question.php');
++require_once(__DIR__ . '/../../stack/questiontest.php');
++require_once(__DIR__ . '/../../stack/potentialresponsetreestate.class.php');
++
++//require(__DIR__ . '/../vendor/autoload.php');
++
++//$xml = file_get_contents('question.xml');
++//$question = StackQuestionLoader::loadxml($xml)['question'];
++//StackSeedHelper::initialize_seed($question, "aufhasdiufyretgfdg");
++//$question->id = "some_id";
++//$question->castextprocessor = new \castext2_qa_processor(new \stack_outofcontext_process());
++//$ans1 = $question->inputs['ans1'];
++//$state = new stack_input_state(stack_input::VALID, ["content"], "3/4mod",
++//    "3/4disp", [], "", "");
++
++
++// Expected in create_maximalocal() for some reason, but not actually needed?
++//function make_upload_directory() {}
++
++//function set_config($key, $value, $plugin) {
++//    global $CFG;
++//    $CFG->$key = $value;
++//}
++
++// needed only once
++//stack_cas_configuration::create_maximalocal();
++//stack_cas_configuration::create_auto_maxima_image();
++
++$options = new stack_options();  // Maybe useful for tweaking parser
++$el = stack_input_factory::make('algebraic', 'sans1', "");  // There are some extra arguments here, maybe useful for tweaking parser
++
++$expression = file_get_contents("/workdir/expression.txt");
++$state = $el->validate_student_response(['sans1' => $expression], $options, '', new stack_cas_security());
++print_r($state);
++file_put_contents("/workdir/result.txt", $state->contentsdisplayed);
+diff --git a/api/question/type/stack/stack/maxima b/api/question/type/stack/stack/maxima
+new file mode 120000
+index 00000000..26d6840f
+--- /dev/null
++++ b/api/question/type/stack/stack/maxima
+@@ -0,0 +1 @@
++../../../../../stack/maxima/
+\ No newline at end of file
+diff --git a/stack/maxima/stackmaxima.mac b/stack/maxima/stackmaxima.mac
+index 40acc908..092c184f 100644
+--- a/stack/maxima/stackmaxima.mac
++++ b/stack/maxima/stackmaxima.mac
+@@ -680,8 +680,36 @@ _CS2v(_k,_v) := block([%_tmp],
+  %_tmp:[[_k, string(_v)]],
+  if listp(%_tmp) then _VALUES:append(_VALUES,%_tmp),
+  0)$
++ /* Convert Maxima expression to JSON representation */
++ expr_to_json(expr) := block(
++   [result],
++
++   /* Handle atoms first */
++   if atom(expr) then (
++     if numberp(expr) then (
++       if integerp(expr) then
++         result: ["integer", string(expr)]
++       else
++         result: ["float", string(expr)]
++     ) else if symbolp(expr) then (
++       result: ["symbol", string(expr)]
++     ) else (
++       result: ["atom", string(expr)]
++     )
++   ) else (
++     /* Handle compound expressions */
++     result: ["operation", expr_to_json(op(expr))],
++
++     /* Process arguments */
++     processed_args: map(expr_to_json, args(expr)),
++     result: append(result, processed_args)
++   ),
++
++   result
++ )$
++/* Patching _CS2l so that it returns a JSON-ish tree structure instead of LaTeX */
+ _CS2l(_k,_v) := block([%_tmp],
+- %_tmp:[[_k, stack_disp(_v, "")]],
++ %_tmp:[[_k, string(expr_to_json(_v))]],
+  if listp(%_tmp) then _LATEX:append(_LATEX,%_tmp),
+  0)$
+ _CS2dv(_k,_v) := block([%_tmp, simp],

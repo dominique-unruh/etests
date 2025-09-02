@@ -2,6 +2,7 @@ package tmp
 
 import assessments.stack.{StackMath, StackParser}
 import assessments.stack.StackMath.Ops
+import assessments.stack.StackParser.{maximaToStackMath, parseArray}
 import assessments.{Exam, MathContext, SyntaxError}
 import ujson.{Arr, Bool, Null, Num, Obj, Str, Value}
 import utils.Docker
@@ -29,6 +30,19 @@ object Tmp {
 
 
   def main(args: Array[String]): Unit = {
-    println((4 : Double).toString)
+    val expression = "x\u00f72"
+    println(expression)
+    val result = Docker.runInDocker(Path.of("docker/stack-parser"),
+      Seq("bash", "/parse.sh"),
+      files=Map("expression.txt" -> expression), requestedOutputs = Seq("result.txt"))
+    val pseudoLatex = result.fileString("result.txt").get
+    assert(pseudoLatex.startsWith("\\[ "))
+    assert(pseudoLatex.endsWith(" \\]"))
+    val json = pseudoLatex.stripPrefix("\\[ ").stripSuffix(" \\]")
+    val array = ujson.read(json)
+    val maximaTerm = parseArray(array)
+    val math = maximaToStackMath(maximaTerm)
+
+    println(math)
   }
 }

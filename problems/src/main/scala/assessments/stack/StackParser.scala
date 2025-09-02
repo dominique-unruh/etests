@@ -59,34 +59,26 @@ object StackParser {
     if (input.trim.isEmpty)
       throw SyntaxError("empty string is not a valid math expression")
 
-    // TODO This parser is still not compatible with Dynexite/STACK.
-    // Better: run the whole PHP parser (it does some additional heuristic fixing etc)
-    // See class stack_algebraic_input maybe in stack source as starting point (https://github.com/maths/moodle-qtype_stack.git) and api/README.md for setup maybe.
-    val inputFixed = input.replace('÷', '/').replace('×','*')
-    
-    val result = Docker.runInDocker( // synchronized to avoid too many parallel processes
-      image = Path.of("docker/maxima-parser"),
-      command = Seq("maxima", "-b", "/parse.mac"),
-      files = Map("expression.txt" -> inputFixed),
-      requestedOutputs = Seq("result.txt", "status.txt")
-    )
+    val result = Docker.runInDocker(Path.of("docker/stack-parser"),
+      Seq("bash", "/parse.sh"),
+      files = Map("expression.txt" -> input), requestedOutputs = Seq("result.txt"))
+
 //    println(result.exitCode)
 //    println(result.files.view.mapValues(new String(_)).toMap)
     if (result.exitCode != 0)
       throw RuntimeException("Docker failed")
-    if (result.fileString("status.txt").getOrElse("").contains("parsing"))
-      throw SyntaxError(s"Could not parse $inputFixed using maxima")
+//    if (result.fileString("status.txt").getOrElse("").contains("parsing"))
+//      throw SyntaxError(s"Could not parse $inputFixed using maxima")
     if (!result.files.contains("result.txt"))
       throw RuntimeException("Could not parse with maxima, unknown reason")
-    val term = result.fileString("result.txt").get
-    val term2 = term.trim.stripSuffix(";")
-    val array = ujson.read(term2)
-
-//    println(array)
+    val pseudoLatex = result.fileString("result.txt").get
+    assert(pseudoLatex.startsWith("\\[ "))
+    assert(pseudoLatex.endsWith(" \\]"))
+    val json = pseudoLatex.stripPrefix("\\[ ").stripSuffix(" \\]")
+    val array = ujson.read(json)
 
     val maximaTerm = parseArray(array)
 
-//    println(maximaTerm)
     maximaToStackMath(maximaTerm)
   }
 
