@@ -1,9 +1,13 @@
 package tmp
 
+import assessments.DynexiteDefaults.elementName
+import assessments.pageelements.InputElement
 import assessments.stack.{StackMath, StackParser}
 import assessments.stack.StackMath.Ops
 import assessments.stack.StackParser.{maximaToStackMath, parseArray}
-import assessments.{Exam, MathContext, SyntaxError}
+import assessments.{DynexiteDefaults, ElementName, Exam, Html, MathContext, SyntaxError}
+import externalsystems.MoodleStack
+import externalsystems.MoodleStack.{Question, Quiz, inputElementToMoodle, moodleAllowWords, moodleInputType, moodleQuestionVariables}
 import ujson.{Arr, Bool, Null, Num, Obj, Str, Value}
 import utils.Docker
 
@@ -30,11 +34,25 @@ object Tmp {
 
 
   def main(args: Array[String]): Unit = {
-    val expression = "x\u00f72"
+    val expression = "ket(1)"
+    val input = InputElement(ElementName("blabla"), "reference", moodleAllowWords := Seq("ket"))
+
+    val input2 = input.copy(ElementName("ans1"))
+
+    val quiz = Quiz(Question(name = "dummy",
+      questionText = Html("dummy"),
+      inputs = Seq(inputElementToMoodle(input2)),
+    ))
+
+    val xml = quiz.prettyXml
+
     println(expression)
+    println(xml)
     val result = Docker.runInDocker(Path.of("docker/stack-parser"),
       Seq("bash", "/parse.sh"),
-      files=Map("expression.txt" -> expression), requestedOutputs = Seq("result.txt"))
+      files=Map("expression.txt" -> expression, "question.xml" -> xml),
+      requestedOutputs = Seq("result.txt", "errors.txt"))
+    println(result.fileString("errors.txt").getOrElse("no errors"))
     val pseudoLatex = result.fileString("result.txt").get
     assert(pseudoLatex.startsWith("\\[ "))
     assert(pseudoLatex.endsWith(" \\]"))

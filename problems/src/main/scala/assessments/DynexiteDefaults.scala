@@ -38,14 +38,14 @@ object DynexiteDefaults {
       catch
         case e: SyntaxError => SympyExpr.errorTerm(e.getMessage)
     }
-    def math: StackMath =
-      parse(str)
-    def mathTry(name: String)(using gradingContext: GradingContext): StackMath = {
+    def math(inputElement: InputElement): StackMath =
+      parse(str, inputElement)
+    def mathTry(name: String, inputElement: InputElement)(using gradingContext: GradingContext): StackMath = {
       if (str == "")
         StackMath.noAnswer
       else
         try
-          math
+          math(inputElement)
         catch
           case e: SyntaxError =>
             gradingContext += s"Could not parse $name, treating as no answer"
@@ -56,12 +56,16 @@ object DynexiteDefaults {
   // Not using "extension (pe: PageElement) because that exports additionally methods DynexiteDefault.latex... that may conflict with equally named methods when DynexiteDefaults.* is imported
   implicit class PageElementMethods(pe: PageElement) {
     def stringValue(using gradingContext: GradingContext): String = gradingContext.answers.getOrElse(pe.name, "")
+  }
+
+  implicit class InputElementMethods(ie: InputElement) {
     @deprecated("Use .math")
-    def sympy(using gradingContext: GradingContext): SympyExpr = stringValue.sympy
+    def sympy(using gradingContext: GradingContext): SympyExpr = ie.stringValue.sympy
     def latex(using gradingContext: GradingContext, mathContext: MathContext): String = math.toSympyMC(allowUndefined = true).latex
-    def math(using gradingContext: GradingContext): StackMath = stringValue.math
+    def math(using gradingContext: GradingContext): StackMath = ie.stringValue.math(ie)
+    def refmath(using gradingContext: GradingContext): StackMath = ie.reference.math(ie)
     def mathTry(name: String)(using gradingContext: GradingContext): StackMath =
-      stringValue.mathTry(name)
+      ie.stringValue.mathTry(name, ie)
   }
 
 /*  extension (pe: PageElement) {
@@ -75,23 +79,23 @@ object DynexiteDefaults {
     .fixVar("e", StackMath.eulerConstant)
     .fixVar("pi", StackMath.pi)
   
-  private def stackMathRender(string: String): String = {
+  private def stackMathRender(pageElement: InputElement)(string: String): String = {
     given MathContext = renderMathContext
     if (string == "")
       ""
     else try
-      string.math.toSympyMC(allowUndefined = true, allowUndefinedFunctions = true).latex
+      string.math(pageElement).toSympyMC(allowUndefined = true, allowUndefinedFunctions = true).latex
     catch
       case e: Exception =>
         s"\\text{ERROR: ${Utils.escapeTeX(e.toString)}}"
   }
 
-  def preview(observed: PageElement)(using name: sourcecode.Name): MathPreviewElement = {
+  def preview(observed: InputElement)(using name: sourcecode.Name): MathPreviewElement = {
     val name2 = if (name.value == "question" || name.value == "explanation") // Inlined in the markdown, not a good default
       ElementName(observed.name, "preview")
     else
       ElementName(name.value)
-    MathPreviewElement(name2, observed.name, stackMathRender)
+    MathPreviewElement(name2, observed.name, stackMathRender(observed))
   }
 
   /** Checks for equality of two Sympy expressions (`x==y`?)
@@ -103,13 +107,13 @@ object DynexiteDefaults {
    * @param assumption Assumption to pass to Sympy (e.g., all variables are positive).
    */
   @deprecated
-  def checkEq(x: => PageElement | SympyExpr,
-              y: => PageElement | SympyExpr,
+  def checkEq(x: => InputElement | SympyExpr,
+              y: => InputElement | SympyExpr,
               assumption: SympyAssumption = SympyAssumption.positive)
              (using context: GradingContext): Boolean =
     try {
-      def toSympy(value: PageElement | SympyExpr) = value match {
-        case x: PageElement => x.sympy
+      def toSympy(value: InputElement | SympyExpr) = value match {
+        case x: InputElement => x.sympy
         case x: SympyExpr => x
       }
       checkEquality(toSympy(x), toSympy(y), assumption=assumption)

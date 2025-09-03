@@ -1,11 +1,9 @@
 #FROM ubuntu
 FROM archlinux
 LABEL authors="unruh"
-RUN pacman --noconfirm -Sy maxima git base-devel php
-#RUN apt update
-#RUN apt install -y maxima git build-essential
-RUN git clone --filter blob:none https://github.com/maths/moodle-qtype_stack.git
-COPY stack.patch /
-RUN cd /moodle-qtype_stack && patch -p1 </stack.patch
-RUN cd /moodle-qtype_stack/api/public && php init.php
+RUN pacman --noconfirm -Sy maxima git base-devel php composer
+RUN git clone --filter blob:none https://github.com/dominique-unruh/moodle-qtype_stack-for-parsing.git moodle-qtype_stack
+RUN cd moodle-qtype_stack && git checkout 4a656c57bd7fe83e0d88e9bbfd3b4dd9aed3578b
 COPY parse.sh /
+RUN cd /moodle-qtype_stack/api && composer install
+RUN cd /moodle-qtype_stack/api/public && php init.php

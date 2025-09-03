@@ -7,7 +7,7 @@ import utils.{IndentedInterpolator, Utils}
 import utils.Tag.Tags
 
 /** Simple text input element. */
-class InputElement(val name: ElementName,
+case class InputElement(val name: ElementName,
                    val reference: String,
                    val tags: Tags[InputElement]) extends AnswerElement {
   override def renderHtml: Html = {

@@ -1,7 +1,7 @@
 package externalsystems
 
 import assessments.{Assessment, Html}
-import assessments.pageelements.{ImageElement, InputElement, MathPreviewElement}
+import assessments.pageelements.{ImageElement, InputElement, MathPreviewElement, PageElement}
 import org.apache.commons.text.StringEscapeUtils
 import utils.Tag
 
@@ -177,25 +177,29 @@ object MoodleStack {
     result.result()
   }
 
+  def inputElementToMoodle(inputElement: InputElement) = {
+    val name = inputElement.name.toString
+    val (allowWords, forbidWords) = inputElement.tags.get(moodleAllowWords) match
+      case Some(allow) => (allow, (defaultForbiddenWords -- allow).toSeq.sortBy(_.toLowerCase))
+      case None => (Seq.empty, Seq.empty)
+
+    Input(
+      typ = inputElement.tags(moodleInputType),
+      name = name,
+      reference = inputElement.tags.getOrElse(moodleReferenceSolution, inputElement.reference),
+      forbidWords = forbidWords,
+      allowWords = allowWords,
+      extraOptions = inputElement.tags(moodleExtraOptions) appended moodleExtraOptions.allowEmpty,
+      insertStars = inputElement.tags(moodleInsertStars))
+  }
+  
   def assessmentToQuestion(assessment: Assessment): Question = {
     val inputs = Seq.newBuilder[Input]
     val (questionText, explanation, gradingRules, associatedFiles) = assessment.renderHtml { (element, associatedFiles) =>
       element match {
         case pageElement: InputElement =>
           val name = pageElement.name.toString
-          val (allowWords, forbidWords) = pageElement.tags.get(moodleAllowWords) match
-            case Some(allow) => (allow, (defaultForbiddenWords -- allow).toSeq.sortBy(_.toLowerCase))
-            case None => (Seq.empty, Seq.empty)
-
-          val input = Input(
-            typ = pageElement.tags(moodleInputType),
-            name = name,
-            reference = pageElement.tags.getOrElse(moodleReferenceSolution, pageElement.reference),
-            forbidWords = forbidWords,
-            allowWords = allowWords,
-            extraOptions = pageElement.tags(moodleExtraOptions) appended moodleExtraOptions.allowEmpty,
-            insertStars = pageElement.tags(moodleInsertStars))
-          inputs += input
+          inputs += inputElementToMoodle(pageElement)
           if (pageElement.tags(moodleNoPreview))
             Html(s"[[input:$name]]")
           else

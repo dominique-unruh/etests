@@ -1,6 +1,6 @@
 package assessments
 
-import assessments.DynexiteDefaults.{PageElementMethods, input}
+import assessments.DynexiteDefaults.{InputElementMethods, PageElementMethods, input}
 import assessments.stack.StackMath
 import org.scalatest.funsuite.AnyFunSuiteLike
 
