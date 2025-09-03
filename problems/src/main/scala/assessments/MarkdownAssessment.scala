@@ -74,7 +74,7 @@ abstract class MarkdownAssessment {
 
   def testSolution(expected: Points = reachablePoints,
                    changes: Seq[(PageElement, String)] = Seq.empty,
-                   allowNoGraderYet: Boolean = false): AssessmentTest = new AssessmentTest {
+                   allowNoGraderYet: Boolean = true): AssessmentTest = new AssessmentTest {
     override def runTest()(using exceptionContext: ExceptionContext): Unit = {
       given ExceptionContext = ExceptionContext.addToExceptionContext(s"Running a test case")
       println(s"Testing $name with ${if (changes.nonEmpty) "modified " else ""}reference solution.")

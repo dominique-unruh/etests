@@ -31,7 +31,14 @@ object StackParser {
     case _ => throw RuntimeException(s"Invalid json found coming from maxima: $json")
 
   def maximaToStackMath(maximaTerm: MaximaTerm): StackMath = maximaTerm match
-    case MaximaSymbol(name) => StackMath.Variable(name)
+    case MaximaSymbol(name) =>
+      if (!name.startsWith("%"))
+        StackMath.Variable(name)
+      else name match
+        case "%i" => StackMath.imaginaryUnit
+        case "%e" => StackMath.eulerConstant
+        case "%pi" => StackMath.pi
+        case _ => throw RuntimeException(s"Unknown maxima special symbol '$name' encountered")
     case MaximaAtom(name) => ???
     case MaximaInteger(int) => StackMath.Integer(int)
     case MaximaOperation(MaximaAtom(name), args*) =>
