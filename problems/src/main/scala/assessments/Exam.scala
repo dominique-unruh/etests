@@ -31,8 +31,10 @@ case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownA
 
   def runTests(): Unit = {
     given ExceptionContext = initialExceptionContext(s"Running tests for exam $name")
-    for (assessment <- problems)
+    for (assessment <- problems) {
+      given ExceptionContext = addToExceptionContext(s"Running tests for question ${assessment.name}")
       assessment.runTests()
+    }
   }
   
   def main(args: Array[String]): Unit = {
