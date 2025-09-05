@@ -87,7 +87,11 @@ sealed trait StackMath {
                 allowUndefinedFunctions: Boolean = false)(using mathContext: MathContext): SympyExpr = {
     def to(math: StackMath): SympyExpr = math match
       case Operation(operator, arguments@_*) =>
-        mathContext.sympyFunctions(operator)(arguments.map(to))
+        mathContext.sympyFunctions.get(operator) match
+          case Some(function) => function.lift(arguments.map(to)) match
+            case Some(value) => value
+            case None => throw UndefinedVariableException(s"Operator $operator (for these arguments) in term $this", operator.toString)
+          case None => throw UndefinedVariableException(s"Undefined operator $operator in term $this", operator.toString)
       case Funcall(name, arguments*) =>
         def verbatim = SympyExpr(sympy.Function(name).apply(arguments.map(x => to(x).python) *).as[py.Dynamic])
         mathContext.sympyFunctions.get(name) match
@@ -172,6 +176,7 @@ object StackMath {
     case times, divide
     case unaryPlus, unaryMinus
     case imaginaryUnit, eulerConstant, pi
+    case list, matrix
     /** Special symbol to denote a missing answer */
     case noAnswer
   }

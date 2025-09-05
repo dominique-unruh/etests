@@ -46,6 +46,7 @@ object MathContext {
     "tan" -> { case Seq(x) => x.tan },
     "gcd" -> { case Seq(x,y) => x.gcd(y) },
     "sqrt" -> { case Seq(x) => x.sqrt },
+    "matrix" -> { case rows => SympyExpr.matrix(rows*) },
     Ops.power -> { case Seq(x,y) => x ** y },
     Ops.plus -> { case Seq(x,y) => x + y },
     Ops.minus -> { case Seq(x,y) => x - y },
@@ -57,6 +58,7 @@ object MathContext {
     Ops.imaginaryUnit -> { case Seq() => SympyExpr.imaginaryUnit },
     Ops.eulerConstant -> { case Seq() => SympyExpr.eulerConstant },
     Ops.pi -> { case Seq() => SympyExpr.pi },
+    Ops.list -> { components => SympyExpr.array(components*) }
   )
 
   val default = new MathContext(

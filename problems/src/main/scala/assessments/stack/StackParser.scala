@@ -30,38 +30,43 @@ object StackParser {
       MaximaInteger(BigInt(int))
     case _ => throw RuntimeException(s"Invalid json found coming from maxima: $json")
 
-  def maximaToStackMath(maximaTerm: MaximaTerm): StackMath = maximaTerm match
-    case MaximaSymbol(name) =>
-      if (!name.startsWith("%"))
-        StackMath.Variable(name)
-      else name match
-        case "%i" => StackMath.imaginaryUnit
-        case "%e" => StackMath.eulerConstant
-        case "%pi" => StackMath.pi
-        case _ => throw RuntimeException(s"Unknown maxima special symbol '$name' encountered")
-    case MaximaAtom(name) => ???
-    case MaximaInteger(int) => StackMath.Integer(int)
-    case MaximaOperation(MaximaAtom(name), args*) =>
-      val nameStripped = name.stripSuffix("\"").stripPrefix("\"")
-      val (op,iter) = (nameStripped, args.length) match
-        case ("+", 1) => (Ops.unaryPlus, false)
-        case ("+", n) if n > 1 => (Ops.plus, true)
-        case ("*", n) if n > 1 => (Ops.times, true)
-        case ("/", 2) => (Ops.divide, false)
-        case ("^", 2) => (Ops.power, false)
-        case ("-", 1) => (Ops.unaryMinus, false)
-        case ("xor", n) if n > 1 => (Ops.xor, true)
-        case ("and", n) if n > 1 => (Ops.and, true)
-        case ("not", 1) => (Ops.not, true)
-        case ("or", n) if n > 1 => (Ops.or, true)
-        case (".", 2) => (Ops.times, false)
-        case _ => throw RuntimeException(s"Unknown maxima atom \"$nameStripped\" of arity ${args.length}")
-      if (iter)
-        args.tail.foldLeft(maximaToStackMath(args.head))((t,a) => Operation(op, t, maximaToStackMath(a)))
-      else
-        StackMath.Operation(op, args.map(maximaToStackMath)*)
-    case MaximaOperation(MaximaSymbol(name), args*) =>
-      StackMath.Funcall(name, args.map(maximaToStackMath)*)
+  def maximaToStackMath(maximaTerm: MaximaTerm): StackMath = {
+    def to(term: MaximaTerm): StackMath = term match
+      case MaximaSymbol(name) =>
+        if (!name.startsWith("%"))
+          StackMath.Variable(name)
+        else name match
+          case "%i" => StackMath.imaginaryUnit
+          case "%e" => StackMath.eulerConstant
+          case "%pi" => StackMath.pi
+          case _ => throw RuntimeException(s"Unknown maxima special symbol '$name' encountered in $maximaTerm")
+      case MaximaAtom(name) => ???
+      case MaximaInteger(int) => StackMath.Integer(int)
+      case MaximaOperation(MaximaAtom(name), args*) =>
+        val nameStripped = name.stripSuffix("\"").stripPrefix("\"")
+        val (op, iter) = (nameStripped, args.length) match
+          case ("+", 1) => (Ops.unaryPlus, false)
+          case ("+", n) if n > 1 => (Ops.plus, true)
+          case ("*", n) if n > 1 => (Ops.times, true)
+          case ("/", 2) => (Ops.divide, false)
+          case ("^", 2) => (Ops.power, false)
+          case ("-", 1) => (Ops.unaryMinus, false)
+          case ("xor", n) if n > 1 => (Ops.xor, true)
+          case ("and", n) if n > 1 => (Ops.and, true)
+          case ("not", 1) => (Ops.not, true)
+          case ("or", n) if n > 1 => (Ops.or, true)
+          case (".", 2) => (Ops.times, false)
+          case ("[", n) => (Ops.list, false)
+          case _ => throw RuntimeException(s"Unknown maxima atom \"$nameStripped\" of arity ${args.length} in $maximaTerm")
+        if (iter)
+          args.tail.foldLeft(to(args.head))((t, a) => Operation(op, t, to(a)))
+        else
+          StackMath.Operation(op, args.map(to) *)
+      case MaximaOperation(MaximaSymbol(name), args*) =>
+        StackMath.Funcall(name, args.map(to) *)
+
+    to(maximaTerm)
+  }
 
   @deprecated
   def parse(input: String): StackMath = {

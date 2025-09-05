@@ -196,4 +196,6 @@ class gcd(sympy.Function):
   lazy val pi = SympyExpr(sympy.S.Pi)
   lazy val xorBit: py.Dynamic = Python.define("def xorBit(a,b): from sympy import Integer; return (a+b)%Integer(2)\nreturn xorBit")
   lazy val andBit: py.Dynamic = Python.define("def xorBit(a,b): from sympy import Integer; return (a*b)%Integer(2)\nreturn xorBit")
+  def array(components: SympyExpr*): SympyExpr = SympyExpr(sympy.Array(components.map(_.python).toPythonProxy))
+  def matrix(rows: SympyExpr*): SympyExpr = SympyExpr(sympy.Matrix(rows.map(_.python).toPythonProxy))
 }

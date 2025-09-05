@@ -238,3 +238,15 @@ object MoodleStack {
   object moodleReferenceSolution extends Tag[InputElement, String](default = "")
   object moodleInsertStars extends Tag[InputElement, InsertStars](default=InsertStars.dontInsert)
 }
+
+
+/*
+
+Interesting (useful??) fact: One can override the STACK latex renderer with arbitary maxima code like this (in the question variables):
+
+evs: eval_string;
+evs("tex1(x) := \"something\";");
+evs("tex(x,y) := \"something else\";");
+%_stack_preamble_end;
+
+*/
