@@ -55,7 +55,7 @@ object Exam {
     for (classInfo <- classgraph.getAllStandardClasses.asScala)
        if (classInfo.getName.endsWith("$") && classInfo.extendsSuperclass(classOf[Exam]))
          try {
-           println(classInfo)
+//           println(classInfo)
            val clazz = classInfo.loadClass()
 //           println(clazz)
            val moduleField = clazz.getDeclaredField("MODULE$")

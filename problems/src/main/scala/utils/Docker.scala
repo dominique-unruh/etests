@@ -46,6 +46,8 @@ object Docker {
                   files: Map[String, Array[Byte] | String],
                   requestedOutputs: Seq[String]): DockerResult = {
 
+//    (new RuntimeException()).printStackTrace() // Useful for tracing where computationally heavy things are executed during object loading.
+
     if (!pulledInThisSession.contains(image)) { synchronized { image match {
       case image: String =>
         println(s"Pulling docker image $image")
