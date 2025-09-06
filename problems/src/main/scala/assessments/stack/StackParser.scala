@@ -99,6 +99,8 @@ object StackParser {
     if (!result.files.contains("result.txt"))
       throw RuntimeException("Could not parse with Stack, unknown reason")
     val pseudoLatex = result.fileString("result.txt").get
+    if (pseudoLatex.isEmpty)
+      throw SyntaxError("Not parseable by Stack (unknown reason, stack gave empty parse result). This can happen if an expression of wrong number of lines is parsed as a fixed size matrix.")
     assert(pseudoLatex.startsWith("\\[ "), pseudoLatex)
     assert(pseudoLatex.endsWith(" \\]"), pseudoLatex)
     val json = pseudoLatex.stripPrefix("\\[ ").stripSuffix(" \\]")

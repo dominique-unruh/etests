@@ -5,6 +5,7 @@ import play.api.libs.json.{JsObject, JsString, JsValue}
 import utils.Tag.Tags
 import utils.{IndentedInterpolator, Tag}
 
+// TODO remove this file
 /** Example of a preview that just repeats the text from the corresponding input element. */
 class PreviewElement(val name: ElementName, val observed: ElementName) extends PageElement {
   override def renderHtml: Html =

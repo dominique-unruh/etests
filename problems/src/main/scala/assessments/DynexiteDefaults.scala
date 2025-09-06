@@ -83,11 +83,8 @@ object DynexiteDefaults {
     given MathContext = renderMathContext
     if (string == "")
       ""
-    else try
+    else
       string.math(pageElement).toSympyMC(allowUndefined = true, allowUndefinedFunctions = true).latex
-    catch
-      case e: Exception =>
-        s"\\text{ERROR: ${Utils.escapeTeX(e.toString)}}"
   }
 
   def preview(observed: InputElement)(using name: sourcecode.Name): MathPreviewElement = {
