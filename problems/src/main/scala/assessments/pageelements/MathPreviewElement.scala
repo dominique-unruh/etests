@@ -33,7 +33,7 @@ class MathPreviewElement(val name: ElementName,
       s"\\(${escapeHtml4(math)}\\)"
     } catch
       case e: SyntaxError =>
-        s"""<span style="color:red; font-weight:bold;">${escapeHtml4(e.getMessage)}</span>"""
+        s"""<span style="color:red; font-weight:bold;">${e.getMessage}</span>"""
       case e: Throwable =>
         e.printStackTrace()
         """<span style="color:red; font-weight:bold;">Internal error</span>"""

@@ -107,6 +107,7 @@ class Assessment (val name: String,
 }
 
 class UserError(message: String) extends Exception(message)
+/** @param message assumed to be HTML */
 class SyntaxError(message: String) extends UserError(message)
 
 object Assessment {
