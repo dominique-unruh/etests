@@ -2,7 +2,7 @@ package assessments
 
 import scala.language.implicitConversions
 
-import assessments.pageelements.{ElementAction, PageElement}
+import assessments.pageelements.{ElementAction, DynamicElement}
 import play.api.libs.json.JsValue
 import utils.Tag.Tags
 
@@ -15,7 +15,7 @@ final class TextInput(val name: ElementName,
                       val wrong: Seq[String] = Nil,
                       val points: Points = 1,
                       override val tags: Tags[TextInput])
-  extends PageElement {
+  extends DynamicElement {
   assert(points > 0)
 
   override def renderHtml: Html = Html("[NOT IMPLEMENTED: MultipleChoice HTML]")

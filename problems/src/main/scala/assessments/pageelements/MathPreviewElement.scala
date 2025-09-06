@@ -14,7 +14,7 @@ import scala.util.Random
 /** Example of a preview that interprets the input as LaTeX math */
 class MathPreviewElement(val name: ElementName,
                          val observed: ElementName,
-                         val latexRenderer: String => String) extends PageElement {
+                         val latexRenderer: String => String) extends DynamicElement {
   override val tags: Tag.Tags[MathPreviewElement.this.type] = Tags.empty
   override def renderHtml: Html =
     Html(ind"""<span style="font-weight: bold; background-color: lightgray;" id="${name.jsElementId}">Preview...</span><script>

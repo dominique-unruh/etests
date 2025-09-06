@@ -54,7 +54,7 @@ object DynexiteDefaults {
   }
 
   // Not using "extension (pe: PageElement) because that exports additionally methods DynexiteDefault.latex... that may conflict with equally named methods when DynexiteDefaults.* is imported
-  implicit class PageElementMethods(pe: PageElement) {
+  implicit class PageElementMethods(pe: DynamicElement) {
     def stringValue(using gradingContext: GradingContext): String = gradingContext.answers.getOrElse(pe.name, "")
   }
 

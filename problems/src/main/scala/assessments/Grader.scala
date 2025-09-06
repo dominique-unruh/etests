@@ -3,13 +3,13 @@ package assessments
 import assessments.Comment.Kind
 import assessments.ExceptionContext.initialExceptionContext
 import assessments.Grader.logger
-import assessments.pageelements.{AnswerElement, ElementAction, InputElement, PageElement}
+import assessments.pageelements.{AnswerElement, ElementAction, InputElement, DynamicElement}
 import com.typesafe.scalalogging.Logger
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.commons.text.StringEscapeUtils
 import play.api.libs.json.{JsNumber, JsObject, JsString, JsValue}
 
-abstract class Grader(val name: ElementName) extends PageElement {
+abstract class Grader(val name: ElementName) extends DynamicElement {
   override def renderHtml: Html = Html.empty
   override def renderStaticHtml(answers: Map[ElementName, String]): Html = renderHtml
   

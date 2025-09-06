@@ -15,8 +15,7 @@ sealed trait Element
 class StaticElement extends Element
 
 /** Potentially interactive elements on an assessment page. */
-// TODO rename DynamicElement
-trait PageElement extends Element { self =>
+trait DynamicElement extends Element { self =>
   val name: ElementName
   def renderHtml: Html
   def renderStaticHtml(answers: Map[ElementName, String]): Html

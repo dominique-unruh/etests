@@ -1,7 +1,7 @@
 package assessments
 
 import assessments.Assessment.FileMapBuilder
-import assessments.pageelements.{AnswerElement, Element, ElementAction, ErrorElement, ImageElement, PageElement}
+import assessments.pageelements.{AnswerElement, Element, ElementAction, ErrorElement, ImageElement, DynamicElement}
 import com.eed3si9n.eval.Eval
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
@@ -23,7 +23,7 @@ class Assessment (val name: String,
                   val questionTemplate: InterpolatedHtml[Element],
                   val explanationTemplate: InterpolatedHtml[Element],
                   val gradingRulesTemplate: InterpolatedHtml[Element],
-                  val pageElements: SeqMap[ElementName, PageElement],
+                  val pageElements: SeqMap[ElementName, DynamicElement],
                   val reachablePoints: Points,
                   val tags: Tags[Assessment] = Tags.empty) {
   checkValid()
@@ -40,7 +40,7 @@ class Assessment (val name: String,
 
     def substitute(interpolatable: Element): Html = {
       interpolatable match {
-        case pageElement: PageElement =>
+        case pageElement: DynamicElement =>
           val name = pageElement.name
           assert(!substituted.contains(name))
           substituted.add(name)
@@ -59,7 +59,7 @@ class Assessment (val name: String,
 
   def renderStaticHtml(solution: Map[ElementName, String]): (Html, Html, Html) = {
     def render(element: Element, associatedFiles: FileMapBuilder) = element match {
-      case element: PageElement =>
+      case element: DynamicElement =>
         element.renderStaticHtml(solution)
       case ImageElement(png, basename) =>
 //        val name = associatedFiles.add(basename = basename, extension = "png", mimeType = "image/png", content = png)
@@ -75,7 +75,7 @@ class Assessment (val name: String,
 
   lazy val renderHtml: (Html, Html, Html, Map[String, (String, Array[Byte])]) = {
     def render(element: Element, associatedFiles: FileMapBuilder) = element match {
-      case element: PageElement =>
+      case element: DynamicElement =>
         element.renderHtml
       // TODO ImageElement and ErrorElement could be handled the same as PageElement if we extend renderHtml to return associated files or something. Or take a FileMapBuilder.
       case ImageElement(png, basename) =>
@@ -95,7 +95,7 @@ class Assessment (val name: String,
     // TODO should only recalculate changed things
     val stateMap = state.value.map { (name, content) => (ElementName(name), content) }.toMap
     val actions =
-      for (case element: PageElement <- pageElements.values;
+      for (case element: DynamicElement <- pageElements.values;
            action <- element.updateAction(this, stateMap))
       yield action
     actions.toSeq

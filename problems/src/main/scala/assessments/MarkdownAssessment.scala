@@ -3,7 +3,7 @@ package assessments
 import assessments.ExceptionContext.{addToExceptionContext, initialExceptionContext}
 import assessments.InterpolatedMarkdown.md
 import assessments.MarkdownAssessment.MarkdownAssessmentRun
-import assessments.pageelements.{AnswerElement, Element, ElementAction, PageElement, StaticElement}
+import assessments.pageelements.{AnswerElement, Element, ElementAction, DynamicElement, StaticElement}
 import externalsystems.MoodleStack
 import org.apache.commons.text.StringEscapeUtils
 import org.commonmark.parser.Parser
@@ -39,7 +39,7 @@ abstract class MarkdownAssessment {
   final lazy val assessment: Assessment = {
     given ExceptionContext = ExceptionContext.initialExceptionContext(s"Markdown assessment $name")
     val seen = mutable.HashSet[ElementName]()
-    val elements = SeqMap.newBuilder[ElementName, PageElement]
+    val elements = SeqMap.newBuilder[ElementName, DynamicElement]
 
     val questionTemplate = {
       val date = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
@@ -56,7 +56,7 @@ abstract class MarkdownAssessment {
     elements.addOne(grader.name, grader)
     seen.add(grader.name)
 
-    for (case element: PageElement <- questionTemplate.args) {
+    for (case element: DynamicElement <- questionTemplate.args) {
       if (!seen.add(element.name))
         throw ExceptionWithContext(s"Duplicate page element name '${element.name}'")
       elements.addOne(element.name, element)
@@ -73,7 +73,7 @@ abstract class MarkdownAssessment {
   val tags: Tags[Assessment] = Tags.empty
 
   def testSolution(expected: Points = reachablePoints,
-                   changes: Seq[(PageElement, String)] = Seq.empty,
+                   changes: Seq[(DynamicElement, String)] = Seq.empty,
                    allowNoGraderYet: Boolean = true): AssessmentTest = new AssessmentTest {
     override def runTest()(using exceptionContext: ExceptionContext): Unit = {
       given ExceptionContext = ExceptionContext.addToExceptionContext(s"Running a test case")

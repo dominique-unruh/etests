@@ -1,7 +1,7 @@
 package externalsystems
 
 import assessments.{Assessment, Html}
-import assessments.pageelements.{ImageElement, InputElement, MathPreviewElement, PageElement}
+import assessments.pageelements.{ImageElement, InputElement, MathPreviewElement, DynamicElement}
 import org.apache.commons.text.StringEscapeUtils
 import utils.Tag
 
