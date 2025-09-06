@@ -77,7 +77,6 @@ object Docker {
 
     Cache.cache.get(argsJsonBytes) match
       case null =>
-        Thread.sleep(5000)
         val result = runInDockerNoCache(imageId=imageId, command = command, files = filesBytes,
           requestedOutputs = requestedOutputs, hashKey = argsJson)
         Cache.cache.put(argsJsonBytes, result.asJson.noSpaces.getBytes)
