@@ -45,6 +45,9 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
 
   def sqrt: SympyExpr = SympyExpr(sympy.sqrt(python))
 
+  def tensor(other: SympyExpr): SympyExpr = 
+    SympyExpr(sympy.physics.quantum.tensorproduct.TensorProduct(python, other.python))
+  
   def substitute(map: (SympyExpr, SympyExpr)*): SympyExpr = {
     val mapPython = map.map((k, v) => (k.python, v.python)).toPythonCopy
     val result = python.subs(mapPython)
@@ -198,4 +201,8 @@ class gcd(sympy.Function):
   lazy val andBit: py.Dynamic = Python.define("def xorBit(a,b): from sympy import Integer; return (a*b)%Integer(2)\nreturn xorBit")
   def array(components: SympyExpr*): SympyExpr = SympyExpr(sympy.Array(components.map(_.python).toPythonProxy))
   def matrix(rows: SympyExpr*): SympyExpr = SympyExpr(sympy.Matrix(rows.map(_.python).toPythonProxy))
+  /** Converts a string into a SympyExpr using the sympy-parser.
+   * The sympy parser is unsafe for unsanitized inputs.
+   * So we only allow fromString on string literals. */
+  def fromString(string : String & Singleton): SympyExpr = SympyExpr(sympy.sympify(string : String))
 }

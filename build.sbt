@@ -1,5 +1,4 @@
-import sbt.librarymanagement
-import sbt.librarymanagement.CrossVersion.{for2_13Use3, for3Use2_13}
+import sbt.librarymanagement.CrossVersion.for3Use2_13
 
 import java.nio.file.{Path, Paths}
 
@@ -10,6 +9,7 @@ version := "1.0-SNAPSHOT"
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 ThisBuild / scalaVersion := "3.6.4"
+ThisBuild / scalacOptions += "-language:implicitConversions"
 
 //lazy val root = project in file(".")
 

@@ -48,7 +48,7 @@ object DynexiteDefaults {
           math(inputElement)
         catch
           case e: SyntaxError =>
-            gradingContext += s"Could not parse $name, treating as no answer"
+            gradingContext += s"Could not parse $name (error: ${e.getMessage}), treating as no answer"
             StackMath.noAnswer
     }
   }

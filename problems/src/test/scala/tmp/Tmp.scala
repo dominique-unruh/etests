@@ -2,14 +2,15 @@ package tmp
 
 import assessments.DynexiteDefaults.elementName
 import assessments.pageelements.InputElement
-import assessments.stack.{StackMath, StackParser}
+import assessments.stack.{StackMath, StackParser, SympyExpr}
 import assessments.stack.StackMath.Ops
 import assessments.stack.StackParser.{maximaToStackMath, parseArray}
 import assessments.{DynexiteDefaults, ElementName, Exam, Html, MathContext, SyntaxError}
 import externalsystems.MoodleStack
 import externalsystems.MoodleStack.{Question, Quiz, inputElementToMoodle, moodleAllowWords, moodleInputType, moodleQuestionVariables}
+import me.shadaj.scalapy.py
 import ujson.{Arr, Bool, Null, Num, Obj, Str, Value}
-import utils.Docker
+import utils.{Docker, Python}
 
 import java.io.StringReader
 import java.nio.file.Path
@@ -34,33 +35,13 @@ object Tmp {
 
 
   def main(args: Array[String]): Unit = {
-    val expression = "ket(1)"
-    val input = InputElement(ElementName("blabla"), "reference", moodleAllowWords := Seq("ket"))
-
-    val input2 = input.copy(ElementName("ans1"))
-
-    val quiz = Quiz(Question(name = "dummy",
-      questionText = Html("dummy"),
-      inputs = Seq(inputElementToMoodle(input2)),
-    ))
-
-    val xml = quiz.prettyXml
-
-    println(expression)
-    println(xml)
-    val result = Docker.runInDocker(Path.of("docker/stack-parser"),
-      Seq("bash", "/parse.sh"),
-      files=Map("expression.txt" -> expression, "question.xml" -> xml),
-      requestedOutputs = Seq("result.txt", "errors.txt"))
-    println(result.fileString("errors.txt").getOrElse("no errors"))
-    val pseudoLatex = result.fileString("result.txt").get
-    assert(pseudoLatex.startsWith("\\[ "))
-    assert(pseudoLatex.endsWith(" \\]"))
-    val json = pseudoLatex.stripPrefix("\\[ ").stripSuffix(" \\]")
-    val array = ujson.read(json)
-    val maximaTerm = parseArray(array)
-    val math = maximaToStackMath(maximaTerm)
-
-    println(math)
+//    val x: py.Dynamic = py.eval("None")
+    val x: py.Dynamic = py.eval("[1,2,3]")
+//    println(x)
+//    println(x == py.None)
+    val res = x match
+      case Python.none => None
+      case Python.List(psi,phi) => Some((SympyExpr(psi), SympyExpr(phi)))
+    println(res)
   }
 }

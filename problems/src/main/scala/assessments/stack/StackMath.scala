@@ -190,6 +190,7 @@ object StackMath {
 
   class SympyOperator(val name: String, val function: MathContext ?=> Seq[SympyExpr] => SympyExpr) {
     override def toString: String = name
+    def apply(arguments: StackMath*): Sympy = Sympy(this, arguments*)
   }
 
   def addToStringBuilderCommaSep(builder: StringBuilder, items: IterableOnce[StackMath]): Unit = {
