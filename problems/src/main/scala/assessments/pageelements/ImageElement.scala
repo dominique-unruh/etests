@@ -1,15 +1,21 @@
 package assessments.pageelements
 
 import assessments.ExceptionContext.addToExceptionContext
-import assessments.{ExceptionContext, ExceptionWithContext}
+import assessments.{Assessment, ExceptionContext, ExceptionWithContext, FileMapBuilder, Html}
 import assessments.pageelements.StaticElement
 import org.apache.batik.transcoder.{SVGAbstractTranscoder, TranscoderInput, TranscoderOutput}
 import org.apache.batik.transcoder.image.PNGTranscoder
+import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import sourcecode.Enclosing
 
 import java.io.{ByteArrayOutputStream, InputStream, Reader}
 
-case class ImageElement(png: Array[Byte], basename: String) extends StaticElement
+case class ImageElement(png: Array[Byte], basename: String) extends StaticElement {
+  override def renderHtml(associatedFiles: FileMapBuilder): Html = {
+    val name = associatedFiles.add(basename = basename, extension = "png", mimeType = "image/png", content = png)
+    Html(s"""<img src="${escapeHtml4(name)}"/>""")
+  }
+}
 
 object ImageElement {
   def fromSVGResource(svgResource: String, clazz: Class[?])(using enclosing: Enclosing): ImageElement = {

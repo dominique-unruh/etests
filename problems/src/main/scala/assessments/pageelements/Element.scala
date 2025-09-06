@@ -12,7 +12,9 @@ import scala.util.Using
 
 sealed trait Element
 
-class StaticElement extends Element
+trait StaticElement extends Element {
+  def renderHtml(associatedFiles: FileMapBuilder): Html
+}
 
 /** Potentially interactive elements on an assessment page. */
 trait DynamicElement extends Element { self =>

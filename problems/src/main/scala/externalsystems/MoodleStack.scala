@@ -1,7 +1,7 @@
 package externalsystems
 
-import assessments.{Assessment, Html}
-import assessments.pageelements.{ImageElement, InputElement, MathPreviewElement, DynamicElement}
+import assessments.{Assessment, DefaultFileMapBuilder, Html}
+import assessments.pageelements.{DynamicElement, ImageElement, InputElement, MathPreviewElement, StaticElement}
 import org.apache.commons.text.StringEscapeUtils
 import utils.Tag
 
@@ -177,7 +177,7 @@ object MoodleStack {
     result.result()
   }
 
-  def inputElementToMoodle(inputElement: InputElement) = {
+  def inputElementToMoodle(inputElement: InputElement): Input = {
     val name = inputElement.name.toString
     val (allowWords, forbidWords) = inputElement.tags.get(moodleAllowWords) match
       case Some(allow) => (allow, (defaultForbiddenWords -- allow).toSeq.sortBy(_.toLowerCase))
@@ -195,7 +195,8 @@ object MoodleStack {
   
   def assessmentToQuestion(assessment: Assessment): Question = {
     val inputs = Seq.newBuilder[Input]
-    val (questionText, explanation, gradingRules, associatedFiles) = assessment.renderHtml { (element, associatedFiles) =>
+    val fileMapBuilder = DefaultFileMapBuilder("@@PLUGINFILE@@/")
+    val (questionText, explanation, gradingRules) = assessment.renderHtml { element =>
       element match {
         case pageElement: InputElement =>
           val name = pageElement.name.toString
@@ -207,9 +208,8 @@ object MoodleStack {
         case preview: MathPreviewElement =>
           val name = preview.observed.toString
           Html(s"[[validation:$name]]")
-        case ImageElement(png, basename) =>
-          val name = associatedFiles.add(basename = basename, extension = "png", mimeType = "image/png", content = png)
-          Html(s"""<img src="@@PLUGINFILE@@/${StringEscapeUtils.escapeHtml4(name)}"/>""")
+        case element: StaticElement =>
+          element.renderHtml(fileMapBuilder)
         case _ =>
           throw RuntimeException(s"Unknown page element (type ${element.getClass.getName}): $element")
       }
@@ -218,7 +218,7 @@ object MoodleStack {
     Question(name = assessment.name,
       questionText = questionText,
       inputs = inputs.result,
-      files = associatedFiles.view.mapValues(_._2).toMap,
+      files = fileMapBuilder.result().view.mapValues(_._2).toMap,
       questionVariables = assessment.tags(moodleQuestionVariables)
     )
   }
