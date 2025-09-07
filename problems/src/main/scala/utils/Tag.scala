@@ -2,12 +2,26 @@ package utils
 
 import utils.Tag.Tagged
 
+/** A tag for key/value stores with the intent that the value associated with this tag will be 
+ * of type `Value`.
+ * 
+ * @tparam Owner the type of the intended "owner" of the tag, see [[utils.Tag.Tags]].
+ * @tparam Value the type of the intended associated value
+ * */
 class Tag[Owner, Value](explicitName: String = "", val default: Value)(implicit sourceCodeName: sourcecode.Name) {
   val name: String = if (explicitName.nonEmpty) then explicitName else sourceCodeName.value
   def :=(value: Value) : Tagged[Owner, Value] = Tagged(this, value)
 }
 
 object Tag {
+  /** A collection of tag/value pairs.
+   * Each `(tag,value)` has a tag of type `Tag[O,V]` with `value : V`.
+   * 
+   * @tparam Owner intended "owner" of this tag collection. This will usually be the type of
+   *               the class that contains the tag collection. This ensures that the tag collection
+   *               will not contain tags that this class does not understand. All tags in this tag collection
+   *               will be of type `Tag[O,V]` with `O >: Owner`.
+   **/
   class Tags[-Owner] private (/** Contains `Tag[O,V] -> V` pairs, with `O >: Owner` */
                                private val map: Map[Tag[?, ?], Any]) extends AnyVal {
     def get[Value](tag: Tag[?, Value]): Option[Value] =
@@ -21,6 +35,7 @@ object Tag {
       new Tags(map + (tagged.tag.asInstanceOf[Tag[?, ?]] -> tagged.value))
     }
   }
+  /** A tag/value pair with matching types. */
   case class Tagged[Owner, Value](tag: Tag[Owner, Value], val value: Value)
 
   object Tagged {
