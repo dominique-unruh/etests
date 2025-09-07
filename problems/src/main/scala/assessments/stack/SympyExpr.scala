@@ -19,7 +19,7 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
     case ErrorTerm(message) => s"\\text{ERROR: ${Utils.escapeTeX(message)}}"
     case _ => sympy.latex(python).as[String]
 
-  def equalsTrue(): Boolean = _equalsTrue(python).as[Boolean]
+  def equalsTrue: Boolean = _equalsTrue(python).as[Boolean]
 
   def +(other: SympyExpr): SympyExpr = SympyExpr(python + other.python)
 
@@ -35,6 +35,13 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
 
   def **(other: SympyExpr): SympyExpr = SympyExpr(python.__pow__(other.python))
 
+  @targetName("less")
+  def <(other: SympyExpr): Boolean = SympyExpr(python.__lt__(other.python)).equalsTrue
+  @targetName("greater")
+  def >(other: SympyExpr): Boolean = SympyExpr(python.__gt__(other.python)).equalsTrue
+  def <=(other: SympyExpr): Boolean = SympyExpr(python.__le__(other.python)).equalsTrue
+  def >=(other: SympyExpr): Boolean = SympyExpr(python.__ge__(other.python)).equalsTrue
+
   def gcd(other: SympyExpr): SympyExpr = SympyExpr(SympyExpr.gcd(python, other.python))
 
   def cos: SympyExpr = SympyExpr(sympy.cos(python))
@@ -48,6 +55,9 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
   def tensor(other: SympyExpr): SympyExpr = 
     SympyExpr(sympy.physics.quantum.tensorproduct.TensorProduct(python, other.python))
   
+  def isInteger: Boolean =
+    SympyExpr.is_integer(python).as[Boolean]
+
   def substitute(map: (SympyExpr, SympyExpr)*): SympyExpr = {
     val mapPython = map.map((k, v) => (k.python, v.python)).toPythonCopy
     val result = python.subs(mapPython)
@@ -123,7 +133,7 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
 
   def algebraicEqual(other: SympyExpr, assumption: SympyAssumption = SympyAssumption.positive): Boolean =
     val result = assumption.addToSympyExpr(SympyExpr.Eq(this, other)).expand.simplify
-    result.equalsTrue()
+    result.equalsTrue
 }
 
 object SympyExpr {
@@ -205,4 +215,14 @@ class gcd(sympy.Function):
    * The sympy parser is unsafe for unsanitized inputs.
    * So we only allow fromString on string literals. */
   def fromString(string : String & Singleton): SympyExpr = SympyExpr(sympy.sympify(string : String))
+  private [SympyExpr] lazy val is_integer = Python.define(
+    """import sympy, numbers
+      |def is_integer(value):
+      |     if isinstance(value, numbers.Number) and not isinstance(value, bool):
+      |         value = sympy.Number(value)
+      |     if isinstance(value, sympy.Basic):
+      |         return value.is_integer
+      |     return False
+      |return is_integer
+      |""".stripMargin)
 }

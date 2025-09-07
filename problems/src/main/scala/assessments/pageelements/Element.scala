@@ -19,6 +19,9 @@ trait StaticElement extends Element {
 /** Potentially interactive elements on an assessment page. */
 trait DynamicElement extends Element { self =>
   val name: ElementName
+  /** Human readable name.
+   * @return the value of the tag [[DynamicElement.humanName]] or else the name of this element. */
+  def humanName: String = tags.getOrElse(DynamicElement.humanName, name.toString)
   def renderHtml: Html
   def renderStaticHtml(answers: Map[ElementName, String]): Html
   def updateAction(assessment: Assessment, state: Map[ElementName, JsValue]): IterableOnce[ElementAction] = Seq.empty

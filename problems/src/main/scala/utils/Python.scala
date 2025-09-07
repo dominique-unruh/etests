@@ -55,6 +55,7 @@ object Python {
     //    logger.debug(code2)
     val result = execLocally(code2).bracketAccess(magic)()
     //    logger.debug(result.toString)
+    assert(result != Python.none, code)
     result
   }
 

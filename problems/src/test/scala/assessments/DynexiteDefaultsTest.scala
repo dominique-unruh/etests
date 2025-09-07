@@ -14,7 +14,7 @@ class DynexiteDefaultsTest extends AnyFunSuiteLike {
   test("mathTry, valid parse") {
     given context: GradingContext = gc(x = "12 + 3")
     val x = input("15")
-    val result = x.mathTry("x")
+    val result = x.mathTry
     println(result)
     assert(result.toString == "plus(12, 3)")
     assert(context.comments.isEmpty)
@@ -23,7 +23,7 @@ class DynexiteDefaultsTest extends AnyFunSuiteLike {
   test("mathTry, invalid parse") {
     given context: GradingContext = gc(x = "12 + ")
     val x = input("15")
-    val result = x.mathTry("x")
+    val result = x.mathTry
     println(result)
     assert(result == StackMath.noAnswer)
     assert(context.comments.length == 1)

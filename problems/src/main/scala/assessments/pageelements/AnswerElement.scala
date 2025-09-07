@@ -26,7 +26,6 @@ trait AnswerElement extends DynamicElement {
   def simpleGrade(points: Points)(using gradingContext: GradingContext): Unit = {
     val answer = gradingContext.answers(this.name)
     val correct = answer.trim == reference.trim // We could configure alternative tests
-    val humanName = tags.getOrElse(DynamicElement.humanName, this.name.toString)
     if (correct)
       gradingContext += s"${humanName.capitalize}: correct. $points points."
       gradingContext.points += points

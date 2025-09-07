@@ -1,8 +1,8 @@
 package assessments
 
 import scala.language.implicitConversions
-
 import assessments.pageelements.*
+import assessments.pageelements.DynamicElement.humanName
 import assessments.pageelements.MultipleChoice.Style.select
 import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
@@ -41,6 +41,21 @@ object DynexiteDefaults {
     }
     def math(inputElement: InputElement): StackMath =
       parse(str, inputElement)
+    /**
+     * Attempts to parse and evaluate a mathematical expression from this string
+     * with error handling for syntax errors.
+     * 
+     * (E.g., `"1+2".mathTry("first question", ans1)`)
+     *
+     * This method tries to parse the mathematical content (with the parser of `inputElement`)
+     * If the input is empty or contains syntax errors, it returns a "no answer" result ([[StackMath.noAnswer]])
+     * and logs appropriate feedback to the grading context.
+     *
+     * @param name           The human-readable name of the input field, used for error messages
+     * @param inputElement   The input element relative to which parsing should take place
+     * @return [[StackMath.noAnswer]] if input is empty or contains syntax errors,
+     *         otherwise returns the parsed mathematical result from math(inputElement)
+     */
     def mathTry(name: String, inputElement: InputElement)(using gradingContext: GradingContext): StackMath = {
       if (str == "")
         StackMath.noAnswer
@@ -60,13 +75,13 @@ object DynexiteDefaults {
   }
 
   implicit class InputElementMethods(ie: InputElement) {
-    @deprecated("Use .math")
+    @deprecated("Use .math.toSympyMC()")
     def sympy(using gradingContext: GradingContext): SympyExpr = ie.stringValue.sympy
     def latex(using gradingContext: GradingContext, mathContext: MathContext): String = math.toSympyMC(allowUndefined = true).latex
     def math(using gradingContext: GradingContext): StackMath = ie.stringValue.math(ie)
     def refmath(using gradingContext: GradingContext): StackMath = ie.reference.math(ie)
-    def mathTry(name: String)(using gradingContext: GradingContext): StackMath =
-      ie.stringValue.mathTry(name, ie)
+    def mathTry(using gradingContext: GradingContext): StackMath =
+      ie.stringValue.mathTry(ie.humanName, ie)
   }
 
 /*  extension (pe: PageElement) {
