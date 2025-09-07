@@ -79,6 +79,9 @@ object Points {
     def *=(points: Points): Unit = this.points *= points
     def /=(points: Points): Unit = this.points /= points
     def set(points: Points): Unit = this.points = points
+    override def equals(obj: Any): Boolean = obj match
+      case points: Points => this.get == points
+      case _ => super.equals(obj)
   }
 
   given Conversion[Mutable, Points] = _.get

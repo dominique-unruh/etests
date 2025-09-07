@@ -65,6 +65,18 @@ object StackUtils {
   def forallMapped(x: StackMath, y: StackMath)(f: Map[String, StackMath] => (StackMath, StackMath) => Boolean)(using mathContext: MathContext): Boolean =
     forallMapped(Seq(x,y)){ case (map, Seq(x,y)) => f(map)(x,y) }
 
+  /** Like [[enumerateMapped]] but counts how many f-calls return true.
+   * @return (true,total) true=number of true calls, total=total number of calls */
+  def countMapped(terms: Seq[StackMath])(f: (Map[String, StackMath], Seq[StackMath]) => Boolean)(using mathContext: MathContext): (Int, Int) = {
+    val booleans = enumerateMapped(terms)(f)
+    val trues = booleans.count(identity)
+    (trues, booleans.length)
+  }
+  /** Like the other `countMapped` but specifically for two terms */
+  def countMapped(x: StackMath, y: StackMath)(f: Map[String, StackMath] => (StackMath, StackMath) => Boolean)(using mathContext: MathContext): (Int, Int) =
+    countMapped(Seq(x,y)){ case (map, Seq(x,y)) => f(map)(x,y) }
+
+
   def checkEqualityDebug(x: StackMath, y: StackMath,
                          mapLeft: SympyExpr => SympyExpr = identity,
                          mapRight: SympyExpr => SympyExpr = identity,

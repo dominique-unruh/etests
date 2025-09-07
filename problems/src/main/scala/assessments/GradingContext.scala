@@ -4,18 +4,19 @@ import scala.language.implicitConversions
 import assessments.Comment.Format.markdown
 import assessments.Comment.Kind.feedback
 import assessments.GradingContext.{Case, GradeBlockExit}
+import assessments.pageelements.AnswerElement
 
 import scala.annotation.targetName
 import scala.collection.mutable
 import scala.util.boundary
 import scala.util.boundary.{Break, Label, break}
 
-case class GradingContext private (private val answers: Map[ElementName, String], val registrationNumber: String,
+case class GradingContext private (private val answers: mutable.Map[ElementName, String], val registrationNumber: String,
                                    private val reachable: Points, private val label: Option[Label[GradeBlockExit]]) {
   val points = Points.Mutable(0)
 
   private [GradingContext] def subcontext(reachable: Points, label: Label[GradeBlockExit]): GradingContext =
-    copy(answers=answers, registrationNumber = registrationNumber, reachable = reachable, label = Some(label))
+    copy(answers=answers.clone(), registrationNumber = registrationNumber, reachable = reachable, label = Some(label))
 
   private [GradingContext] def mergeSubcontext(context: GradingContext): Unit = {
     points += context.points
@@ -56,6 +57,7 @@ case class GradingContext private (private val answers: Map[ElementName, String]
    * @param max  Number of reachable points for this subproblem.
    * @param body A block which does grading for the subproblem
    * */
+  // TODO: Should be in `object GradingContext`
   def gradeBlock(max: Points)(body: (GradingContext, Label[GradeBlockExit], ExceptionContext) ?=> Unit)
                 (using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
     val (result, subcontext) = bareGradeBlock(max)(body)
@@ -63,8 +65,8 @@ case class GradingContext private (private val answers: Map[ElementName, String]
     val reached = subcontext.points
     assert(reached <= max)
     assert(reached >= 0)
+    subcontext.comments += Comment.feedback(s"$reached out of $max points")
     mergeSubcontext(subcontext)
-    comments += Comment.feedback(s"$reached out of $max points")
   }
 
   def bareGradeBlock(max: Points)(body: (GradingContext, Label[GradeBlockExit], ExceptionContext) ?=> Unit)
@@ -175,10 +177,10 @@ object GradingContext {
   def comments(using context: GradingContext): mutable.IndexedBuffer[Comment] = context.comments
   def points(using context: GradingContext): Points.Mutable = context.points
   def points_=(points: Points)(using context: GradingContext): Unit = context.points.set(points)
-  def answers(using context: GradingContext): Map[ElementName, String] = context.answers
+  def answers(using context: GradingContext): mutable.Map[ElementName, String] = context.answers
   
   def apply(answers: Map[ElementName, String], registrationNumber: String, reachable: Points): GradingContext =
-    new GradingContext(answers, registrationNumber, reachable, label = None)
+    new GradingContext(answers.to(mutable.Map), registrationNumber, reachable, label = None)
 
   /** To be used inside [[GradingContext.gradeBlock]] */
   def max(using context: GradingContext): Points = context.reachable
@@ -219,5 +221,14 @@ object GradingContext {
   object Case {
     def unapply(arg: Case): Some[String] = Some(arg.name)
   }
+  
+  def fixAnswer(name: ElementName)(f: PartialFunction[String, String])(using gradingContext: GradingContext): Unit =
+    f.lift(answers(name)) match
+      case Some(value) => answers(name) = value
+      case None =>
+
+  def fixAnswer(element: AnswerElement)(f: PartialFunction[String, String])(using gradingContext: GradingContext): Unit =
+    fixAnswer(element.name)(f)
+
 }
 

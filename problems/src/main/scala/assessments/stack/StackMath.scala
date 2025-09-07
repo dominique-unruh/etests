@@ -19,6 +19,9 @@ sealed trait StackMath {
     builder.result()
   }
 
+  def +(other: StackMath): Operation = Operation(Ops.plus, this, other)
+  def *(other: StackMath): Operation = Operation(Ops.times, this, other)
+  
   override def toString: String = {
     val builder = new StringBuilder
     addToStringBuilder(builder)
