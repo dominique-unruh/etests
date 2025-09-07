@@ -354,7 +354,7 @@ object Dynexite {
     val expectedNames = {
       val builder = mutable.Map[String, ElementName]()
       for (element <- elements) {
-        val lastName = element.name.last
+        val lastName = element.name.name
         assert(!builder.contains(lastName), (builder, lastName, elements))
         builder.update(lastName, element.name)
       }
@@ -393,7 +393,7 @@ object Dynexite {
     for ((name, answer) <- assessmentNames.zip(dynexiteAnswers)) {
       assert(!answers.contains(name), (answers, name, assessmentNames))
       answers.update(name, Option(answer).getOrElse(""))
-    };
+    }
 
     answers.toMap
   }

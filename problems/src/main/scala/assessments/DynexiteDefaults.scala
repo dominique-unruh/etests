@@ -90,7 +90,7 @@ object DynexiteDefaults {
 
   def preview(observed: InputElement)(using name: sourcecode.Name): MathPreviewElement = {
     val name2 = if (name.value == "question" || name.value == "explanation") // Inlined in the markdown, not a good default
-      ElementName(observed.name, "preview")
+      ElementName(s"${observed.name}_preview")
     else
       ElementName(name.value)
     MathPreviewElement(name2, observed.name, stackMathRender(observed))

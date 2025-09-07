@@ -1,55 +1,22 @@
 package assessments
 
-class ElementPath protected (val names: Seq[String]) {
-  override lazy val toString: String = names.mkString(".")
-  def +(name: String) = new ElementPath(names appended name)
-  def lastOption: Option[String] = names.lastOption
-  //noinspection MutatorLikeMethodIsParameterless
-  def removeLast: ElementPath =
-    assert(names.nonEmpty)
-    new ElementPath(names.dropRight(1))
-}
+import assessments.ElementName.validElementNameRegex
 
-object ElementPath {
-  private val validElementNameRegex = "[a-zA-Z][a-zA-Z0-9_]*".r.anchored
-  
-  private[assessments] def assertValidElementPath(names: Seq[String]): Unit = {
-    assert(names.forall(name => validElementNameRegex.matches(name)))
-  }
-
-  def apply(name: String): ElementPath= {
-    val names = name.split('.')
-    assertValidElementPath(names)
-    new ElementPath(names)
-  }
-  val empty = new ElementPath(Seq.empty)
-}
-
-final case class ElementName protected[assessments] (override val names: Seq[String]) extends ElementPath(names) {
-  override lazy val toString: String = names.mkString(".")
-  lazy val jsElementCallbackName: String = "element$" + names.mkString("$")
-  lazy val jsElementId: String = "element-" + toString
-  def dropRight(n: Int): ElementName = {
-    val newNames = names.dropRight(n)
-    assert(newNames.nonEmpty)
-    new ElementName(newNames)
-  }
-  def last: String = names.last
+final case class ElementName private[ElementName] (val name: String) {
+  override lazy val toString: String = name
+  lazy val jsElementCallbackName: String = "element$" + name
+  lazy val jsElementId: String = "element-" + name
 }
 
 object ElementName {
-  def apply(name: String): ElementName = {
-    val names = name.split('.')
-    assert(names.nonEmpty)
-    ElementPath.assertValidElementPath(names)
-    new ElementName(names)
+  private[ElementName] def assertValidElementName(name: String): Unit = {
+    assert(validElementNameRegex.matches(name))
   }
 
-  def apply(path: ElementPath, name: String): ElementName = {
-    val names = name.split('.')
-    assert(names.nonEmpty)
-    ElementPath.assertValidElementPath(names)
-    new ElementName(path.names ++ names)
+  private val validElementNameRegex = "[a-zA-Z][a-zA-Z0-9_]*".r.anchored
+  def apply(name: String): ElementName = {
+    assertValidElementName(name)
+    new ElementName(name)
   }
 
   val grader: ElementName = ElementName("grader")
