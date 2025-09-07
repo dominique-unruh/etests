@@ -26,6 +26,10 @@ trait DynamicElement extends Element { self =>
   val initialState: JsValue = JsObject(collection.Seq("content" -> JsString("")))
 }
 
+object DynamicElement {
+  object humanName extends Tag[DynamicElement, String](default = "")
+}
+
 case class ElementAction(element: ElementName, data: JsValue)
 object ElementAction {
   def error(message: String): ElementAction =

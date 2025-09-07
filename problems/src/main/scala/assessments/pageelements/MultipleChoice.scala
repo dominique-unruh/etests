@@ -12,10 +12,11 @@ import scala.collection.immutable.SeqMap
 import scala.collection.mutable
 import scala.util.Random
 
-final class MultipleChoice(val name: ElementName,
+final class MultipleChoice(override val name: ElementName,
                            val options: SeqMap[String, String],
-                           val reference: String,
-                           val style: MultipleChoice.Style)
+                           override val reference: String,
+                           val style: MultipleChoice.Style,
+                           override val tags: Tags[MultipleChoice] = Tags.empty)
   extends AnswerElement {
   assert(options.contains(reference), (options, reference))
 
@@ -37,8 +38,6 @@ final class MultipleChoice(val name: ElementName,
     }
     map.result()
   }*/
-
-  override val tags: Tag.Tags[MultipleChoice.this.type] = Tags.empty
 
 /*  override def renderHtml: String = {
     val html = StringBuilder()

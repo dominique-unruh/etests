@@ -22,9 +22,10 @@ object DynexiteDefaults {
   def input(reference: String, tags: Tags[InputElement] = Tags.empty)(using name: sourcecode.Name): InputElement =
     new InputElement(elementName(name), reference, tags)
 
-  def multi(options: Seq[String | (String,String)], reference: String, style: MultipleChoice.Style = select)(using name: sourcecode.Name): MultipleChoice = {
+  def multi(options: Seq[String | (String,String)], reference: String, style: MultipleChoice.Style = select,
+           tags: Tags[MultipleChoice] = Tags.empty)(using name: sourcecode.Name): MultipleChoice = {
     val optionMap = SeqMap.from(options.map { case option: String => option -> option; case (option,text) => option -> text})
-    new MultipleChoice(name=elementName(name), options=optionMap, reference=reference, style=style)
+    new MultipleChoice(name=elementName(name), options=optionMap, reference=reference, style=style, tags=tags)
   }
 
   extension (str: String) {
