@@ -1,6 +1,7 @@
 package assessments
 
 import assessments.DynexiteDefaults.{InputElementMethods, PageElementMethods, input}
+import assessments.GradingContext.comments
 import assessments.stack.StackMath
 import org.scalatest.funsuite.AnyFunSuiteLike
 
@@ -17,7 +18,7 @@ class DynexiteDefaultsTest extends AnyFunSuiteLike {
     val result = x.mathTry
     println(result)
     assert(result.toString == "plus(12, 3)")
-    assert(context.comments.isEmpty)
+    assert(comments.isEmpty)
   }
 
   test("mathTry, invalid parse") {
@@ -26,7 +27,7 @@ class DynexiteDefaultsTest extends AnyFunSuiteLike {
     val result = x.mathTry
     println(result)
     assert(result == StackMath.noAnswer)
-    assert(context.comments.length == 1)
-    assert(context.comments.head.toPlaintext == "Could not parse x, treating as no answer")
+    assert(comments.length == 1)
+    assert(comments.head.toPlaintext == "Could not parse x, treating as no answer")
   }
 }

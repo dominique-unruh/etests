@@ -33,15 +33,30 @@ object Tmp {
 
   import scala.quoted.*
 
+  class Context
 
   def main(args: Array[String]): Unit = {
-//    val x: py.Dynamic = py.eval("None")
-    val x: py.Dynamic = py.eval("[1,2,3]")
-//    println(x)
-//    println(x == py.None)
-    val res = x match
-      case Python.none => None
-      case Python.List(psi,phi) => Some((SympyExpr(psi), SympyExpr(phi)))
-    println(res)
+    class Player {
+      private var _points: Int = 0
+
+      def points(using ctx: Context): Int = _points
+
+      def points_=(value: Int)(using ctx: Context): Unit = {
+        _points = math.max(0, value) // Ensure points never go negative
+      }
+
+      def points_+=(value: Int)(using ctx: Context): Unit = {
+        _points = math.max(0, value) // Ensure points never go negative
+      }
+    }
+
+    given Context()
+    val player = new Player
+    player.points = 100 // Works
+    player.points = player.points + 50
+//    player.points += 50 // Works - becomes player.points = player.points + 50
+//    player.points -= 25 // Works
+//    player.points *= 2 // Works
+    println(player.points) // 250
   }
 }

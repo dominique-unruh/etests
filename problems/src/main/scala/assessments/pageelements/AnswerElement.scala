@@ -1,5 +1,6 @@
 package assessments.pageelements
 
+import assessments.GradingContext.{answers, comments}
 import assessments.{GradingContext, Points}
 import utils.{Tag, Utils}
 
@@ -24,15 +25,15 @@ trait AnswerElement extends DynamicElement {
    * @param points         The number of points to award for a correct answer
    */
   def simpleGrade(points: Points)(using gradingContext: GradingContext): Unit = {
-    val answer = gradingContext.answers(this.name)
+    val answer = answers(this.name)
     val correct = answer.trim == reference.trim // We could configure alternative tests
     if (correct)
-      gradingContext += s"${humanName.capitalize}: correct. $points points."
+      comments += s"${humanName.capitalize}: correct. $points points."
       gradingContext.points += points
     else if (answer == "")
-      gradingContext += s"${humanName.capitalize}: not answered. 0 points / $points points."
+      comments += s"${humanName.capitalize}: not answered. 0 points / $points points."
     else
-      gradingContext += s"${humanName.capitalize}: incorrect. 0 points / $points points."
+      comments += s"${humanName.capitalize}: incorrect. 0 points / $points points."
   }
 }
 

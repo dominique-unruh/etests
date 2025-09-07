@@ -70,6 +70,19 @@ class Points private (private val numerator: BigInt, private val denominator: Bi
 }
 
 object Points {
+  class Mutable(initialPoints: Points = Points.zero) {
+    override def toString: String = points.toString
+    private var points = initialPoints
+    def get: Points = points
+    def +=(points: Points): Unit = this.points += points
+    def -=(points: Points): Unit = this.points -= points
+    def *=(points: Points): Unit = this.points *= points
+    def /=(points: Points): Unit = this.points /= points
+    def set(points: Points): Unit = this.points = points
+  }
+
+  given Conversion[Mutable, Points] = _.get
+
   private val bigInt1 = BigInt(1)
   private val bigInt0 = BigInt(0)
   private val bigInt10 = BigInt(10)

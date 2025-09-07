@@ -39,7 +39,7 @@ abstract class Grader(val name: ElementName) extends DynamicElement {
         report ++= s"<p>Points: $pointsString / ${assessment.reachablePoints.decimalFractionString}</p>\n"
       else
         report ++= s"<p>Points: $pointsString / ${assessment.reachablePoints.decimalFractionString}  (precise number: ${context.points.fractionHtml})</p>\n"
-      report ++= Comment.seqToHtml(context.comments).html
+      report ++= Comment.seqToHtml(GradingContext.comments(using context).toSeq).html
       Seq(ElementAction(name, JsObject(Map("points" -> JsString(context.points.decimalFractionString(2)), "report" -> JsString(report.result())))))
     } catch {
       case e : Throwable =>

@@ -1,9 +1,10 @@
 package assessments
 
 import assessments.ExceptionContext.{addToExceptionContext, initialExceptionContext}
+import assessments.GradingContext.comments
 import assessments.InterpolatedMarkdown.md
 import assessments.MarkdownAssessment.MarkdownAssessmentRun
-import assessments.pageelements.{AnswerElement, Element, ElementAction, DynamicElement, StaticElement}
+import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, StaticElement}
 import externalsystems.MoodleStack
 import org.apache.commons.text.StringEscapeUtils
 import org.commonmark.parser.Parser
@@ -98,10 +99,10 @@ abstract class MarkdownAssessment {
       try {
         grader.grade()(using context)
         println("Resulting comments:")
-        for (comment <- context.comments)
+        for (comment <- comments(using context))
           println("* " + comment.toPlaintext)
         println(s"Resulting number of points: ${context.points} (expected points: $expected)")
-        if (context.points != expected)
+        if (context.points.get != expected)
           throw ExceptionWithContext("Mismatch with expectation")
       } catch {
         case NoGraderYetException =>

@@ -1,5 +1,7 @@
 package assessments
 
+import assessments.GradingContext.comments
+
 import scala.language.implicitConversions
 import assessments.pageelements.*
 import assessments.pageelements.DynamicElement.humanName
@@ -64,14 +66,14 @@ object DynexiteDefaults {
           math(inputElement)
         catch
           case e: SyntaxError =>
-            gradingContext += s"Could not parse $name (error: ${e.getMessage}), treating as no answer"
+            comments += s"Could not parse $name (error: ${e.getMessage}), treating as no answer"
             StackMath.noAnswer
     }
   }
 
   // Not using "extension (pe: PageElement) because that exports additionally methods DynexiteDefault.latex... that may conflict with equally named methods when DynexiteDefaults.* is imported
   implicit class PageElementMethods(pe: DynamicElement) {
-    def stringValue(using gradingContext: GradingContext): String = gradingContext.answers.getOrElse(pe.name, "")
+    def stringValue(using gradingContext: GradingContext): String = GradingContext.answers.getOrElse(pe.name, "")
   }
 
   implicit class InputElementMethods(ie: InputElement) {
@@ -132,7 +134,7 @@ object DynexiteDefaults {
       checkEquality(toSympy(x), toSympy(y), assumption=assumption)
     } catch
       case e : SyntaxError =>
-        context += e.getMessage; false
+        comments += e.getMessage; false
   
   def gradeInputGroup(inputs: Seq[(AnswerElement, String)],
                       pointsPerOption: Points = null, pointsTotal: Points = null)
@@ -150,14 +152,14 @@ object DynexiteDefaults {
       val stringValue = input.stringValue 
       if (stringValue == input.reference)
         assert(stringValue == "" || input.asInstanceOf[MultipleChoice].options.contains(stringValue))
-        context += s"$description: Correct."
+        comments += s"$description: Correct."
         points += pointsPerOption2
       else if (stringValue == "")
-        context += s"$description: Incorrect. (You selected nothing, should be '${input.reference}')"
+        comments += s"$description: Incorrect. (You selected nothing, should be '${input.reference}')"
       else
-        context += s"$description: Incorrect. (You said '${stringValue}', should be '${input.reference}')"
+        comments += s"$description: Incorrect. (You said '${stringValue}', should be '${input.reference}')"
     }
 
-    context.points += points
+    GradingContext.points += points
   }
 }

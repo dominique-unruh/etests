@@ -1,9 +1,9 @@
 package assessments
 
 import scala.language.implicitConversions
-
 import assessments.Comment.Kind
 import assessments.ExceptionContext.initialExceptionContext
+import assessments.GradingContext.comments
 import externalsystems.Spreadsheet.Index
 import externalsystems.{Dynexite, RWTHOnlineGrades, Sciebo, Spreadsheet}
 import org.apache.commons.lang3.exception.ExceptionUtils
@@ -71,7 +71,7 @@ object GradeEveryone extends Task {
       question.pageElements(ElementName.grader).asInstanceOf[Grader].grade()(using context)
       output ++= s"Points: ${context.points.decimalFractionString(2)} of ${question.reachablePoints}\n"
       points += context.points
-      output ++= Comment.seqToHtml(Comment.filterFeedback(context.comments)).html
+      output ++= Comment.seqToHtml(Comment.filterFeedback(comments(using context).toSeq)).html
     } catch {
       case e: Throwable =>
         output ++= s"""<pre style="color:red">${escapeHtml4(ExceptionUtils.getStackTrace(e))}</pre>\n"""

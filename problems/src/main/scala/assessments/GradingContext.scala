@@ -1,40 +1,32 @@
 package assessments
 
 import scala.language.implicitConversions
-
 import assessments.Comment.Format.markdown
 import assessments.Comment.Kind.feedback
 import assessments.GradingContext.{Case, GradeBlockExit}
 
 import scala.annotation.targetName
+import scala.collection.mutable
 import scala.util.boundary
 import scala.util.boundary.{Break, Label, break}
 
-case class GradingContext private (answers: Map[ElementName, String], registrationNumber: String, reachable: Points, label: Option[Label[GradeBlockExit]]) {
-  var points: Points = 0
-  private val builder = Seq.newBuilder[Comment]
+case class GradingContext private (private val answers: Map[ElementName, String], val registrationNumber: String,
+                                   private val reachable: Points, private val label: Option[Label[GradeBlockExit]]) {
+  val points = Points.Mutable(0)
 
   private [GradingContext] def subcontext(reachable: Points, label: Label[GradeBlockExit]): GradingContext =
     copy(answers=answers, registrationNumber = registrationNumber, reachable = reachable, label = Some(label))
 
   private [GradingContext] def mergeSubcontext(context: GradingContext): Unit = {
     points += context.points
-    builder += NestedComment(context.builder.result(), kind=feedback)
+    comments += NestedComment(context.comments.toSeq, kind=feedback)
   }
 
   private [GradingContext] def assertLabel(label: Label[GradeBlockExit])
                                           (using exceptionContext: ExceptionContext): Unit =
     assert(this.label.isDefined && (this.label.get eq label))
 
-  @targetName("addString")
-  def +=(comment: String): Unit = builder += Comment(text = comment, format = markdown, kind = feedback)
-
-  @targetName("addComment")
-  def +=(comment: Comment): Unit = builder += comment
-
-  def comments: Seq[Comment] = builder.result()
-
-  def clear(): Unit = builder.clear()
+  private val comments: mutable.IndexedBuffer[Comment] = mutable.ArrayDeque[Comment]()
 
   /** Starts a block for grading a single subproblem.
    *
@@ -72,7 +64,7 @@ case class GradingContext private (answers: Map[ElementName, String], registrati
     assert(reached <= max)
     assert(reached >= 0)
     mergeSubcontext(subcontext)
-    this += s"$reached out of $max points"
+    comments += Comment.feedback(s"$reached out of $max points")
   }
 
   def bareGradeBlock(max: Points)(body: (GradingContext, Label[GradeBlockExit], ExceptionContext) ?=> Unit)
@@ -152,8 +144,8 @@ case class GradingContext private (answers: Map[ElementName, String], registrati
       yield {
         val (result, subcontext) = bareGradeBlock(max)(checker(combo))
         val accepted = !result.abort
-        assert(subcontext.points == Points.zero)
-        val points = getPoints(combo)
+        assert(subcontext.points.get == Points.zero, subcontext.points)
+        val points: Points = if accepted then getPoints(combo) else -1 // Points should not matter if not accepted, and this makes sure we don't get errors for missing ununsed cases
         val comment = combo.map(_.description).filter(_.nonEmpty) match
           case Seq() => "Correct solution"
           case cases => "Correct solution, except: " + cases.mkString(", ")
@@ -165,11 +157,11 @@ case class GradingContext private (answers: Map[ElementName, String], registrati
       .maxByOption((combo, accepted, points, comment, subcontext) => (points, -comment.length)) // Most points, from those shortest comment
     match {
       case Some((_, _, points, comment, subcontext)) =>
-        subcontext += s"$comment. $points out of $max points."
+        subcontext.comments += s"$comment. $points out of $max points."
         subcontext.points += points
         mergeSubcontext(subcontext)
       case None =>
-        this += s"Incorrect. 0 out of $max points."
+        comments += s"Incorrect. 0 out of $max points."
     }
 
     //    println(s"Chosen: $combo $points $comment")
@@ -180,6 +172,11 @@ case class GradingContext private (answers: Map[ElementName, String], registrati
 object GradingContext {
   case class GradeBlockExit private[GradingContext] (abort: Boolean)
 
+  def comments(using context: GradingContext): mutable.IndexedBuffer[Comment] = context.comments
+  def points(using context: GradingContext): Points.Mutable = context.points
+  def points_=(points: Points)(using context: GradingContext): Unit = context.points.set(points)
+  def answers(using context: GradingContext): Map[ElementName, String] = context.answers
+  
   def apply(answers: Map[ElementName, String], registrationNumber: String, reachable: Points): GradingContext =
     new GradingContext(answers, registrationNumber, reachable, label = None)
 
@@ -198,7 +195,7 @@ object GradingContext {
       context.points += points
     }
     if (comment != null)
-      context += comment
+      comments += comment
     break(GradeBlockExit(abort = false))
   }
 

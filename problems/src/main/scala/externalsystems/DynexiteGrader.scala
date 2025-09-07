@@ -1,6 +1,7 @@
 package externalsystems
 
 import assessments.ExceptionContext.initialExceptionContext
+import assessments.GradingContext.comments
 
 import scala.language.experimental.genericNumberLiterals
 import assessments.pageelements.AnswerElement
@@ -91,7 +92,7 @@ object DynexiteGrader {
     )
     grader.grade()(using context)
 
-    logger.debug("Comments: " + context.comments)
+    logger.debug("Comments: " + comments(using context))
 
     val reachable = grader.reachablePoints
 
@@ -102,7 +103,7 @@ object DynexiteGrader {
     report += s"Problem: ${assessment.name}"
     report += s"Points: ${context.points} out of $reachable"
     report += "Comments:"
-    for (comment <- context.comments)
+    for (comment <- comments(using context))
       report += "* "+comment
 
     // Allowing some error in this check since Dynexite doesn't have rational points
