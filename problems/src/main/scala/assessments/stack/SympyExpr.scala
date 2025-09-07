@@ -137,6 +137,10 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
 }
 
 object SympyExpr {
+
+  def apply(python: py.Dynamic) = new SympyExpr(python)
+  def apply(int: Int): SympyExpr = integer(int) 
+    
   private val logger = Logger[SympyExpr]
   lazy val sympy: py.Module = py.Module("sympy")
 
