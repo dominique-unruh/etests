@@ -2,6 +2,8 @@ package utils
 
 import utils.Tag.Tagged
 
+import scala.annotation.targetName
+
 /** A tag for key/value stores with the intent that the value associated with this tag will be 
  * of type `Value`.
  * 
@@ -9,7 +11,8 @@ import utils.Tag.Tagged
  * @tparam Value the type of the intended associated value
  * */
 class Tag[Owner, Value](explicitName: String = "", val default: Value)(implicit sourceCodeName: sourcecode.Name) {
-  val name: String = if (explicitName.nonEmpty) then explicitName else sourceCodeName.value
+  val name: String = if (explicitName.nonEmpty) explicitName else sourceCodeName.value
+  @targetName("assign")
   def :=(value: Value) : Tagged[Owner, Value] = Tagged(this, value)
 }
 
@@ -30,13 +33,14 @@ object Tag {
       get(tag).getOrElse(default)
     def apply[Value](tag: Tag[?, Value]): Value =
       get(tag).getOrElse(tag.default)
+    @targetName("add")
     def +[O, Value](tagged: Tagged[O, Value]): Tags[Owner & O] = {
       assert(!map.contains(tagged.tag))
       new Tags(map + (tagged.tag.asInstanceOf[Tag[?, ?]] -> tagged.value))
     }
   }
   /** A tag/value pair with matching types. */
-  case class Tagged[Owner, Value](tag: Tag[Owner, Value], val value: Value)
+  case class Tagged[Owner, Value](tag: Tag[Owner, Value], value: Value)
 
   object Tagged {
     given [Owner, Value]: Conversion[Tagged[Owner, Value], Tags[Owner]] = Tags(_)
@@ -44,7 +48,7 @@ object Tag {
 
   object Tags {
     def apply[Owner](tags: Tagged[? >: Owner, ?]*): Tags[Owner] = {
-      val builder = mkBuilder[Owner]
+      val builder = newBuilder[Owner]
       for (tagged <- tags)
         builder += tagged
       builder.result()
@@ -52,14 +56,16 @@ object Tag {
 
     def empty[Owner] = new Tags[Owner](Map.empty)
 
-    def mkBuilder[Owner] = new Builder[Owner]()
+    def newBuilder[Owner] = new Builder[Owner]()
 
-    class Builder[Owner] private[Tag] () {
+    class Builder[Owner] private[Tag] {
       private val builder = Map.newBuilder[Tag[?, ?], Any]
 
+      @targetName("addOne")
       def +=[O >: Owner, Value](tagged: Tagged[O, Value]) : Unit =
         this += (tagged.tag, tagged.value)
 
+      @targetName("addOne")
       def +=[O >: Owner, Value](tagValue: (Tag[O, Value], Value)) : Unit =
         builder += tagValue
 
@@ -70,5 +76,6 @@ object Tag {
   given [Owner]: Conversion[Tag[Owner,Boolean], Tagged[Owner,Boolean]] =
     tag => tag := true
   extension [Owner, A] (tag: Tag[Owner, Seq[A]])
+    @targetName("assign")
     def :=(value: A): Tagged[Owner, Seq[A]] = tag := Seq(value)
 }
