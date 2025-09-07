@@ -27,8 +27,12 @@ abstract class MarkdownAssessment {
   def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit
   val reachablePoints: Points
   val grader: Grader = new Grader(ElementName.grader) {
-    override def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit =
+    override def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
       MarkdownAssessment.this.grade()
+      assert(context.points <= reachablePoints)
+      assert(context.points >= 0)
+    }
+
     override lazy val reachablePoints: Points = MarkdownAssessment.this.reachablePoints
     override val tags: Tag.Tags[this.type] = Tag.Tags.empty
   }

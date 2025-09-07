@@ -70,6 +70,7 @@ case class GradingContext private (answers: Map[ElementName, String], registrati
     if (result.abort) return
     val reached = subcontext.points
     assert(reached <= max)
+    assert(reached >= 0)
     mergeSubcontext(subcontext)
     this += s"$reached out of $max points"
   }
@@ -182,10 +183,10 @@ object GradingContext {
   def apply(answers: Map[ElementName, String], registrationNumber: String, reachable: Points): GradingContext =
     new GradingContext(answers, registrationNumber, reachable, label = None)
 
-  /** To be used inside [[Commenter.gradeBlock]] */
+  /** To be used inside [[GradingContext.gradeBlock]] */
   def max(using context: GradingContext): Points = context.reachable
 
-  /** To be used inside [[Commenter.gradeBlock]] */
+  /** To be used inside [[GradingContext.gradeBlock]] */
   def done(points: Points = null, comment: String = null, condition: Boolean | Null = null)
           (using context: GradingContext, label: Label[GradeBlockExit], exceptionContext: ExceptionContext): Nothing = {
     if (condition == false)
