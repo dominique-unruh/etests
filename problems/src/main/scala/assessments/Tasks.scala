@@ -175,35 +175,3 @@ object GradeEveryone extends Task {
   }
 }
 
-object GradesToRWTHOnline extends Task {
-  given Conversion[String, Path] = Path.of(_)
-
-  val rwthOnlineExport = RWTHOnlineGrades.load("/home/unruh/cloud/qis/lectures/2025-intro-qc/rwth-upload.csv")
-  rwthOnlineExport.assertValid()
-  val gradeSheet = Spreadsheet.load("/home/unruh/cloud/sciebo/shared/intro-qc-exam1-grading/reports/results.csv", format=Spreadsheet.Format.CSV.default)
-
-  val rwthOnlineStudents = rwthOnlineExport.students
-  val gradeSheetStudents = gradeSheet.rows.map(_("student"))
-  val scheinStudents = gradeSheetStudents.toSet -- rwthOnlineStudents.toSet
-  assert(Utils.isDistinct(gradeSheetStudents))
-  val gradeIndex = Index("grade", "student", (i,r) => r("grade"))
-
-  val toPublish = Map((for (row <- gradeSheet.rows) yield {
-    val student = row("student")
-    assert(raw"[0-9]+".r.matches(student))
-    val grade = row("grade")
-    val link = Sciebo.getPublicReadLink(s"/shared/intro-qc-exam1-grading/reports/$student")
-    student -> (grade, link)
-  })*)
-
-  val rwthOnlineImport = rwthOnlineExport.map { entry =>
-    for ((grade, link) <- toPublish.get(entry.registrationNumber)) yield
-      entry.setGrade(grade).setRemark(s"Details (available temporarily): $link")
-  }
-
-  rwthOnlineImport.save("/home/unruh/cloud/qis/lectures/2025-intro-qc/rwth-upload-after-inspection.csv")
-
-  println("Schein:\n\n")
-  for (student <- scheinStudents)
-    println(s"$student, ${toPublish(student)._1}, ${toPublish(student)._2}")
-}

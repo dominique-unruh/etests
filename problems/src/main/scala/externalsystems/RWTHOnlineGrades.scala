@@ -22,7 +22,11 @@ class RWTHOnlineGrades private (private val spreadsheet: Spreadsheet) {
   def map(f: PartialFunction[Entry, Entry]): RWTHOnlineGrades = map(f.lift)
   /** Returns all registration numbers in this table */
   lazy val students: Seq[String] = spreadsheet.rows.map(_(Headers.registrationNumber))
-  def assertValid(): Unit = spreadsheet.assertValid()
+  def assertValid(): RWTHOnlineGrades = {
+    spreadsheet.assertValid();
+    Utils.isDistinct(spreadsheet.rows.map(_(Headers.registrationNumber))) // TODO: Should be checkable using the index instead
+    this
+  }
 }
 
 object RWTHOnlineGrades {
