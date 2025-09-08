@@ -61,7 +61,8 @@ lazy val problems = (project in file("problems"))
     libraryDependencies += "org.apache.xmlgraphics" % "batik-svg-dom" % "1.19",
     libraryDependencies += "io.github.classgraph" % "classgraph" % "4.8.181",
     libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.17.0", // Used to make Play happy with the nextcloud-api jackson dependency
-    libraryDependencies += "org.aarboard.nextcloud" % "nextcloud-api" % "13.1.0" exclude("org.slf4j", "slf4j-simple")
+    libraryDependencies += "org.aarboard.nextcloud" % "nextcloud-api" % "13.1.0" exclude("org.slf4j", "slf4j-simple"),
+    libraryDependencies += "org.odftoolkit" % "simple-odf" % "0.9.0",
   )
 
 lazy val exams = (project in file("exams"))

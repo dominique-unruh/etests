@@ -1,20 +1,26 @@
 package externalsystems
 
 import com.github.tototoshi.csv.{CSVFormat, CSVReader, CSVWriter, DefaultCSVFormat}
+import com.typesafe.scalalogging.Logger
+import externalsystems.Spreadsheet.Format.noFormat
 import externalsystems.Spreadsheet.{Format, Index, Row, RowNumberIndex, ValidationRule}
 import utils.Utils
 
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import scala.collection.mutable
-import scala.jdk.CollectionConverters.ConcurrentMapHasAsScala
+import scala.jdk.CollectionConverters.{ConcurrentMapHasAsScala, IteratorHasAsScala, ListHasAsScala}
 import scala.util.boundary
+import org.odftoolkit.simple.SpreadsheetDocument
+import org.odftoolkit.simple.table.Table
+
+import java.io.IOException
 
 case class Spreadsheet private (
                                  headers: Seq[String],
                                  rows: Vector[Row],
-                                 fileFormat: Format,
-                                 filePath: Option[Path],
+                                 fileFormat: Format = noFormat,
+                                 filePath: Option[Path] = None,
                                  validationRules: Seq[ValidationRule] = Seq.empty,
                  ) {
   private val rowNumberIndices: ConcurrentHashMap[String, RowNumberIndex] = new ConcurrentHashMap[String, RowNumberIndex]()
@@ -58,7 +64,7 @@ case class Spreadsheet private (
       else
         throw new RuntimeException("Validation errors: " + errors2.head.mkString(". "))
     }
-  
+
   def save(path: Path = filePath.getOrElse(throw IllegalArgumentException("no path saved in spreadsheet, give one explicitly")),
            format: Spreadsheet.Format = fileFormat): Unit = {
     val rawRows = for (row <- rows.iterator) yield
@@ -91,17 +97,24 @@ object Spreadsheet {
   }
   case class Index[U](name: String, indexColumn: String, rowMap: (Int, Row) => U)
 
-  def load(path: Path, format: Format): Spreadsheet = {
-    val rawRows = format.load(path)
+  def fromRawRowsIterator(rawRows: Iterator[Seq[String]]): Spreadsheet = {
     assert(rawRows.hasNext)
     val header = rawRows.next()
     assert(Utils.isDistinct(header))
     val rows = for (rawRow <- rawRows) yield
       assert(rawRow.length == header.length)
       Row(Map(header.zip(rawRow)*))
-    Spreadsheet(headers = header, rows = Vector.from(rows), fileFormat = format, filePath = Some(path))
+    Spreadsheet(headers = header, rows = Vector.from(rows))
   }
 
+  def load(path: Path, format: Format): Spreadsheet = {
+    val rawRows = format.load(path)
+    fromRawRowsIterator(rawRows).copy(fileFormat = format, filePath = Some(path))
+  }
+
+  def fromIterable(headers: Seq[String], rows: IterableOnce[Seq[String]]): Spreadsheet = {
+    fromRawRowsIterator(Iterator(headers) ++ rows)
+  }
 
   trait ValidationRule {
     /** Should return an empty sequence if validation passes, otherwise one or more error messages. */
@@ -123,6 +136,11 @@ object Spreadsheet {
   }
 
   object Format {
+    case object noFormat extends Format {
+      override def load(path: Path): Iterator[Seq[String]] = ???
+      override def save(path: Path, rows: IterableOnce[Seq[String]]): Unit = ???
+    }
+
     case class CSV(format: CSVFormat, encoding: String) extends Format {
       override def load(path: Path): Iterator[Seq[String]] = {
         val reader = CSVReader.open(path.toFile, encoding)(format)
@@ -142,7 +160,38 @@ object Spreadsheet {
         override val lineTerminator: String = "\n"
       }, "utf8")
     }
+
+    case class ODS(sheetName: String = null, sheetIndex: Int = -1) extends Format {
+      assert(sheetIndex >= 0 || sheetName != null)
+      assert(!(sheetIndex != -1 && sheetName != null))
+
+      override def load(path: Path): Iterator[Seq[String]] = {
+        val document = SpreadsheetDocument.loadDocument(path.toFile)
+
+        val table: Table = if (sheetName != null)
+          Option(document.getTableByName(sheetName)).getOrElse(throw new IOException(s"Sheet '$sheetName' not found"))
+        else {
+          val tables = document.getTableList.asScala
+          if (sheetIndex < 0 || sheetIndex >= tables.size) {
+            throw new IndexOutOfBoundsException(s"Sheet index $sheetIndex is out of bounds (0-${tables.size - 1})")
+          }
+          tables(sheetIndex)
+        }
+
+        val columnCount = table.getColumnCount
+
+        for (row <- table.getRowList.iterator.asScala) yield {
+          val cells = for (i <- 0 until columnCount) yield
+            row.getCellByIndex(i).getStringValue
+          cells
+        }
+      }
+
+      override def save(path: Path, rows: IterableOnce[Seq[String]]): Unit = ???
+    }
   }
+
+  private val logger = Logger[Spreadsheet]
 }
 
 
