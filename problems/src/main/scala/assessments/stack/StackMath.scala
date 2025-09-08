@@ -196,6 +196,18 @@ object StackMath {
     def apply(arguments: StackMath*): Sympy = Sympy(this, arguments*)
   }
 
+  object SympyOperator {
+    def fromPython(name: String, numArgs: Int, pythonFunction: py.Dynamic): SympyOperator = {
+      def function(args: Seq[SympyExpr]) =
+        if (args.length == numArgs || numArgs == -1)
+          SympyExpr(pythonFunction(args.map(_.python)*))
+        else
+          throw RuntimeException(s"Sympy operator $name called with ${args.length}≠$numArgs arguments")
+      new SympyOperator(name, function)
+    }
+  }
+  
+  
   def addToStringBuilderCommaSep(builder: StringBuilder, items: IterableOnce[StackMath]): Unit = {
     val iterator = items.iterator
     if (iterator.hasNext) {

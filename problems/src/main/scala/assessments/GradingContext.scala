@@ -176,7 +176,7 @@ object GradingContext {
 
   def comments(using context: GradingContext): mutable.IndexedBuffer[Comment] = context.comments
   def points(using context: GradingContext): Points.Mutable = context.points
-  def points_=(points: Points)(using context: GradingContext): Unit = context.points.set(points)
+  def points_=(points: Points)(using context: GradingContext): Unit = context.points := points
   def answers(using context: GradingContext): mutable.Map[ElementName, String] = context.answers
   
   def apply(answers: Map[ElementName, String], registrationNumber: String, reachable: Points): GradingContext =
