@@ -29,6 +29,67 @@ case class GradingContext private (private val answers: mutable.Map[ElementName,
 
   private val comments: mutable.IndexedBuffer[Comment] = mutable.ArrayDeque[Comment]()
 
+}
+
+object GradingContext {
+  case class GradeBlockExit private[GradingContext] (abort: Boolean)
+
+  def comments(using context: GradingContext): mutable.IndexedBuffer[Comment] = context.comments
+  def points(using context: GradingContext): Points.Mutable = context.points
+  def points_=(points: Points)(using context: GradingContext): Unit = context.points := points
+  def answers(using context: GradingContext): mutable.Map[ElementName, String] = context.answers
+  
+  def apply(answers: Map[ElementName, String], registrationNumber: String, reachable: Points): GradingContext =
+    new GradingContext(answers.to(mutable.Map), registrationNumber, reachable, label = None)
+
+  /** To be used inside [[GradingContext.gradeBlock]] */
+  def max(using context: GradingContext): Points = context.reachable
+
+  /** To be used inside [[GradingContext.gradeBlock]] */
+  def done(points: Points = null, comment: String = null, condition: Boolean | Null = null)
+          (using context: GradingContext, label: Label[GradeBlockExit], exceptionContext: ExceptionContext): Nothing = {
+    if (condition == false)
+      abort()
+    context.assertLabel(label)
+    if (points != null) {
+      if (context.points != Points.zero)
+        throw ExceptionWithContext(s"done(points=...) called after context.points += .... Use one or the other within a grade block")
+      context.points += points
+    }
+    if (comment != null)
+      comments += comment
+    break(GradeBlockExit(abort = false))
+  }
+
+  def abort()(using context: GradingContext, label: Label[GradeBlockExit], exceptionContext: ExceptionContext): Nothing = {
+    context.assertLabel(label)
+    break(GradeBlockExit(abort = true))
+  }
+
+  final class Case(val name: String, val description: String, options: Set[String]) {
+    override def equals(obj: Any): Boolean =
+      throw new RuntimeException(".equals not supported on Case")
+
+    def ==(name: String): Boolean =
+      if (!options.contains(name))
+        throw RuntimeException(s"""Unknown case "$name", must be one of: ${options.mkString(", ")}.""")
+      name == this.name
+
+    override def toString: String = s"Case($name)"
+  }
+
+  object Case {
+    def unapply(arg: Case): Some[String] = Some(arg.name)
+  }
+  
+  def fixAnswer(name: ElementName)(f: PartialFunction[String, String])(using gradingContext: GradingContext): Unit =
+    f.lift(answers(name)) match
+      case Some(value) => answers(name) = value
+      case None =>
+
+  def fixAnswer(element: AnswerElement)(f: PartialFunction[String, String])(using gradingContext: GradingContext): Unit =
+    fixAnswer(element.name)(f)
+
   /** Starts a block for grading a single subproblem.
    *
    * In the block, you can normally add comments using `+=`.
@@ -52,8 +113,6 @@ case class GradingContext private (private val answers: mutable.Map[ElementName,
    * }
    * }}}
    *
-   *
-   *
    * @param max  Number of reachable points for this subproblem.
    * @param body A block which does grading for the subproblem
    * */
@@ -66,7 +125,7 @@ case class GradingContext private (private val answers: mutable.Map[ElementName,
     assert(reached <= max)
     assert(reached >= 0)
     subcontext.comments += Comment.feedback(s"$reached out of $max points")
-    mergeSubcontext(subcontext)
+    context.mergeSubcontext(subcontext)
   }
 
   def bareGradeBlock(max: Points)(body: (GradingContext, Label[GradeBlockExit], ExceptionContext) ?=> Unit)
@@ -161,7 +220,7 @@ case class GradingContext private (private val answers: mutable.Map[ElementName,
       case Some((_, _, points, comment, subcontext)) =>
         subcontext.comments += s"$comment. $points out of $max points."
         subcontext.points += points
-        mergeSubcontext(subcontext)
+        context.mergeSubcontext(subcontext)
       case None =>
         comments += s"Incorrect. 0 out of $max points."
     }
@@ -169,66 +228,6 @@ case class GradingContext private (private val answers: mutable.Map[ElementName,
     //    println(s"Chosen: $combo $points $comment")
 
   }
-}
-
-object GradingContext {
-  case class GradeBlockExit private[GradingContext] (abort: Boolean)
-
-  def comments(using context: GradingContext): mutable.IndexedBuffer[Comment] = context.comments
-  def points(using context: GradingContext): Points.Mutable = context.points
-  def points_=(points: Points)(using context: GradingContext): Unit = context.points := points
-  def answers(using context: GradingContext): mutable.Map[ElementName, String] = context.answers
-  
-  def apply(answers: Map[ElementName, String], registrationNumber: String, reachable: Points): GradingContext =
-    new GradingContext(answers.to(mutable.Map), registrationNumber, reachable, label = None)
-
-  /** To be used inside [[GradingContext.gradeBlock]] */
-  def max(using context: GradingContext): Points = context.reachable
-
-  /** To be used inside [[GradingContext.gradeBlock]] */
-  def done(points: Points = null, comment: String = null, condition: Boolean | Null = null)
-          (using context: GradingContext, label: Label[GradeBlockExit], exceptionContext: ExceptionContext): Nothing = {
-    if (condition == false)
-      abort()
-    context.assertLabel(label)
-    if (points != null) {
-      if (context.points != Points.zero)
-        throw ExceptionWithContext(s"done(points=...) called after context.points += .... Use one or the other within a grade block")
-      context.points += points
-    }
-    if (comment != null)
-      comments += comment
-    break(GradeBlockExit(abort = false))
-  }
-
-  def abort()(using context: GradingContext, label: Label[GradeBlockExit], exceptionContext: ExceptionContext): Nothing = {
-    context.assertLabel(label)
-    break(GradeBlockExit(abort = true))
-  }
-
-  final class Case(val name: String, val description: String, options: Set[String]) {
-    override def equals(obj: Any): Boolean =
-      throw new RuntimeException(".equals not supported on Case")
-
-    def ==(name: String): Boolean =
-      if (!options.contains(name))
-        throw RuntimeException(s"""Unknown case "$name", must be one of: ${options.mkString(", ")}.""")
-      name == this.name
-
-    override def toString: String = s"Case($name)"
-  }
-
-  object Case {
-    def unapply(arg: Case): Some[String] = Some(arg.name)
-  }
-  
-  def fixAnswer(name: ElementName)(f: PartialFunction[String, String])(using gradingContext: GradingContext): Unit =
-    f.lift(answers(name)) match
-      case Some(value) => answers(name) = value
-      case None =>
-
-  def fixAnswer(element: AnswerElement)(f: PartialFunction[String, String])(using gradingContext: GradingContext): Unit =
-    fixAnswer(element.name)(f)
 
 }
 
