@@ -8,7 +8,7 @@ import assessments.stack.StackMath
 import assessments.{DynexiteDefaults, ExceptionContext, GradingContext, InterpolatedMarkdown, MarkdownAssessment, MathContext, Points}
 
 object ExampleProblem extends MarkdownAssessment {
-  override val name = "example problem"
+  override val name = "Example problem"
   override val reachablePoints: Points = 8
 
   lazy val question = md"""
