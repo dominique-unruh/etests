@@ -1,5 +1,6 @@
 package utils
 
+import assessments.{ExceptionContext, ExceptionWithContext}
 import com.typesafe.scalalogging.Logger
 import sourcecode.{Enclosing, FileName}
 
@@ -9,10 +10,13 @@ import java.io.{BufferedReader, FileReader}
 import java.nio.file.{Files, Path, Paths}
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.{Executors, TimeUnit}
 import java.util.{Base64, Properties}
 import javax.swing.{JLabel, JOptionPane, JPanel, JPasswordField, SwingUtilities}
 import scala.jdk.CollectionConverters.given
 import scala.collection.mutable
+import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.Duration
 import scala.quoted.{Expr, Quotes, Type}
 import scala.reflect.ClassTag
 import scala.util.{Using, boundary}
@@ -211,6 +215,23 @@ object Utils {
       (basename, extension)
     } else {
       (filename, "") // No extension found
+    }
+  }
+
+  case class Timeout(message: String, extraData: Any*)(implicit context: ExceptionContext) extends ExceptionWithContext(message, extraData)
+  def runWithTimeout[A](timeout: Duration, body: => A)(implicit context: ExceptionContext): A = {
+    val executor = Executors.newSingleThreadExecutor()
+    val future = executor.submit(() => body)
+
+    try {
+      val result = future.get(timeout.toNanos, TimeUnit.NANOSECONDS)
+      result
+    } catch {
+      case _: java.util.concurrent.TimeoutException =>
+        future.cancel(true) // This sends interrupt signal
+        throw Timeout(s"Timeout encountered ($timeout)")
+    } finally {
+      executor.shutdown()
     }
   }
 }
