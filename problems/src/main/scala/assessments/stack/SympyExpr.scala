@@ -2,7 +2,7 @@ package assessments.stack
 
 import StackMath.*
 import assessments.{MathContext, UserError}
-import assessments.stack.SympyExpr.{ErrorTerm, _equalsTrue, function, get_functions, get_symbols, logger, sympy}
+import assessments.stack.SympyExpr.{ErrorTerm, _equalsTrue, function, get_functions, get_symbols, logger, sympy, sympyPhysicsQuantum}
 import com.typesafe.scalalogging.Logger
 import me.shadaj.scalapy.py
 import me.shadaj.scalapy.py.{PyQuote, PythonException, SeqConverters}
@@ -53,7 +53,7 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
   def sqrt: SympyExpr = SympyExpr(sympy.sqrt(python))
 
   def tensor(other: SympyExpr): SympyExpr = 
-    SympyExpr(sympy.physics.quantum.tensorproduct.TensorProduct(python, other.python))
+    SympyExpr(sympyPhysicsQuantum.tensorproduct.TensorProduct(python, other.python))
   
   def isInteger: Boolean =
     SympyExpr.is_integer(python).as[Boolean]
@@ -131,6 +131,7 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
 
   def names: Set[String] = symbols ++ functions
 
+  def =~(other: SympyExpr) = algebraicEqual(other)
   def algebraicEqual(other: SympyExpr, assumption: SympyAssumption = SympyAssumption.positive): Boolean =
     val result = assumption.addToSympyExpr(SympyExpr.Eq(this, other)).expand.simplify
     result.equalsTrue
@@ -143,6 +144,7 @@ object SympyExpr {
     
   private val logger = Logger[SympyExpr]
   lazy val sympy: py.Module = py.Module("sympy")
+  lazy val sympyPhysicsQuantum: py.Module = py.Module("sympy.physics.quantum")
 
   private val get_symbols = Python.defineFunction("get_symbols",
     "def get_symbols(e): import sympy; return list(map(lambda x: x.name, e.atoms(sympy.Symbol)))")
