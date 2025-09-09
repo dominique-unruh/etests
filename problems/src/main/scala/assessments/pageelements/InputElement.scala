@@ -27,7 +27,7 @@ case class InputElement(val name: ElementName,
 
   override def renderStaticHtml(answers: Map[ElementName, String]): Html = {
     Html(
-      s"""<$tag type="text" readonly value="${StringEscapeUtils.escapeHtml4(answers(name))}"/>""")
+      s"""<$tag type="text" readonly value="${StringEscapeUtils.escapeHtml4(answers(name))}"></$tag>""")
   }
     
   override def setAction(content: String): Seq[ElementAction] =
