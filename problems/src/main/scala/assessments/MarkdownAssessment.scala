@@ -30,8 +30,10 @@ abstract class MarkdownAssessment {
   val grader: Grader = new Grader(ElementName.grader) {
     override def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
       MarkdownAssessment.this.grade()
-      assert(context.points <= reachablePoints)
-      assert(context.points >= 0)
+      if (context.points > reachablePoints)
+        throw ExceptionWithContext(s"Grader returned ${context.points}, but max ${reachablePoints} were reachable")
+      if (context.points < 0)
+        throw ExceptionWithContext(s"Grader returned ${context.points}, should be >= 0")
     }
 
     override lazy val reachablePoints: Points = MarkdownAssessment.this.reachablePoints
