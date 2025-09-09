@@ -17,6 +17,7 @@ import utils.{Tag, Utils}
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import scala.collection.{SeqMap, mutable}
+import scala.concurrent.duration.Duration
 import scala.util.matching.Regex
 
 abstract class MarkdownAssessment {
