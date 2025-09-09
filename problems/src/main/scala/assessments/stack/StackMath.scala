@@ -6,6 +6,9 @@ import assessments.stack.SympyExpr.sympy
 import me.shadaj.scalapy.py
 
 sealed trait StackMath {
+  def cos: StackMath = Funcall("cos", this)
+  def /(other: StackMath): StackMath = Operation(Ops.divide, this, other)
+  
   def variables: Set[String] = {
     val builder = Set.newBuilder[String]
     def collect(math: StackMath): Unit = math match
@@ -76,6 +79,16 @@ sealed trait StackMath {
              fixedValue <- options.fixedValue)
         yield fixedValue
       }
+    fixed2
+  }
+
+  def someTestValues(using mathContext: MathContext): StackMath = {
+    val fixed1 = fixValues
+    val fixed2 = fixed1.mapVariables { name =>
+      for (options <- mathContext.variables.get(name);
+           testValuesHead <- options.testValues.headOption)
+      yield testValuesHead
+    }
     fixed2
   }
 

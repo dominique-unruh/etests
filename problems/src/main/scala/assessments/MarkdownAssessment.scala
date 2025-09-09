@@ -77,7 +77,7 @@ abstract class MarkdownAssessment {
 
   val tags: Tags[Assessment] = Tags.empty
 
-  def testSolution(expected: Points = reachablePoints,
+  protected def testSolution(expected: Points = reachablePoints,
                    changes: Seq[(DynamicElement, String)] = Seq.empty,
                    allowNoGraderYet: Boolean = true): AssessmentTest = new AssessmentTest {
     override def runTest()(using exceptionContext: ExceptionContext): Unit = {
