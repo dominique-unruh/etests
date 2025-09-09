@@ -221,7 +221,9 @@ class gcd(sympy.Function):
   /** Converts a string into a SympyExpr using the sympy-parser.
    * The sympy parser is unsafe for unsanitized inputs.
    * So we only allow fromString on string literals. */
-  def fromString(string : String & Singleton): SympyExpr = SympyExpr(sympy.sympify(string : String))
+  def fromString(string : String & Singleton): SympyExpr = fromStringUnsafe(string)
+  /** Like [[fromString]] but you need to make sure it's not using on unsafe data */
+  def fromStringUnsafe(string : String): SympyExpr = SympyExpr(sympy.sympify(string : String))
   private [SympyExpr] lazy val is_integer = Python.define(
     """import sympy, numbers
       |def is_integer(value):

@@ -394,7 +394,9 @@ object Dynexite {
         if (row > 0) string += '\n'
         for (col <- 0 to maxCol) {
           if (col > 0) string += ' '
-          string ++= content((row,col))
+          val entry = content((row,col))
+          val cleanedEntry = entry.replaceAll("\\s", "")
+          string ++= cleanedEntry
         }
       }
       answers(ElementName(matrixName)) = string.result()
