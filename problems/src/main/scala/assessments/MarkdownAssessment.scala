@@ -17,6 +17,7 @@ import utils.{Tag, Utils}
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import scala.collection.{SeqMap, mutable}
+import scala.concurrent.duration.Duration
 import scala.util.matching.Regex
 
 abstract class MarkdownAssessment {
@@ -29,7 +30,8 @@ abstract class MarkdownAssessment {
   val reachablePoints: Points
   val grader: Grader = new Grader(ElementName.grader) {
     override def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
-      MarkdownAssessment.this.grade()
+      val duration = Utils.getSystemProperty("grading.timeout", "timeout for graders, e.g., 10s, 1m")
+      Utils.runWithTimeout(Duration(duration), MarkdownAssessment.this.grade())
       assert(context.points <= reachablePoints)
       assert(context.points >= 0)
     }
