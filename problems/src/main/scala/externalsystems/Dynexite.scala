@@ -363,7 +363,10 @@ object Dynexite {
 
     val answers = mutable.Map[ElementName, String]()
 
-    for ((name, value) <- block.answers) {
+    val subRegex = "(.*)_sub_([0-9]+)_([0-9]+)".r
+    
+    for ((name, value) <- block.answers;
+         if !subRegex.matches(name)) {
       val elementName = expectedNames.getOrElse(name,
         throw ExceptionWithContext(s"$name (answer name from Dynexite/Stack) not in the list of input fields of ${assessment.name} (${expectedNames.keys.mkString(", ")})",
           name, assessment, expectedNames)
@@ -372,6 +375,31 @@ object Dynexite {
       answers.update(elementName, value)
     }
 
+    val matrices: mutable.Map[String, mutable.Map[(Int, Int), String]] = mutable.Map()
+    for (case (`subRegex`(name, row, col), value) <- block.answers) {
+      // Input with name name_sub_row_col
+      val matrix = matrices.getOrElseUpdate(name, mutable.Map())
+      val r = row.toInt
+      val c = col.toInt
+      assert(!matrix.contains((r,c)))
+      matrix.put((r,c), value)
+    }
+    
+    for ((matrixName, content) <- matrices) {
+      assert(!answers.contains(ElementName(matrixName)))
+      val maxRow = content.keys.map(_._1).max
+      val maxCol = content.keys.map(_._2).max
+      val string = StringBuilder()
+      for (row <- 0 to maxRow) {
+        if (row > 0) string += '\n'
+        for (col <- 0 to maxCol) {
+          if (col > 0) string += ' '
+          string ++= content((row,col))
+        }
+      }
+      answers(ElementName(matrixName)) = string.result()
+    }
+    
     for (expected <- expectedNames.values
          if !answers.contains(expected))
       answers.put(expected, "")
