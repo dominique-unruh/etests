@@ -49,9 +49,10 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
   def tan: SympyExpr = SympyExpr(sympy.tan(python))
   
   def abs: SympyExpr = SympyExpr(sympy.Abs(python))
-
   def sqrt: SympyExpr = SympyExpr(sympy.sqrt(python))
-
+  def round: SympyExpr = SympyExpr(py.Dynamic.global.round(python))
+  
+  
   def tensor(other: SympyExpr): SympyExpr = 
     SympyExpr(sympyPhysicsQuantum.tensorproduct.TensorProduct(python, other.python))
   
