@@ -131,6 +131,7 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
 
   def names: Set[String] = symbols ++ functions
 
+  def !=~(other: SympyExpr) = !algebraicEqual(other)
   def =~(other: SympyExpr) = algebraicEqual(other)
   def algebraicEqual(other: SympyExpr, assumption: SympyAssumption = SympyAssumption.positive): Boolean =
     val result = assumption.addToSympyExpr(SympyExpr.Eq(this, other)).expand.simplify
