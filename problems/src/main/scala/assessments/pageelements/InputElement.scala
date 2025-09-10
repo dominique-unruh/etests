@@ -15,7 +15,7 @@ case class InputElement(val name: ElementName,
   private val useTextarea = tags(inputElementRows) > 1
 
   override def renderHtml: Html = {
-    val tag = if (useTextarea) "input" else "textarea"
+    val tag = if (useTextarea) "textarea" else "input"
     Html(ind"""<$tag rows="${tags(inputElementRows)}" type="text" id="${name.jsElementId}" onInput='updateState("$name", {content: this.value})'></$tag><script>
          |  function ${name.jsElementCallbackName}(json) {
          |    let input = document.getElementById("${name.jsElementId}");
