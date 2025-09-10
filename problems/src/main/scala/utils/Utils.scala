@@ -218,7 +218,7 @@ object Utils {
     }
   }
 
-  def checkInterrupt = if (Thread.interrupted) throw new InterruptedException()
+  def checkInterrupt(): Unit = if (Thread.interrupted) throw new InterruptedException()
   case class Timeout(message: String, extraData: Any*)(implicit context: ExceptionContext) extends ExceptionWithContext(message, extraData)
   /** Runs code with a timeout. Far from perfect: the code may continue running in the background
    * because JVM does not support killing threads (just asking them in a friendly way).

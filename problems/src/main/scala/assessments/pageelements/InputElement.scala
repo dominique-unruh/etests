@@ -12,9 +12,10 @@ case class InputElement(val name: ElementName,
                         val reference: String,
                         val tags: Tags[InputElement]) extends AnswerElement {
   assert(tags(inputElementRows) > 0)
-  private val tag = if (tags(inputElementRows) == 1) "input" else "textarea"
+  private val useTextarea = tags(inputElementRows) > 1
 
   override def renderHtml: Html = {
+    val tag = if (useTextarea) "input" else "textarea"
     Html(ind"""<$tag rows="${tags(inputElementRows)}" type="text" id="${name.jsElementId}" onInput='updateState("$name", {content: this.value})'></$tag><script>
          |  function ${name.jsElementCallbackName}(json) {
          |    let input = document.getElementById("${name.jsElementId}");
@@ -26,8 +27,10 @@ case class InputElement(val name: ElementName,
   }
 
   override def renderStaticHtml(answers: Map[ElementName, String]): Html = {
-    Html(
-      s"""<$tag type="text" readonly value="${StringEscapeUtils.escapeHtml4(answers(name))}"></$tag>""")
+    if (useTextarea)
+      Html(s"""<textarea rows="${tags(inputElementRows)}" type="text" readonly>${StringEscapeUtils.escapeHtml4(answers(name))}</textarea>""")
+    else
+      Html(s"""<input type="text" readonly value="${StringEscapeUtils.escapeHtml4(answers(name))}"/>""")
   }
     
   override def setAction(content: String): Seq[ElementAction] =
