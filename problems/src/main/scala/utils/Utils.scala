@@ -15,7 +15,7 @@ import java.util.{Base64, Properties}
 import javax.swing.{JLabel, JOptionPane, JPanel, JPasswordField, SwingUtilities}
 import scala.jdk.CollectionConverters.given
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.concurrent.duration.Duration
 import scala.quoted.{Expr, Quotes, Type}
 import scala.reflect.ClassTag
@@ -218,9 +218,20 @@ object Utils {
     }
   }
 
+  def checkInterrupt(): Unit = if (Thread.interrupted) throw new InterruptedException()
   case class Timeout(message: String, extraData: Any*)(implicit context: ExceptionContext) extends ExceptionWithContext(message, extraData)
-  def runWithTimeout[A](timeout: Duration, body: => A)(implicit context: ExceptionContext): A = {
-    val executor = Executors.newSingleThreadExecutor()
+  /** Runs code with a timeout. Far from perfect: the code may continue running in the background
+   * because JVM does not support killing threads (just asking them in a friendly way).
+   * Tasks will stop fully when they call [[checkInterrupt]] or in certain System operations (like waiting) */
+  def runWithTimeout[A](timeout: Duration, label: String, body: => A)(implicit context: ExceptionContext): A = {
+    var threadPromise = Promise[Thread]()
+    val executor = Executors.newSingleThreadExecutor((r: Runnable) => {
+      val thread = new Thread(r)
+      threadPromise.success(thread)
+      thread.setDaemon(true)
+      thread.setName(label)
+      thread
+    })
     val future = executor.submit(() => body)
 
     try {
@@ -229,9 +240,13 @@ object Utils {
     } catch {
       case _: java.util.concurrent.TimeoutException =>
         future.cancel(true) // This sends interrupt signal
+        for (threadTry <- threadPromise.future.value;
+             thread <- threadTry.toOption)
+          thread.setName("INTERRUPTED-" + label)
+          thread.setPriority(-1000)
         throw Timeout(s"Timeout encountered ($timeout)")
     } finally {
-      executor.shutdown()
+      executor.shutdownNow()
     }
   }
 }

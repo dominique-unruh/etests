@@ -21,7 +21,7 @@ class UtilsTest extends AnyFunSuiteLike {
 
   test("timeout, fast") {
     given ExceptionContext = ExceptionContext.initialExceptionContext("test case")
-    val result = Utils.runWithTimeout(Duration("10s"), 5)
+    val result = Utils.runWithTimeout(Duration("10s"), "timeout test", 5)
     assert(result == 5)
   }
 
@@ -29,7 +29,7 @@ class UtilsTest extends AnyFunSuiteLike {
     given ExceptionContext = ExceptionContext.initialExceptionContext("test case")
     @volatile var tralala = false
     assertThrows[Utils.Timeout] {
-      Utils.runWithTimeout(Duration("1s"), { Thread.sleep(2000); println("tralala"); tralala = true; 5 })
+      Utils.runWithTimeout(Duration("1s"), "timeout test", { Thread.sleep(2000); println("tralala"); tralala = true; 5 })
     }
     Thread.sleep(3000)
     assert(!tralala)

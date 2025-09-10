@@ -92,7 +92,7 @@ object Comment {
   def filterFeedback(comments: Seq[Comment]): Seq[Comment] =
     for (comment <- comments;
          comment2 <- comment.filterFeedback)
-      yield comment
+      yield comment2
 
   protected [assessments] def wrapLi(html: Html, withLi: Boolean): Html = {
     if (withLi)
