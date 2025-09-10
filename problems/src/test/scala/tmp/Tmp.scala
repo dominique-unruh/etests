@@ -38,12 +38,6 @@ object Tmp {
   class Context
 
   def main(args: Array[String]): Unit = {
-    val name = "ans2_sub_2_0"
-    println(!name.matches(".*_sub_[0-9]+_[0-9]+"))
-    
-    val input = DynexiteDefaults.input("transpose(matrix([0,0,i,0]))", Tags(moodleInputType := matrix))
-    val str = "transpose(matrix([0,0,i,0]))"
-    val parsed = str.math(input)
-    println(parsed)
+    val str = "root(2^n)"
   }
 }

@@ -96,6 +96,7 @@ object DynexiteDefaults {
     .fixVar("i", StackMath.imaginaryUnit)
     .fixVar("e", StackMath.eulerConstant)
     .fixVar("pi", StackMath.pi)
+    .sympyFunction("root", { case Seq(x) => x.sqrt })
   
   private def stackMathRender(pageElement: InputElement)(string: String): String = {
     given MathContext = renderMathContext
