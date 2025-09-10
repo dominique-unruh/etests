@@ -245,8 +245,10 @@ object Utils {
                thread <- threadTry.toOption)
             thread.setName("INTERRUPTED-" + label)
             thread.setPriority(Thread.MIN_PRIORITY)
-        } catch { case _ => }
+        } catch { case _: Throwable => }
         throw Timeout(s"Timeout encountered ($timeout)")
+      case e: java.util.concurrent.ExecutionException =>
+        throw e.getCause
     } finally {
       executor.shutdownNow()
     }
