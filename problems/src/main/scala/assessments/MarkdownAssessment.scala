@@ -31,7 +31,8 @@ abstract class MarkdownAssessment {
   val grader: Grader = new Grader(ElementName.grader) {
     override def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
       val duration = Utils.getSystemProperty("grading.timeout", "timeout for graders, e.g., 10s, 1m")
-      Utils.runWithTimeout(Duration(duration), MarkdownAssessment.this.grade())
+      Utils.runWithTimeout(Duration(duration), s"${MarkdownAssessment.this.name}-${context.registrationNumber}",
+        MarkdownAssessment.this.grade())
       if (context.points > reachablePoints)
         throw ExceptionWithContext(s"Grader returned ${context.points}, but max ${reachablePoints} were reachable")
       if (context.points < 0)

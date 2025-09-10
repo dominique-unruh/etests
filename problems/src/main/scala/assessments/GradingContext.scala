@@ -11,6 +11,11 @@ import scala.collection.mutable
 import scala.util.boundary
 import scala.util.boundary.{Break, Label, break}
 
+/** Contains all information (including mutable one) that is relevant when grading a problem (except for
+ * the problem itself).
+ *
+ * Not thread safe!
+ * */
 case class GradingContext private (private val answers: mutable.Map[ElementName, String], val registrationNumber: String,
                                    private val reachable: Points, private val label: Option[Label[GradeBlockExit]]) {
   val points = Points.Mutable(0)
@@ -38,7 +43,7 @@ object GradingContext {
   def points(using context: GradingContext): Points.Mutable = context.points
   def points_=(points: Points)(using context: GradingContext): Unit = context.points := points
   def answers(using context: GradingContext): mutable.Map[ElementName, String] = context.answers
-  
+
   def apply(answers: Map[ElementName, String], registrationNumber: String, reachable: Points): GradingContext =
     new GradingContext(answers.to(mutable.Map), registrationNumber, reachable, label = None)
 
@@ -81,7 +86,7 @@ object GradingContext {
   object Case {
     def unapply(arg: Case): Some[String] = Some(arg.name)
   }
-  
+
   def fixAnswer(name: ElementName)(f: PartialFunction[String, String])(using gradingContext: GradingContext): Unit =
     f.lift(answers(name)) match
       case Some(value) => answers(name) = value
