@@ -92,6 +92,8 @@ abstract class MarkdownAssessment {
         yield name -> answerElement.reference
       val changedReference = mutable.Map(originalReference.toSeq *)
       for ((pageElement, value) <- changes)
+        if (pageElement == null)
+          throw ExceptionWithContext(s"Changed contain a null (the changed answer element)", value, changedReference)
         val name = pageElement.name
         if (!changedReference.contains(name))
           throw ExceptionWithContext(s"Unknown answer element $name", pageElement, name, value, changedReference)
