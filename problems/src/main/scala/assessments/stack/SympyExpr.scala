@@ -72,6 +72,8 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
   def xorBit(other: SympyExpr) = SympyExpr(SympyExpr.xorBit(python, other.python))
   /** See [[xorBit]] */
   def andBit(other: SympyExpr) = SympyExpr(SympyExpr.andBit(python, other.python))
+  /** See [[xorBit]] */
+  def orBit(other: SympyExpr) = SympyExpr(SympyExpr.orBit(python, other.python))
 
   @targetName("substituteString")
   def substitute(map: (String, SympyExpr)*): SympyExpr =
@@ -209,14 +211,15 @@ class gcd(sympy.Function):
         case e: me.shadaj.scalapy.py.PythonException => None
   }
 
-  lazy val `true` = SympyExpr(sympy.S.`true`)
-  lazy val `false` = SympyExpr(sympy.S.`false`)
+  lazy val `true`: SympyExpr = SympyExpr(sympy.S.`true`)
+  lazy val `false`: SympyExpr = SympyExpr(sympy.S.`false`)
   lazy val zero: SympyExpr = integer(0)
-  lazy val imaginaryUnit = SympyExpr(sympy.S.ImaginaryUnit)
-  lazy val eulerConstant = SympyExpr(sympy.S.Exp1)
-  lazy val pi = SympyExpr(sympy.S.Pi)
+  lazy val imaginaryUnit: SympyExpr = SympyExpr(sympy.S.ImaginaryUnit)
+  lazy val eulerConstant: SympyExpr = SympyExpr(sympy.S.Exp1)
+  lazy val pi: SympyExpr = SympyExpr(sympy.S.Pi)
   lazy val xorBit: py.Dynamic = Python.define("def xorBit(a,b): from sympy import Integer; return (a+b)%Integer(2)\nreturn xorBit")
   lazy val andBit: py.Dynamic = Python.define("def xorBit(a,b): from sympy import Integer; return (a*b)%Integer(2)\nreturn xorBit")
+  lazy val orBit: py.Dynamic = Python.define("def orBit(a,b): from sympy import Integer; return max(a%Integer(2),b%Integer(2))\nreturn orBit")
   def array(components: SympyExpr*): SympyExpr = SympyExpr(sympy.Array(components.map(_.python).toPythonProxy))
   def matrix(rows: SympyExpr*): SympyExpr = SympyExpr(sympy.Matrix(rows.map(_.python).toPythonProxy))
   /** Converts a string into a SympyExpr using the sympy-parser.
