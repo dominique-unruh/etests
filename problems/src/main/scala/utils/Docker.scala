@@ -7,6 +7,8 @@ import io.circe.syntax.*
 import utils.Utils
 
 import java.io.IOException
+import java.lang.System.currentTimeMillis
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.charset.{Charset, StandardCharsets}
 import java.nio.file.{Files, Path}
 import scala.collection.mutable
@@ -24,7 +26,44 @@ object Docker {
      * @param name Name of the file.
      * @param charset Charset to decode the file as.
      * */
-    def fileString(name: String, charset: Charset = StandardCharsets.UTF_8): Option[String] = files.get(name).map(new String(_, charset))
+    def fileString(name: String, charset: Charset = UTF_8): Option[String] = files.get(name).map(new String(_, charset))
+  }
+
+
+  private def getImageId(image: Path | String): String = {
+    if (!pulledInThisSession.contains(image)) {
+      val cacheKey = s"CACHED-DOCKER-IMAGE-ID:${image.getClass}:${image.toString}".getBytes(UTF_8)
+      val cached = Cache.cache.get(cacheKey)
+      if (cached != null) {
+        val (time, id) = decode[(Long, String)](String(cached, UTF_8)).toOption.get
+        if (time >= currentTimeMillis() - 10*60*1000) // Rebuild/pull if at least 10 minutes have passed
+          return id
+      }
+
+      synchronized {
+        val imageId = image match {
+          case image: String =>
+            println(s"Pulling docker image $image")
+            Seq("docker", "pull", "--platform=linux/amd64", "--", image).!!
+            val images = Seq("docker", "images", "-q", "--", image).!!
+            val images2 = images.split('\n')
+            logger.debug(s"$image -> ${images2.mkString(", ")}")
+            if (images2.length > 1)
+              throw RuntimeException(s"runInDocker called with ambiguous image name $image. Maybe you mean $image:latest?")
+            images2.head
+          case dir: Path =>
+            println(s"Building docker image $dir")
+            val imageId = Process(command = Seq("docker", "build", "-q", "--platform=linux/amd64", "."), cwd = dir.toFile).!!.trim
+            logger.debug(s"$dir -> $imageId")
+            imageId
+        }
+        pulledInThisSession += (image -> imageId)
+        Cache.cache.put(cacheKey, (currentTimeMillis(), imageId).asJson.noSpaces.getBytes(UTF_8))
+      }
+    }
+
+    pulledInThisSession(image)
+    //    logger.debug(s"Using image $imageId")
   }
 
   /** Runs a command in a docker image.
@@ -45,32 +84,12 @@ object Docker {
                   command: Seq[String],
                   files: Map[String, Array[Byte] | String],
                   requestedOutputs: Seq[String]): DockerResult = {
+    val imageId = getImageId(image)
 
 //    (new RuntimeException()).printStackTrace() // Useful for tracing where computationally heavy things are executed during object loading.
 
-    if (!pulledInThisSession.contains(image)) { synchronized { image match {
-      case image: String =>
-        println(s"Pulling docker image $image")
-        Seq("docker", "pull", "--platform=linux/amd64", "--", image).!!
-        val images = Seq("docker", "images", "-q", "--", image).!!
-        val images2 = images.split('\n')
-        logger.debug(s"$image -> ${images2.mkString(", ")}")
-        if (images2.length > 1)
-          throw RuntimeException(s"runInDocker called with ambiguous image name $image. Maybe you mean $image:latest?")
-        val imageId = images2.head
-        pulledInThisSession += (image -> imageId)
-      case dir: Path =>
-        println(s"Building docker image $dir")
-        val imageId = Process(command = Seq("docker", "build", "-q", "--platform=linux/amd64", "."), cwd = dir.toFile).!!.trim
-        logger.debug(s"$dir -> $imageId")
-        pulledInThisSession += (image -> imageId)
-    } } }
-
-    val imageId = pulledInThisSession(image)
-//    logger.debug(s"Using image $imageId")
-
     val filesBytes = files.view.mapValues({
-      case content: String => content.getBytes(StandardCharsets.UTF_8)
+      case content: String => content.getBytes(UTF_8)
       case content: Array[Byte] => content
     }).toMap
 
