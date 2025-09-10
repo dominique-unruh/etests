@@ -240,10 +240,12 @@ object Utils {
     } catch {
       case _: java.util.concurrent.TimeoutException =>
         future.cancel(true) // This sends interrupt signal
-        for (threadTry <- threadPromise.future.value;
-             thread <- threadTry.toOption)
-          thread.setName("INTERRUPTED-" + label)
-          thread.setPriority(-1000)
+        try {
+          for (threadTry <- threadPromise.future.value;
+               thread <- threadTry.toOption)
+            thread.setName("INTERRUPTED-" + label)
+            thread.setPriority(Thread.MIN_PRIORITY)
+        } catch { case _ => }
         throw Timeout(s"Timeout encountered ($timeout)")
     } finally {
       executor.shutdownNow()
