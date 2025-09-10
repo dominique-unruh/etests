@@ -53,6 +53,7 @@ object StackParser {
           case ("-", 1) => (Ops.unaryMinus, false)
           case ("xor", n) if n > 1 => (Ops.xor, true)
           case ("and", n) if n > 1 => (Ops.and, true)
+          case ("nounand", n) if n > 1 => (Ops.and, true)
           case ("not", 1) => (Ops.not, true)
           case ("or", n) if n > 1 => (Ops.or, true)
           case (".", 2) => (Ops.times, false)
