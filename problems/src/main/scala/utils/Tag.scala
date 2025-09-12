@@ -1,5 +1,6 @@
 package utils
 
+import sourcecode.Name
 import utils.Tag.Tagged
 
 import scala.annotation.targetName
@@ -10,13 +11,18 @@ import scala.annotation.targetName
  * @tparam Owner the type of the intended "owner" of the tag, see [[utils.Tag.Tags]].
  * @tparam Value the type of the intended associated value
  * */
-class Tag[Owner, Value](explicitName: String = "", val default: Value)(implicit sourceCodeName: sourcecode.Name) {
-  val name: String = if (explicitName.nonEmpty) explicitName else sourceCodeName.value
+final class Tag[Owner, Value] private (val name: String, val default: Option[Value]) {
   @targetName("assign")
   def :=(value: Value) : Tagged[Owner, Value] = Tagged(this, value)
+  override def toString: String = s"tag:$name"
 }
 
 object Tag {
+  def apply[Owner, Value](default: Value)(implicit sourceCodeName: Name): Tag[Owner, Value] =
+    new Tag(name = sourceCodeName.value, default = Some(default))
+  def apply[Owner, Value]()(implicit sourceCodeName: Name): Tag[Owner, Value] =
+    new Tag(name = sourceCodeName.value, default = None)
+
   /** A collection of tag/value pairs.
    * Each `(tag,value)` has a tag of type `Tag[O,V]` with `value : V`.
    * 
@@ -32,7 +38,7 @@ object Tag {
     def getOrElse[Value](tag: Tag[?, Value], default: => Value): Value =
       get(tag).getOrElse(default)
     def apply[Value](tag: Tag[?, Value]): Value =
-      get(tag).getOrElse(tag.default)
+      get(tag).getOrElse(tag.default.getOrElse(throw IllegalArgumentException(s"Tag $tag has no default value")))
     @targetName("add")
     def +[O, Value](tagged: Tagged[O, Value]): Tags[Owner & O] = {
       assert(!map.contains(tagged.tag))

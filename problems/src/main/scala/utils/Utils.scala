@@ -1,6 +1,7 @@
 package utils
 
 import assessments.{ExceptionContext, ExceptionWithContext}
+import com.microsoft.playwright.{Page, Playwright}
 import com.typesafe.scalalogging.Logger
 import sourcecode.{Enclosing, FileName}
 
@@ -252,5 +253,24 @@ object Utils {
     } finally {
       executor.shutdownNow()
     }
+  }
+
+  def htmlToPdf(htmlFile: Path, pdfOutputFile: Path): Unit = {
+    val command = Seq(
+      "chromium",
+      "--headless",
+      "--disable-gpu",
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
+      "--run-all-compositor-stages-before-draw",
+      "--disable-background-timer-throttling",
+      "--disable-backgrounding-occluded-windows",
+      "--disable-renderer-backgrounding",
+      s"--virtual-time-budget=5000", // Wait 5 seconds for MathJax
+      "--print-to-pdf-no-header",
+      s"--print-to-pdf=${pdfOutputFile.toAbsolutePath}",
+      s"file://${htmlFile.toAbsolutePath}"
+    )
+    command.!!
   }
 }

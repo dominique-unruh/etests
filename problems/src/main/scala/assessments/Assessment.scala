@@ -10,7 +10,7 @@ import scala.collection.{SeqMap, mutable}
 import scala.util.matching.Regex
 import play.api.libs.json.{JsObject, JsValue}
 import utils.Tag.Tags
-import utils.Utils
+import utils.{IndentedInterpolator, Utils}
 
 import java.nio.file.{Files, Path}
 import scala.collection.mutable.ListBuffer
@@ -95,6 +95,20 @@ class Assessment (val name: String,
   def referenceSolution: Map[ElementName, String] =
     Map.from(for (case (name: ElementName, element: AnswerElement) <- pageElements.iterator)
       yield name -> element.reference)
+}
+
+object Assessment {
+  val htmlHeader: Html = Html(
+    ind"""<meta charset="UTF-8">
+         |<script>
+         |  window.MathJax = {
+         |    tex: {
+         |      inlineMath: [['$$', '$$'], ['\\\\(', '\\\\)']],
+         |      displayMath: [['$$$$', '$$$$'], ['\\\\[', '\\\\]']]
+         |    }
+         |  };
+         |</script>
+         |<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>""")
 }
 
 class UserError(message: String) extends Exception(message)

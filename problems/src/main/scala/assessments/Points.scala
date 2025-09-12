@@ -1,6 +1,7 @@
 package assessments
 
 import assessments.Points.bigInt1
+import io.circe.{Json, JsonNumber}
 
 import java.math.MathContext
 import java.math.RoundingMode
@@ -24,8 +25,9 @@ class Points private (private val numerator: BigInt, private val denominator: Bi
     else
       s"<span><sup>$numerator</sup>&frasl;<sub>$denominator</sub></span>"
 
+  def toBigDecimal: BigDecimal = BigDecimal(numerator) / BigDecimal(denominator)
   /** Returns the points as a decimal fraction (e.g. 1.23) with high precision (Java defaults) */
-  def decimalFractionString: String = (BigDecimal(numerator)/BigDecimal(denominator)).toString
+  def decimalFractionString: String = toBigDecimal.toString
   /** Returns the points as a decimal fraction (e.g. 1.23) with at most `precision` digits after the period. */
   def decimalFractionString(precision: Int): String = {
     val bigdec = (BigDecimal(numerator)/BigDecimal(denominator)).underlying().stripTrailingZeros()
@@ -67,6 +69,15 @@ class Points private (private val numerator: BigInt, private val denominator: Bi
 
   override def equals(other: Any): Boolean = other match
     case other: Points => (numerator == other.numerator) && (denominator == other.denominator)
+
+  /** May involve rounding */
+  def toDouble: Double = {
+    val numerator = this.numerator.toDouble
+    if (numerator.isFinite)
+      numerator / denominator.toDouble
+    else
+      throw new ArithmeticException(s"$toString too large for conversion to Double")
+  }
 }
 
 object Points {
@@ -86,6 +97,9 @@ object Points {
   }
 
   given Conversion[Mutable, Points] = _.get
+
+  given circeEncoder: io.circe.Encoder[Points] = io.circe.Encoder.encodeBigDecimal.contramap { points =>
+    points.toBigDecimal }
 
   private val bigInt1 = BigInt(1)
   private val bigInt0 = BigInt(0)
@@ -163,7 +177,7 @@ object Points {
 
     override def toFloat(x: Points): Float = ???
 
-    override def toDouble(x: Points): Double = ???
+    override def toDouble(x: Points): Double = x.toDouble
 
     override def compare(x: Points, y: Points): Int =
       if (x == y) 0

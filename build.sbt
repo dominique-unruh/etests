@@ -53,7 +53,8 @@ lazy val problems = (project in file("problems"))
     libraryDependencies ++= Seq(
       "io.circe" %% "circe-core" % "0.14.14",
       "io.circe" %% "circe-generic" % "0.14.14",
-      "io.circe" %% "circe-parser" % "0.14.14"
+      "io.circe" %% "circe-parser" % "0.14.14",
+      "io.circe" %% "circe-yaml" % "0.14.2",
     ),
     libraryDependencies += "org.apache.xmlgraphics" % "batik-transcoder" % "1.19",
     libraryDependencies += "org.apache.xmlgraphics" % "batik-codec" % "1.19",
@@ -63,6 +64,7 @@ lazy val problems = (project in file("problems"))
     libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.17.0", // Used to make Play happy with the nextcloud-api jackson dependency
     libraryDependencies += "org.aarboard.nextcloud" % "nextcloud-api" % "13.1.0" exclude("org.slf4j", "slf4j-simple"),
     libraryDependencies += "org.odftoolkit" % "simple-odf" % "0.9.0",
+    libraryDependencies += "com.microsoft.playwright" % "playwright" % "1.55.0",
   )
 
 lazy val exams = (project in file("exams"))

@@ -189,7 +189,7 @@ object MoodleStack {
       reference = inputElement.tags.getOrElse(moodleReferenceSolution, inputElement.reference),
       forbidWords = forbidWords,
       allowWords = allowWords,
-      extraOptions = inputElement.tags(moodleExtraOptions) appended moodleExtraOptions.allowEmpty,
+      extraOptions = inputElement.tags(moodleExtraOptions) appended MoodleExtraOptions.allowEmpty,
       insertStars = inputElement.tags(moodleInsertStars))
   }
   
@@ -223,20 +223,21 @@ object MoodleStack {
     )
   }
 
-  object moodleAllowWords extends Tag[InputElement, Seq[String]](default=Seq.empty)
-  object moodleQuestionVariables extends Tag[Assessment, String](default="")
-  object moodleExtraOptions extends Tag[InputElement, Seq[String]](default=Seq.empty) {
+  val moodleAllowWords = Tag[InputElement, Seq[String]](default=Seq.empty)
+  val moodleQuestionVariables = Tag[Assessment, String](default="")
+  val moodleExtraOptions = Tag[InputElement, Seq[String]](default=Seq.empty)
+  object MoodleExtraOptions {
     @deprecated("Automatically added")
     val allowEmpty = "allowEmpty"
     val simp = "simp"
   }
   @deprecated("Simply always add previews manually.")
-  object moodleNoPreview extends Tag[InputElement, Boolean](default=true)
+  val moodleNoPreview = Tag[InputElement, Boolean](default=true)
   /** Which input field type should this be in Moodle/Stack? */
-  object moodleInputType extends Tag[InputElement, InputType](default=InputType.algebraic)
+  val moodleInputType = Tag[InputElement, InputType](default=InputType.algebraic)
   /** Reference answer given to Moodle (if the one from the answer element is not accepted for some reason) */
-  object moodleReferenceSolution extends Tag[InputElement, String](default = "")
-  object moodleInsertStars extends Tag[InputElement, InsertStars](default=InsertStars.dontInsert)
+  val moodleReferenceSolution = Tag[InputElement, String]()
+  val moodleInsertStars = Tag[InputElement, InsertStars](default=InsertStars.dontInsert)
 }
 
 

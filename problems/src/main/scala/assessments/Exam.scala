@@ -4,11 +4,16 @@ import assessments.Exam.logger
 import assessments.ExceptionContext.{addToExceptionContext, initialExceptionContext}
 import com.typesafe.scalalogging.Logger
 import io.github.classgraph.ClassGraph
+import utils.Tag
 import utils.Tag.Tags
 
+import java.nio.file.Path
+import java.time.LocalDate
 import scala.jdk.CollectionConverters.IterableHasAsScala
 
-case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownAssessment*) {
+case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownAssessment*)
+               (using sourceFileImplicit: sourcecode.File) {
+  val sourceFile: Path = Path.of(sourceFileImplicit.value)
   assert(problems.map(_.name).distinct.length == problems.map(_.name).length)
   
   lazy val reachablePoints: Points = problems.map(_.reachablePoints).sum
@@ -66,4 +71,7 @@ object Exam {
 
     results.result()
   }
+
+  val examDate = Tag[Exam, LocalDate]()
+  val courseName = Tag[Exam, String]()
 }

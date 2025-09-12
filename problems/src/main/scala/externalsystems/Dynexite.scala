@@ -441,7 +441,7 @@ object Dynexite {
     url
   }
 
-  object dynexiteQuestionName extends Tag[Assessment, String](default = "")
+  val dynexiteQuestionName = Tag[Assessment, String](default = "")
   /** In a Dynexite question that has several input blocks, this tag needs to be set.
    * It assigns the answer elements belonging to each block to that block.
    * Example: You have a Stack question with answers ans1, ans2, and a multiple choice one with mc1, mc2.
@@ -449,9 +449,9 @@ object Dynexite {
    * For non-stack problems, the order of answer elements matters.
    * Can also be used it there is just one input block; this can make sure the answer elements are in the right order.
    * */
-  object dynexiteBlockAssignment extends Tag[Assessment, Seq[Seq[AnswerElement]]](default = Seq.empty)
+  val dynexiteBlockAssignment = Tag[Assessment, Seq[Seq[AnswerElement]]](default = Seq.empty)
   /** From links like https://dynexite.rwth-aachen.de/t/companies/cpsippjadbec73a3unm0/courses/XXX/exams/ (the XXX part) */
-  object dynexiteCourseId extends Tag[Exam, String](default = null)
+  val dynexiteCourseId = Tag[Exam, String](default = null)
 
   def getAnswerPDF(exam: Exam,
                    registrationNumber: String): Array[Byte] = {
