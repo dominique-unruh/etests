@@ -30,7 +30,7 @@ trait DynamicElement extends Element { self =>
 }
 
 object DynamicElement {
-  object humanName extends Tag[DynamicElement, String](default = "")
+  val humanName = Tag[DynamicElement, String](default = "")
 }
 
 case class ElementAction(element: ElementName, data: JsValue)
