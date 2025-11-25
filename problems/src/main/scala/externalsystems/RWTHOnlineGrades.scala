@@ -21,12 +21,15 @@ class RWTHOnlineGrades private (private val spreadsheet: Spreadsheet) {
     map(e => f(e).getOrElse(e))
   def map(f: PartialFunction[Entry, Entry]): RWTHOnlineGrades = map(f.lift)
   /** Returns all registration numbers in this table */
-  lazy val students: Seq[String] = spreadsheet.rows.map(_(Headers.registrationNumber))
+  lazy val students: Seq[String] = entries.map(_.registrationNumber)
+  lazy val entries: Seq[Entry] = spreadsheet.rows.map(Entry(_))
   def assertValid(): RWTHOnlineGrades = {
     spreadsheet.assertValid();
-    Utils.isDistinct(spreadsheet.rows.map(_(Headers.registrationNumber))) // TODO: Should be checkable using the index instead
+    Utils.isDistinct(students)
     this
   }
+  
+  def areAllGraded: Boolean = entries.forall(_.grade != "")
 }
 
 object RWTHOnlineGrades {
@@ -56,7 +59,7 @@ object RWTHOnlineGrades {
     def setGrade(grade: String, allowWorse: Boolean = false): Entry = {
       if (!allowWorse) {
         val oldGrade = grade
-        if (oldGrade != "" && oldGrade.toDouble < grade.toDouble)
+        if (oldGrade != "" && oldGrade != grade && oldGrade.toDouble < grade.toDouble)
           throw RuntimeException(s"Worsening of grade from $oldGrade to $grade (reg.no. $registrationNumber)")
       }
       setCell(Headers.grade, grade)
