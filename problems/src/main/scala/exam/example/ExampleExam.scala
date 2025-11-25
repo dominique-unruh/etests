@@ -12,5 +12,6 @@ object ExampleExam extends Exam(
     examDate := LocalDate.parse("2025-09-30"),
     courseName := "Example course")
 )(
-  ExampleProblem
+  ExampleProblem,
+  ExampleProblem2
 )
