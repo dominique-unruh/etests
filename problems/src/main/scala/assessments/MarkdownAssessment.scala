@@ -22,6 +22,8 @@ import scala.util.matching.Regex
 
 abstract class MarkdownAssessment {
   val name: String = getClass.getName
+  /** ID of this assessment (guaranteed unique within an [[Exam]]) */
+  val id: String = getClass.getName
   lazy val question: InterpolatedMarkdown[Element]
   lazy val explanation: InterpolatedMarkdown[Element] = md""
   lazy val gradingRules: InterpolatedMarkdown[Element] = md""

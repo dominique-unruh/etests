@@ -11,10 +11,11 @@ import java.nio.file.Path
 import java.time.LocalDate
 import scala.jdk.CollectionConverters.IterableHasAsScala
 
-case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownAssessment*)
+case class Exam(name: String, id: String = getClass.getName, tags: Tags[Exam] = Tags())(val problems: MarkdownAssessment*)
                (using sourceFileImplicit: sourcecode.File) {
   val sourceFile: Path = Path.of(sourceFileImplicit.value)
-  assert(problems.map(_.name).distinct.length == problems.map(_.name).length)
+  assert(problems.map(_.name).distinct.length == problems.length)
+  assert(problems.map(_.id).distinct.length == problems.length)
   
   lazy val reachablePoints: Points = problems.map(_.reachablePoints).sum
   
@@ -31,6 +32,14 @@ case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownA
     val assessment = problems.find(_.name == name)
     assessment.getOrElse {
       throw ExceptionWithContext(s"Assessment \"${name}\" not found in exam ${this.name}. Exact spelling matters! Available: ${problems.map(p => s"\"${p.name}\"").mkString(", ")}.")
+    }
+  }
+
+  def assessmentById(id: String)(implicit exceptionContext: ExceptionContext): MarkdownAssessment = {
+    given ExceptionContext = ExceptionContext.addToExceptionContext(s"Looking for assessment ID $id in exam ${this.name}", id, this)
+    val assessment = problems.find(_.id == id)
+    assessment.getOrElse {
+      throw ExceptionWithContext(s"Assessment ID \"${id}\" not found in exam ${this.name}. Exact spelling matters! Available: ${problems.map(p => s"\"${p.id}\"").mkString(", ")}.")
     }
   }
 
@@ -69,9 +78,11 @@ object Exam {
          } catch
            case e: NoSuchFieldException =>
 
-    results.result()
+    val exams = results.result()
+    assert(exams.map(_.id).distinct.length == exams.length)
+    exams
   }
 
-  val examDate = Tag[Exam, LocalDate]()
-  val courseName = Tag[Exam, String]()
+  val examDate: Tag[Exam, LocalDate] = Tag[Exam, LocalDate]()
+  val courseName: Tag[Exam, String] = Tag[Exam, String]()
 }
