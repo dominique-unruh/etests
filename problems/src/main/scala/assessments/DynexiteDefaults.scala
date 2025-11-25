@@ -9,6 +9,7 @@ import assessments.pageelements.MultipleChoice.Style.select
 import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
 import assessments.stack.{StackMath, SympyAssumption, SympyExpr}
+import com.typesafe.scalalogging.Logger
 import utils.Tag.Tags
 import utils.Utils
 
@@ -103,10 +104,26 @@ object DynexiteDefaults {
     given MathContext = renderMathContext
     if (string == "")
       ""
-    else
-      string.math(pageElement).toSympyMC(allowUndefined = true, allowUndefinedFunctions = true).latex
+    else {
+      val math = string.math(pageElement)
+      val sympy = try 
+        math.toSympyMC(allowUndefined = true, allowUndefinedFunctions = true)
+      catch
+        case e: Throwable => 
+          logger.info(s"Failed to translate $string -> $math -> sympy: $e", e)
+          throw SyntaxError(s"Parsed to $math but didn't manage to interpret it in Python (Sympy)")
+      val latex = try 
+        sympy.latex
+      catch
+        case e: Throwable =>
+          logger.info(s"Failed to translate $string -> $math -> $sympy -> latex: $e", e)
+          throw SyntaxError(s"Parsed to $sympy (in Python) but didn't manage to generate LaTeX")
+      latex
+    }
   }
 
+  private val logger = Logger[DynexiteDefaults.type]
+  
   def preview(observed: InputElement)(using name: sourcecode.Name): MathPreviewElement = {
     val name2 = if (name.value == "question" || name.value == "explanation") // Inlined in the markdown, not a good default
       ElementName(s"${observed.name}_preview")
