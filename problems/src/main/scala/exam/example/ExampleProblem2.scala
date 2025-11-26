@@ -3,13 +3,15 @@ package exam.example
 import assessments.DynexiteDefaults.*
 import assessments.GradingContext.*
 import assessments.InterpolatedMarkdown.md
-import assessments.pageelements.{Element, InputElement}
+import assessments.pageelements.{Element, InputElement, StaticElement}
 import assessments.stack.StackMath
-import assessments.{DynexiteDefaults, ExceptionContext, GradingContext, InterpolatedMarkdown, MarkdownAssessment, MathContext, Points}
+import assessments.{Common, DynexiteDefaults, ExceptionContext, GradingContext, InterpolatedMarkdown, MarkdownAssessment, MathContext, Points}
 
 object ExampleProblem2 extends MarkdownAssessment {
   override val name = "Example problem 2"
   override val reachablePoints: Points = 8
+
+  lazy val someImage: StaticElement = Common.latex("$\\sqrt{123}$")
 
   lazy val question = md"""
 Please enter the number 10 any way you like.
@@ -17,6 +19,9 @@ Please enter the number 10 any way you like.
 $answer
 
 ${preview(answer)}
+
+And an arbitary picture:
+$someImage
 """
 
   val answer: InputElement = input("10")

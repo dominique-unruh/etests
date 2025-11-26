@@ -83,6 +83,11 @@ object Exam {
     exams
   }
 
+  def getExamById(examId: String): Exam =
+    exams.find(_.id == examId) match
+      case Some(exam) => exam
+      case None => throw new NoSuchElementException(s"No exam with ID $examId")
+
   val examDate: Tag[Exam, LocalDate] = Tag[Exam, LocalDate]()
   val courseName: Tag[Exam, String] = Tag[Exam, String]()
 }
