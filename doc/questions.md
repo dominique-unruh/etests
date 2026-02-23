@@ -51,7 +51,29 @@ The various possible page elements are described now:
 
 ### Images
 
-TODO
+Images can be included by creating an ImageElement. Easiest is to use some of the helper functions below.
+In all cases, you can then just use `$image` in the question text to include the image.
+
+```scala
+lazy val image = ImageElement.fromSVGResource("image.svg", getClass)
+```
+This creates the image from an SVG file.
+The file `image.svg` must be in the same directory as the current question source file. 
+
+```scala
+lazy val image = latex("""\(x+y\)""")
+```
+Renders LaTeX code as a picture.
+Note: for formulas as in the example above, this is not the best idea because you can
+simply write `\(x+y\)` in the markdown.
+
+```scala
+lazy val image = tikz("""...""")
+lazy val image = quantikz("""...""")
+```
+Renders LaTeX code as a picture. The code `...` will be set inside a `tikz` or `quantikz` environment.
+This allows to draw pictures or quantum circuits.
+
 
 ### Input fields
 

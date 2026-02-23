@@ -22,7 +22,7 @@ object ImageElement {
 //    given ExceptionContext = addToExceptionContext(s"Loading SVG image $svgResource")
     val stream = clazz.getResourceAsStream(svgResource)
     if (stream == null)
-      throw RuntimeException(s"Resource $svgResource not found when trying to load an SVG from it.")
+      throw RuntimeException(s"Resource $svgResource not found when trying to load an SVG from it (relative to class ${clazz.getName}).")
 //      throw new ExceptionWithContext(s"Resource $svgResource not found.")
     fromSVG(stream, basename = svgResource.split('/').last)
   }
