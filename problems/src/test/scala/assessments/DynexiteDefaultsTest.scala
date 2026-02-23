@@ -28,6 +28,6 @@ class DynexiteDefaultsTest extends AnyFunSuiteLike {
     println(result)
     assert(result == StackMath.noAnswer)
     assert(comments.length == 1)
-    assert(comments.head.toPlaintext == "Could not parse x, treating as no answer")
+    assert(comments.head.toPlaintext == "Could not parse x (error: Error parsing 12 + : '+' is an invalid final character in <span class=\"stacksyntaxexample\">12 +</span>), treating as no answer")
   }
 }

@@ -6,7 +6,7 @@ import org.scalatest.funsuite.AnyFunSuiteLike
 import java.nio.file.Path
 
 class RWTHOnlineGradesTest extends AnyFunSuiteLike {
-  test("read") {
+/*  test("read") {
     val path = Path.of("/home/unruh/cloud/qis/lectures/2025-intro-qc/rwth-exam-registrations.csv")
     val rwth = RWTHOnlineGrades.load(path)
     val row = rwth.byRegistrationNumber("***REMOVED***")
@@ -23,5 +23,5 @@ class RWTHOnlineGradesTest extends AnyFunSuiteLike {
     println(row2.grade)
 
     rwth2.save(Path.of("/tmp/output.csv"))
-  }
+  }*/
 }

@@ -1,4 +1,4 @@
 
 show :
-	(sleep 10; xdg-open http://localhost:9000/preview/exam.y2025.iqc1/) &
+	(sleep 10; xdg-open http://localhost:9000/preview/) &
 	sbt "project webapp; run"
