@@ -4,7 +4,7 @@
 
 * `moodleQuestionVariables` -- field of the same name in Moodle UI
 
-## Answer element tags
+## Input element tags
 
 E.g. `val answer = input(..., Tags(tags))`. Here `tags` can be the following STACK specific things:
 
