@@ -4,15 +4,16 @@ import assessments.Exam.logger
 import assessments.ExceptionContext.{addToExceptionContext, initialExceptionContext}
 import com.typesafe.scalalogging.Logger
 import io.github.classgraph.ClassGraph
-import utils.Tag
+import utils.{Tag, Utils}
 import utils.Tag.Tags
 
 import java.nio.file.Path
 import java.time.LocalDate
 import scala.jdk.CollectionConverters.IterableHasAsScala
 
-case class Exam(name: String, id: String = getClass.getName, tags: Tags[Exam] = Tags())(val problems: MarkdownAssessment*)
+case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownAssessment*)
                (using sourceFileImplicit: sourcecode.File) {
+  val id: String = getClass.getName.stripSuffix("$")
   val sourceFile: Path = Path.of(sourceFileImplicit.value)
   assert(problems.map(_.name).distinct.length == problems.length)
   assert(problems.map(_.id).distinct.length == problems.length)
@@ -79,7 +80,11 @@ object Exam {
            case e: NoSuchFieldException =>
 
     val exams = results.result()
-    assert(exams.map(_.id).distinct.length == exams.length)
+
+    // Complain if two exams have same ID
+    Utils.findCollision(exams, _.id, (x, y) =>
+      throw AssertionError(s"Exam classes ${x.getClass.getName} and ${y.getClass.getName} have same id \"${x.id}\""))
+
     exams
   }
 

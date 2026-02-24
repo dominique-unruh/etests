@@ -21,6 +21,7 @@ import scala.concurrent.duration.Duration
 import scala.quoted.{Expr, Quotes, Type}
 import scala.reflect.ClassTag
 import scala.util.{Using, boundary}
+import scala.util.boundary.break
 import scala.reflect.runtime.universe.{TypeTag, typeOf}
 import scala.sys.process.stringSeqToProcess
 
@@ -135,7 +136,7 @@ object Utils {
       case e: ClassNotFoundException =>
         throw new RuntimeException(s"$property in java.properties must refer to an existing class (full class name like package.subpackage.MyClass)")
     if (!typeTag.mirror.runtimeClass(typeTag.tpe).isAssignableFrom(clazz))
-      throw new RuntimeException(s"$property in java.properties must refer to a class of type ${typeTag}")
+      throw new RuntimeException(s"$property in java.properties must refer to a class of type $typeTag")
     clazz.asInstanceOf[Class[T]]
   }
 
@@ -272,5 +273,19 @@ object Utils {
       s"file://${htmlFile.toAbsolutePath}"
     )
     command.!!
+  }
+  
+  def findCollision[T, U](items: IterableOnce[T], function: T => U,
+                          callback: (T,T) => Unit = { (x:T,y:T) => () }): Option[(T,T)] = boundary[Option[(T,T)]] {
+    val map = mutable.HashMap[U,T]()
+    for (item <- items) {
+      map.put(function(item), item) match {
+        case Some(previous) =>
+          callback(previous, item)
+          break(Some((previous, item)))
+        case None =>
+      }
+    }
+    None
   }
 }
