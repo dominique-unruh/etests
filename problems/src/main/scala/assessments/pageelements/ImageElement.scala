@@ -38,4 +38,10 @@ object ImageElement {
     val png = outputStream.toByteArray
     ImageElement(png, basename)
   }
+  def fromPNGResource(pngResource: String, clazz: Class[?])(using enclosing: Enclosing): ImageElement = {
+    val stream = clazz.getResourceAsStream(pngResource)
+    if (stream == null)
+      throw RuntimeException(s"Resource $pngResource not found when trying to load a PNG from it (relative to class ${clazz.getName}).")
+    ImageElement(stream.readAllBytes(), pngResource.split('/').last)
+  }
 }

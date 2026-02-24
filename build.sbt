@@ -70,6 +70,7 @@ lazy val problems = (project in file("problems"))
 lazy val exams = (project in file("exams"))
   .settings (
     Compile / scalaSource := baseDirectory.value / "working",
+    Compile / unmanagedResourceDirectories += baseDirectory.value / "working",
     Test / scalaSource := baseDirectory.value / "test",
 //      Test / excludeFilter := new SimpleFileFilter(_.toPath.startsWith((baseDirectory.value / "broken").toPath)) || HiddenFileFilter,
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.19" % Test,
