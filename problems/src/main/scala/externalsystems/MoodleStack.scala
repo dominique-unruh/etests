@@ -92,6 +92,9 @@ object MoodleStack {
         Seq(Text("\n"), _)
       }
 
+      val footerString = s"[Question name: $name]"
+      val footer = s"""<p style="color: gray; font-size: smaller; text-align: right;">${StringEscapeUtils.escapeHtml4(footerString)}</p>"""
+
       val result =
         <question type="stack">
           <name>
@@ -102,6 +105,7 @@ object MoodleStack {
           <questiontext format="html">
             <text>
               {scala.xml.PCData(questionText.html)}
+              {footer}
             </text>{filesXML}
           </questiontext>
           <generalfeedback format="html">
