@@ -189,8 +189,9 @@ abstract class MarkdownAssessment {
     val pretty = quiz.prettyXml
     println(pretty)
     Utils.copyStringToClipboard(pretty)
-    Thread.sleep(10000)
-    println("Copied to clipboard. You have 10s to paste it.")
+    println("Copied to clipboard. You have 60s to paste it.")
+    Thread.sleep(60000)
+    println("Time expired.")
   }
 }
 
