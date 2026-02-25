@@ -44,6 +44,7 @@ object Tag {
       assert(!map.contains(tagged.tag))
       new Tags(map + (tagged.tag.asInstanceOf[Tag[?, ?]] -> tagged.value))
     }
+    def contains(tag: Tag[?, ?]): Boolean = map.contains(tag)
   }
   /** A tag/value pair with matching types. */
   case class Tagged[Owner, Value](tag: Tag[Owner, Value], value: Value)

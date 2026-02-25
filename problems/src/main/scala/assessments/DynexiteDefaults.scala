@@ -14,7 +14,7 @@ import utils.Tag.Tags
 import utils.Utils
 
 import java.io.IOException
-import scala.collection.SeqMap
+import scala.collection.{SeqMap, immutable}
 
 object DynexiteDefaults {
 //  given sympyCache: Cache[SympyExpr] = CaffeineCache[SympyExpr]
@@ -25,9 +25,14 @@ object DynexiteDefaults {
   def input(reference: String, tags: Tags[InputElement] = Tags.empty)(using name: sourcecode.Name): InputElement =
     new InputElement(elementName(name), reference, tags)
 
-  def multi(options: Seq[String | (String,String)], reference: String,
-           tags: Tags[MultipleChoice] = Tags.empty, style: MultipleChoice.Style = select)(using name: sourcecode.Name): MultipleChoice = {
-    val optionMap = SeqMap.from(options.map { case option: String => option -> option; case (option,text) => option -> text})
+  def multi(options: Seq[String | (String,String)] | immutable.SeqMap[String,String], reference: String,
+            tags: Tags[MultipleChoice] = Tags.empty, style: MultipleChoice.Style = select)(using name: sourcecode.Name): MultipleChoice = {
+    val optionMap: immutable.SeqMap[String,String] = options match {
+      // TODO get rid of compiler warning, https://claude.ai/chat/eac5bad8-ad39-416a-bcdc-59b3bd7e02aa
+      case map: immutable.SeqMap[String,String] => map
+      case options: Seq[String | (String,String)] =>
+        SeqMap.from(options.map { case option: String => option -> option; case (option,text) => option -> text})
+    }
     new MultipleChoice(name=elementName(name), options=optionMap, reference=reference, style=style, tags=tags)
   }
 

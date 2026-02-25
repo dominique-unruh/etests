@@ -1,7 +1,7 @@
 package externalsystems
 
 import assessments.{Assessment, DefaultFileMapBuilder, Html}
-import assessments.pageelements.{DynamicElement, ImageElement, InputElement, MathPreviewElement, StaticElement}
+import assessments.pageelements.{DynamicElement, ImageElement, InputElement, MathPreviewElement, MultipleChoice, StaticElement}
 import org.apache.commons.text.StringEscapeUtils
 import utils.Tag
 
@@ -19,6 +19,9 @@ object MoodleStack {
     case matrix
     /** Matrix of variable size. */
     case varmatrix
+    case dropdown
+    case radio
+    case checkbox
   }
 
   enum InsertStars(val integerValue: Int) {
@@ -187,8 +190,12 @@ object MoodleStack {
       case Some(allow) => (allow, (defaultForbiddenWords -- allow).toSeq.sortBy(_.toLowerCase))
       case None => (Seq.empty, Seq.empty)
 
+    val typ = inputElement.tags(moodleInputType)
+    if (Seq(InputType.radio, InputType.checkbox, InputType.dropdown).contains(typ))
+      throw IllegalArgumentException(s"Input element $name cannot have tag moodleInputType = $typ")
+
     Input(
-      typ = inputElement.tags(moodleInputType),
+      typ = typ,
       name = name,
       reference = inputElement.tags.getOrElse(moodleReferenceSolution, inputElement.reference),
       forbidWords = forbidWords,
@@ -196,7 +203,41 @@ object MoodleStack {
       extraOptions = inputElement.tags(moodleExtraOptions) appended MoodleExtraOptions.allowEmpty,
       insertStars = inputElement.tags(moodleInsertStars))
   }
-  
+
+  def multipleChoiceElementToMoodle(element: MultipleChoice): Input = {
+    val name = element.name.toString
+
+    if (element.tags.contains(moodleReferenceSolution))
+      throw IllegalArgumentException(s"MultipleChoice element $name has tag moodleReferenceSolution. This is not allowed.")
+    if (element.tags.contains(moodleInputType))
+      throw IllegalArgumentException(s"MultipleChoice element $name has tag moodleInputType. This is not allowed.")
+
+    val typ = element.style match {
+      case MultipleChoice.Style.select => InputType.dropdown
+      case MultipleChoice.Style.radio => InputType.radio
+    }
+
+    def quote(string: String): String =
+      // TODO quote https://claude.ai/chat/80bfd022-da75-4818-bd6a-e7857882a1c4
+    //  FIXME quote
+      s""""${string.replace("\\", "\\\\")}""""
+
+    val referenceSolutionSeq = element.options.zipWithIndex.map { case ((name, text), index) =>
+      val selected = (index == 0)
+      s"[${quote(name)}, $selected, ${quote(text)}]"
+    }
+    val referenceSolution = "[" + referenceSolutionSeq.mkString(", ") + "]"
+
+    Input(
+      typ = typ,
+      name = name,
+      reference = referenceSolution,
+      forbidWords = Seq.empty,
+      allowWords = Seq.empty,
+      extraOptions = element.tags(moodleExtraOptions) appended MoodleExtraOptions.allowEmpty,
+      insertStars = element.tags(moodleInsertStars))
+  }
+
   def assessmentToQuestion(assessment: Assessment): Question = {
     val inputs = Seq.newBuilder[Input]
     val fileMapBuilder = DefaultFileMapBuilder("@@PLUGINFILE@@/")
@@ -212,6 +253,10 @@ object MoodleStack {
         case preview: MathPreviewElement =>
           val name = preview.observed.toString
           Html(s"[[validation:$name]]")
+        case pageElement: MultipleChoice =>
+          val name = pageElement.name.toString
+          inputs += multipleChoiceElementToMoodle(pageElement)
+          Html(s"[[input:$name]]")
         case element: StaticElement =>
           element.renderHtml(fileMapBuilder)
         case _ =>
