@@ -50,18 +50,21 @@ object MoodleStack {
                    allowWords: Iterable[String],
                    extraOptions: Iterable[String],
                    insertStars: InsertStars,
+                   /** Size of the input field. */
+                   boxsize: Int,
                   ) {
     assert(name.nonEmpty)
     assert(reference.nonEmpty)
     assert(allowWords.forall(identifierRegex.matches), allowWords)
     assert(extraOptions.forall(identifierRegex.matches))
+    assert(boxsize > 0)
 
     def xml: Elem =
       <input>
         <name>{name}</name>
         <type>{typ}</type>
         <tans>{reference}</tans>
-        <boxsize>15</boxsize>
+        <boxsize>{boxsize}</boxsize>
         <strictsyntax>1</strictsyntax>
         <insertstars>{insertStars.integerValue}</insertstars>
         <syntaxhint></syntaxhint>
@@ -201,7 +204,9 @@ object MoodleStack {
       forbidWords = forbidWords,
       allowWords = allowWords,
       extraOptions = inputElement.tags(moodleExtraOptions) appended MoodleExtraOptions.allowEmpty,
-      insertStars = inputElement.tags(moodleInsertStars))
+      insertStars = inputElement.tags(moodleInsertStars),
+      boxsize = inputElement.tags(InputElement.inputElementColumns),
+    )
   }
 
   def multipleChoiceElementToMoodle(element: MultipleChoice): Input = {
@@ -244,7 +249,9 @@ object MoodleStack {
       forbidWords = Seq.empty,
       allowWords = Seq.empty,
       extraOptions = element.tags(moodleExtraOptions) appended MoodleExtraOptions.allowEmpty,
-      insertStars = element.tags(moodleInsertStars))
+      insertStars = element.tags(moodleInsertStars),
+      boxsize = 15, // Not sure if this affects anything.
+    )
   }
 
   def assessmentToQuestion(assessment: Assessment): Question = {

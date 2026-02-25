@@ -1,6 +1,6 @@
 package assessments.pageelements
 
-import assessments.pageelements.InputElement.inputElementRows
+import assessments.pageelements.InputElement.{inputElementColumns, inputElementRows}
 import assessments.{Assessment, ElementName, Html}
 import org.apache.commons.text.StringEscapeUtils
 import play.api.libs.json.{JsObject, JsString, JsValue}
@@ -12,11 +12,13 @@ case class InputElement(val name: ElementName,
                         val reference: String,
                         val tags: Tags[InputElement]) extends AnswerElement {
   assert(tags(inputElementRows) > 0)
+  assert(tags(inputElementColumns) > 0)
   private val useTextarea = tags(inputElementRows) > 1
 
   override def renderHtml: Html = {
     val tag = if (useTextarea) "textarea" else "input"
-    Html(ind"""<$tag rows="${tags(inputElementRows)}" type="text" id="${name.jsElementId}" onInput='updateState("$name", {content: this.value})'></$tag><script>
+    val width = if (useTextarea) "cols" else "size"
+    Html(ind"""<$tag rows="${tags(inputElementRows)}" $width="${tags(inputElementColumns)}" type="text" id="${name.jsElementId}" onInput='updateState("$name", {content: this.value})'></$tag><script>
          |  function ${name.jsElementCallbackName}(json) {
          |    let input = document.getElementById("${name.jsElementId}");
          |    console.log(input.value);
@@ -28,9 +30,9 @@ case class InputElement(val name: ElementName,
 
   override def renderStaticHtml(answers: Map[ElementName, String]): Html = {
     if (useTextarea)
-      Html(s"""<textarea rows="${tags(inputElementRows)}" type="text" readonly>${StringEscapeUtils.escapeHtml4(answers(name))}</textarea>""")
+      Html(s"""<textarea rows="${tags(inputElementRows)}" cols="${tags(inputElementColumns)}" type="text" readonly>${StringEscapeUtils.escapeHtml4(answers(name))}</textarea>""")
     else
-      Html(s"""<input type="text" readonly value="${StringEscapeUtils.escapeHtml4(answers(name))}"/>""")
+      Html(s"""<input type="text" size="${tags(inputElementColumns)}" readonly value="${StringEscapeUtils.escapeHtml4(answers(name))}"/>""")
   }
     
   override def setAction(content: String): Seq[ElementAction] =
@@ -38,5 +40,6 @@ case class InputElement(val name: ElementName,
 }
 
 object InputElement {
+  val inputElementColumns: Tag[InputElement, Int] = Tag(default = 15)
   val inputElementRows: Tag[InputElement, Int] = Tag(default = 1)
 }
