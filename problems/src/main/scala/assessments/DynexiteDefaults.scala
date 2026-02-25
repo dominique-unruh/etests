@@ -28,9 +28,8 @@ object DynexiteDefaults {
   def multi(options: Seq[String | (String,String)] | immutable.SeqMap[String,String], reference: String,
             tags: Tags[MultipleChoice] = Tags.empty, style: MultipleChoice.Style = select)(using name: sourcecode.Name): MultipleChoice = {
     val optionMap: immutable.SeqMap[String,String] = options match {
-      // TODO get rid of compiler warning, https://claude.ai/chat/eac5bad8-ad39-416a-bcdc-59b3bd7e02aa
-      case map: immutable.SeqMap[String,String] => map
-      case options: Seq[String | (String,String)] =>
+      case map: immutable.SeqMap[String,String] @unchecked => map
+      case options: Seq[String | (String,String)] @unchecked =>
         SeqMap.from(options.map { case option: String => option -> option; case (option,text) => option -> text})
     }
     new MultipleChoice(name=elementName(name), options=optionMap, reference=reference, style=style, tags=tags)

@@ -217,10 +217,19 @@ object MoodleStack {
       case MultipleChoice.Style.radio => InputType.radio
     }
 
-    def quote(string: String): String =
-      // TODO quote https://claude.ai/chat/80bfd022-da75-4818-bd6a-e7857882a1c4
-    //  FIXME quote
-      s""""${string.replace("\\", "\\\\")}""""
+    /** (Hopefully) produces a correctly escaped string literal for Maxima */
+    def quote(s: String): String = {
+      val sb = new StringBuilder("\"")
+      for (c <- s) c match {
+        case '"' => sb.append("\\\"")
+        case '\\' => sb.append("\\\\")
+        case '\n' => sb.append("\\n")
+        case '\r' => sb.append("\\r")
+        case '\t' => sb.append("\\t")
+        case c => sb.append(c)
+      }
+      sb.append("\"").toString
+    }
 
     val referenceSolutionSeq = element.options.zipWithIndex.map { case ((name, text), index) =>
       val selected = (index == 0)
