@@ -46,7 +46,15 @@ object InterpolatedHtml extends InterpolatedTextC[Html, InterpolatedHtml] {
   val empty = new InterpolatedHtml(InterpolatedString.empty)
 }
 
-case class Html(html: String)
+/** Encapsulates HTML code.
+ * No well-formedness etc. is guaranteed.
+ * (E.g., code could be something invalid like `ab<cd`.)
+ * It is merely a thin wrapper to make it easier to make sure one does not mix up what
+ * functions take HTML and what functions plaintext and what functions markdown.
+ *
+ * @see [[Markdown]], [[Plaintext]]
+ **/
+final case class Html(html: String) extends AnyVal
 
 object Html {
   val empty: Html = Html("")

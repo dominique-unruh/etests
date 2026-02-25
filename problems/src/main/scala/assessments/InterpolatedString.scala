@@ -2,6 +2,11 @@ package assessments;
 
 import scala.StringContext;
 
+/** An interpolated string.
+ * That is, it represents an arbitrary string with objects of type `T` interspersed in it.
+ * Basically like what you get when you do `s"Text ${obj} text"`, except that `s"..."` will
+ * replace `obj` by `obj.toString`, while in an [[InterpolatedString]], `obj` will be stored as is.
+ * */
 final case class InterpolatedString[+T] private (parts: Seq[String], args: Seq[T])
 extends InterpolatedText[T, String, InterpolatedString] {
   override def mapArgs[U](f: T => U) : InterpolatedString[U] =

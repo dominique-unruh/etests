@@ -45,6 +45,14 @@ object InterpolatedMarkdown extends InterpolatedTextC[Markdown, InterpolatedMark
     md => InterpolatedMarkdown.apply(md)
 }
 
-case class Markdown(markdown: String) {
+/** Encapsulates Markdown code.
+ * No well-formedness etc. is guaranteed.
+ * (E.g., code could be something invalid like `ab *cd`.)
+ * It is merely a thin wrapper to make it easier to make sure one does not mix up what
+ * functions take HTML and what functions plaintext and what functions Markdown.
+ *
+ * @see [[Html]], [[Plaintext]]
+ **/
+final case class Markdown(markdown: String) extends AnyVal {
   def toHtml: Html = Html(markdownToHtml(markdown))
 }
