@@ -40,6 +40,9 @@ case class InputElement(val name: ElementName,
 }
 
 object InputElement {
+  /** Width of the input element (in characters).
+   * This does not prevent longer inputs, it just sets the size of the UI element. */
   val inputElementColumns: Tag[InputElement, Int] = Tag(default = 15)
+  /** Number of rows of the input element */
   val inputElementRows: Tag[InputElement, Int] = Tag(default = 1)
 }

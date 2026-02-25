@@ -24,7 +24,7 @@ object ImageElement {
     if (stream == null)
       throw RuntimeException(s"Resource $svgResource not found when trying to load an SVG from it (relative to class ${clazz.getName}).")
 //      throw new ExceptionWithContext(s"Resource $svgResource not found.")
-    fromSVG(stream, basename = svgResource.split('/').last)
+    fromSVG(stream, basename = svgResource.split('/').last.stripSuffix(".svg"))
   }
   def fromSVG(svg: InputStream, basename: String): ImageElement = {
     val transcoder = new PNGTranscoder
@@ -42,6 +42,6 @@ object ImageElement {
     val stream = clazz.getResourceAsStream(pngResource)
     if (stream == null)
       throw RuntimeException(s"Resource $pngResource not found when trying to load a PNG from it (relative to class ${clazz.getName}).")
-    ImageElement(stream.readAllBytes(), pngResource.split('/').last)
+    ImageElement(stream.readAllBytes(), pngResource.split('/').last.stripSuffix(".png"))
   }
 }

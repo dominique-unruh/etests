@@ -86,6 +86,8 @@ object MoodleStack {
                       inputs: Seq[Input]) {
     def xml: Elem = {
       val filesXML = files map { (name, content) =>
+        if (name.contains(' '))
+          throw IllegalArgumentException(s"In Moodle export of question ${this.name}, attached file $name contains spaces in file name. Not allowed.")
         val base64 = Base64.getEncoder.encodeToString(content)
         <file name={name} path="/" encoding="base64">
           {base64}
