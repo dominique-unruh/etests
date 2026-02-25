@@ -18,44 +18,9 @@ final class MultipleChoice(override val name: ElementName,
                            val style: MultipleChoice.Style,
                            override val tags: Tags[MultipleChoice] = Tags.empty)
   extends AnswerElement {
-  assert(options.contains(reference), (options, reference))
 
-/*  private lazy val shortNames: SeqMap[String, String] = {
-    val seen = mutable.HashSet[String]("notselected")
-    val map = SeqMap.newBuilder[String, String]
-    for (option <- options) {
-      var shortName = ""
-      var counter = 0
-      while (shortName == "" || seen.contains(shortName))
-      do {
-        shortName = option.replace(' ', '-').filter(c => c.isLetterOrDigit || c == '-' || c == '_').take(20).toLowerCase
-        if (counter > 0)
-          shortName += s"_$counter"
-        counter += 1
-      }
-      map += shortName -> option
-      seen += shortName
-    }
-    map.result()
-  }*/
-
-/*  override def renderHtml: String = {
-    val html = StringBuilder()
-    html ++= s"""<select id="${name.jsElementId}" onchange="updateState("$name", {content: this.value})">\n"""
-    for ((optionName, optionText) <- shortNames)
-      html ++= s"""<option value="${escapeHtml4(optionName)}">$optionText</option>\n"""
-    html ++= "</select>\n"
-    html ++= ind"""<script>
-               |  function ${name.jsElementCallbackName}(json) {
-               |    let input = document.getElementById("${name.jsElementId}");
-               |    console.log(input.value);
-               |    input.value = json.content;
-               |    updateState("$name", {content: json.content});
-               |  }
-               |</script>""".stripMargin
-
-    html.result()
-  }*/
+  if (!options.contains(reference))
+    throw IllegalArgumentException(s"Multiple choice element $name has reference solution \"$reference\", but it should be one of ${options.keys.map(s => s"\"$s\"").mkString(", ")}")
 
   override def renderHtml: Html = style match
     case Style.select => renderHtmlSelect
