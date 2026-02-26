@@ -26,13 +26,17 @@ object DynexiteDefaults {
     new InputElement(elementName(name), reference, tags)
 
   def multi(options: Seq[String | (String,String)] | immutable.SeqMap[String,String], reference: String,
-            tags: Tags[MultipleChoice] = Tags.empty, style: MultipleChoice.Style = select)(using name: sourcecode.Name): MultipleChoice = {
+            tags: Tags[MultipleChoice] = Tags.empty, style: MultipleChoice.Style = select,
+            label: HtmlConvertible = null)(using name: sourcecode.Name): MultipleChoice = {
     val optionMap: immutable.SeqMap[String,String] = options match {
       case map: immutable.SeqMap[String,String] @unchecked => map
       case options: Seq[String | (String,String)] @unchecked =>
         SeqMap.from(options.map { case option: String => option -> option; case (option,text) => option -> text})
     }
-    new MultipleChoice(name=elementName(name), options=optionMap, reference=reference, style=style, tags=tags)
+    var tags2 = tags
+    if (label != null)
+      tags2 = tags2 + (MultipleChoice.checkboxLabel := label.toHtml)
+    new MultipleChoice(name=elementName(name), options=optionMap, reference=reference, style=style, tags=tags2)
   }
 
   extension (str: String) {

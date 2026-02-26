@@ -1,5 +1,6 @@
 package externalsystems
 
+import assessments.pageelements.MultipleChoice.{Style, checkboxLabel}
 import assessments.{Assessment, DefaultFileMapBuilder, Html}
 import assessments.pageelements.{DynamicElement, ImageElement, InputElement, MathPreviewElement, MultipleChoice, StaticElement}
 import org.apache.commons.text.StringEscapeUtils
@@ -222,6 +223,7 @@ object MoodleStack {
     val typ = element.style match {
       case MultipleChoice.Style.select => InputType.dropdown
       case MultipleChoice.Style.radio => InputType.radio
+      case MultipleChoice.Style.checkbox => InputType.checkbox
     }
 
     /** (Hopefully) produces a correctly escaped string literal for Maxima */
@@ -238,11 +240,17 @@ object MoodleStack {
       sb.append("\"").toString
     }
 
-    val referenceSolutionSeq = element.options.zipWithIndex.map { case ((name, text), index) =>
-      val selected = (index == 0)
-      s"[${quote(name)}, $selected, ${quote(text)}]"
+    val referenceSolution = element.style match {
+      case Style.select | Style.radio =>
+        val referenceSolutionSeq = element.options.zipWithIndex.map { case ((name, text), index) =>
+          val selected = (index == 0)
+          s"[${quote(name)}, $selected, ${quote(text)}]"
+        }
+        "[" + referenceSolutionSeq.mkString(", ") + "]"
+      case Style.checkbox =>
+        val label = element.tags(checkboxLabel)
+        s"""[["checked", true, "${quote(label.html)}"]]"""
     }
-    val referenceSolution = "[" + referenceSolutionSeq.mkString(", ") + "]"
 
     Input(
       typ = typ,

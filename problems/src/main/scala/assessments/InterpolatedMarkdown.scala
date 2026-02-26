@@ -35,6 +35,7 @@ final class InterpolatedMarkdown[+T](val interpolatedString: InterpolatedString[
 
 object InterpolatedMarkdown extends InterpolatedTextC[Markdown, InterpolatedMarkdown] {
   extension (sc: StringContext) {
+    // Escape sequences show up as errors in Intelli/J IDEA. Bug report files: https://youtrack.jetbrains.com/issue/SCL-25082/Scala-Editor-shows-errors-in-correct-custom-interpolated-strings
     inline def md[T](args: T*): InterpolatedMarkdown[T] = new InterpolatedMarkdown(InterpolatedString[T](sc.parts, args))
   }
 

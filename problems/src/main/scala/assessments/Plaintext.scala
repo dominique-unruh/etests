@@ -6,8 +6,9 @@ package assessments
  *
  * @see [[Markdown]], [[Html]]
  **/
-final case class Plaintext(html: String) extends AnyVal {
+final case class Plaintext(text: String) extends HtmlConvertible {
   override def toString: String = super.toString
+  override def toHtml: Html = Html.fromPlaintext(text)
 }
 
 object Plaintext {

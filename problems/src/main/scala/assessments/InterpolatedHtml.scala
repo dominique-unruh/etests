@@ -54,9 +54,15 @@ object InterpolatedHtml extends InterpolatedTextC[Html, InterpolatedHtml] {
  *
  * @see [[Markdown]], [[Plaintext]]
  **/
-final case class Html(html: String) extends AnyVal
+final case class Html(html: String) extends HtmlConvertible {
+  override def toHtml: Html = this
+}
 
 object Html {
   val empty: Html = Html("")
   def fromPlaintext(text: String): Html = Html(escapeHtml4(text))
+}
+
+trait HtmlConvertible {
+  def toHtml: Html
 }
