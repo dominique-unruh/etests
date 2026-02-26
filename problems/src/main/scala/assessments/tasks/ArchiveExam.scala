@@ -1,8 +1,8 @@
-package assessments
+package assessments.tasks
 
 import assessments.Exam.{courseName, examDate}
+import assessments.{Assessment, Exam, MarkdownAssessment, Points, Task}
 import com.fasterxml.jackson.annotation.JsonPropertyOrder
-import io.circe.syntax.EncoderOps
 import io.circe.generic.auto.*
 import io.circe.syntax.*
 import io.circe.yaml.syntax.*
@@ -10,11 +10,11 @@ import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import utils.{IndentedInterpolator, Utils}
 
-import java.util.Date
 import java.nio.charset.StandardCharsets
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
 import java.time.LocalDate
+import java.util.Date
 
 object ArchiveExam extends Task {
   exportExam()
