@@ -4,6 +4,7 @@ import assessments.pageelements.MultipleChoice.{Style, checkboxLabel}
 import assessments.{Assessment, DefaultFileMapBuilder, Html}
 import assessments.pageelements.{DynamicElement, ImageElement, InputElement, MathPreviewElement, MultipleChoice, StaticElement}
 import org.apache.commons.text.StringEscapeUtils
+import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import utils.Tag
 
 import java.util.Base64
@@ -100,12 +101,23 @@ object MoodleStack {
         Seq(Text("\n"), _)
       }
 
-      val inputsXML = inputs.map(_.xml).flatMap {
+      val commentField = Input(
+        typ = InputType.string,
+        name = "COMMENT_FIELD",
+        reference = "none",
+        boxsize = 25,
+        forbidWords = Seq.empty,
+        allowWords = Seq.empty,
+        extraOptions = Seq.empty,
+        insertStars = InsertStars.dontInsert,
+      )
+
+      val inputsXML = inputs.appended(commentField).map(_.xml).flatMap {
         Seq(Text("\n"), _)
       }
 
-      val footerString = s"[Question name: $name]"
-      val footer = s"""<p style="color: gray; font-size: smaller; text-align: right;">${StringEscapeUtils.escapeHtml4(footerString)}</p>"""
+      val footer = s"""\n<hr><p style="color: gray; font-size: smaller; text-align: right;">Optional comments (use sparingly, in case of trouble only):<br>[[input:COMMENT_FIELD]]<br/>\n""" +
+        s"""[Question name: ${escapeHtml4(name)}]</p>"""
 
       val result =
         <question type="stack">
