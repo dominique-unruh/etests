@@ -33,11 +33,12 @@ object Docker {
   private def getImageId(image: Path | String): String = {
     if (!pulledInThisSession.contains(image)) {
       val cacheKey = s"CACHED-DOCKER-IMAGE-ID:${image.getClass}:${image.toString}".getBytes(UTF_8)
-      val cached = Cache.cache.get(cacheKey)
-      if (cached != null) {
-        val (time, id) = decode[(Long, String)](String(cached, UTF_8)).toOption.get
-        if (time >= currentTimeMillis() - 10*60*1000) // Rebuild/pull if at least 10 minutes have passed
-          return id
+      Cache.get(cacheKey) match {
+        case Some(cached) =>
+          val (time, id) = decode[(Long, String)](String(cached, UTF_8)).toOption.get
+          if (time >= currentTimeMillis() - 10*60*1000) // Rebuild/pull if at least 10 minutes have passed
+            return id
+        case None =>
       }
 
       synchronized {
@@ -58,7 +59,7 @@ object Docker {
             imageId
         }
         pulledInThisSession += (image -> imageId)
-        Cache.cache.put(cacheKey, (currentTimeMillis(), imageId).asJson.noSpaces.getBytes(UTF_8))
+        Cache.put(cacheKey, (currentTimeMillis(), imageId).asJson.noSpaces.getBytes(UTF_8))
       }
     }
 
@@ -96,13 +97,13 @@ object Docker {
     val argsJson = (imageId, command, filesBytes, requestedOutputs).asJson.noSpacesSortKeys
     val argsJsonBytes = argsJson.getBytes
 
-    Cache.cache.get(argsJsonBytes) match
-      case null =>
+    Cache.get(argsJsonBytes) match
+      case None =>
         val result = runInDockerNoCache(imageId=imageId, command = command, files = filesBytes,
           requestedOutputs = requestedOutputs, hashKey = argsJson)
-        Cache.cache.put(argsJsonBytes, result.asJson.noSpaces.getBytes)
+        Cache.put(argsJsonBytes, result.asJson.noSpaces.getBytes)
         result
-      case cached =>
+      case Some(cached) =>
         decode[DockerResult](new String(cached)).getOrElse(throw IOException("Unparsable cache content"))
   }
 

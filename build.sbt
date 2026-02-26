@@ -64,7 +64,8 @@ lazy val problems = (project in file("problems"))
     libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.17.0", // Used to make Play happy with the nextcloud-api jackson dependency
     libraryDependencies += "org.aarboard.nextcloud" % "nextcloud-api" % "13.1.0" exclude("org.slf4j", "slf4j-simple"),
     libraryDependencies += "org.odftoolkit" % "simple-odf" % "0.9.0",
-    libraryDependencies += "com.microsoft.playwright" % "playwright" % "1.55.0",
+    libraryDependencies += "com.microsoft.playwright" % "playwright" % "1.55.0", 
+      libraryDependencies += "org.xerial" % "sqlite-jdbc" % "3.51.2.0",
   )
 
 lazy val exams = (project in file("exams"))

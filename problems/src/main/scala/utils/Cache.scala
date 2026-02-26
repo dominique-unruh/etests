@@ -1,64 +1,87 @@
 package utils
 
 import com.typesafe.scalalogging.Logger
-import org.rocksdb.{Options, RocksDB, RocksDBException}
 
-import java.io.File
 import java.nio.file.{Files, Path}
-import scala.annotation.tailrec
+import java.security.MessageDigest
+import java.sql.{Connection, DriverManager}
 
-/** Persistent cache. To clear it, delete the `.cache` directory. */
+/** Persistent cache. To clear it, delete the `.cache` file. */
 object Cache {
-  RocksDB.loadLibrary()
+  private val logger = Logger[this.type]
+  private var _conn: Option[Connection] = None
 
-  private val options = new Options().setCreateIfMissing(true)
-  private var _cache: Option[RocksDB] = None
-  private var lastAccess: Long = 0
+  private def sha256(bytes: Array[Byte]): Array[Byte] =
+    MessageDigest.getInstance("SHA-256").digest(bytes)
 
-  @tailrec
-  private def openAvailableCache(count: Int = 1, max: Int = 10): RocksDB = {
-    logger.debug(s"Trying to open cache .cache/$count")
-    Files.createDirectories(Path.of(".cache"))
-    if (count >= max)
-      RocksDB.open(options, s".cache/$count")
-    else
-      try
-        RocksDB.open(options, s".cache/$count")
-      catch
-        case e: RocksDBException if e.getMessage.contains("lock") =>
-          openAvailableCache(count + 1, max)
-  }
-  
-  def cache: RocksDB = synchronized {
-    _cache.getOrElse {
-      logger.debug("Opening cache")
-      val db = openAvailableCache()
-      _cache = Some(db)
+  private def connection: Connection = synchronized {
+    _conn.filter(!_.isClosed).getOrElse {
+      logger.debug("Opening SQLite cache")
 
-      // Register shutdown hook to clean up
-      sys.addShutdownHook {
-        synchronized {
-          _cache.foreach(_.close())
-          _cache = None
-          options.close()
-        }
-      }
+      val conn = DriverManager.getConnection("jdbc:sqlite:.cache")
+      conn.setAutoCommit(true)
 
-      db
+      conn.createStatement().execute(
+        """CREATE TABLE IF NOT EXISTS cache (
+          |  key_hash BLOB NOT NULL,
+          |  key      BLOB NOT NULL,
+          |  value    BLOB NOT NULL,
+          |  PRIMARY KEY (key_hash, key)
+          |)""".stripMargin
+      )
+
+      _conn = Some(conn)
+
+      sys.addShutdownHook(close())
+
+      conn
     }
   }
 
-
-
-  // Call this when Play reloads (in Global or ApplicationLifecycle)
-  def close(): Unit = synchronized {
-    _cache match
-      case Some(c) =>
-        logger.debug("Closing cache")
-        c.close()
-        _cache = None
-      case None =>
+  def get(key: Array[Byte]): Option[Array[Byte]] = synchronized {
+    val ps = connection.prepareStatement(
+      "SELECT value FROM cache WHERE key_hash = ? AND key = ?"
+    )
+    try {
+      ps.setBytes(1, sha256(key))
+      ps.setBytes(2, key)
+      val rs = ps.executeQuery()
+      try if (rs.next()) Some(rs.getBytes(1)) else None
+      finally rs.close()
+    } finally ps.close()
   }
 
-  private val logger = Logger[this.type]
+  def put(key: Array[Byte], value: Array[Byte]): Unit = synchronized {
+    val ps = connection.prepareStatement(
+      """INSERT INTO cache (key_hash, key, value) VALUES (?, ?, ?)
+        |ON CONFLICT(key_hash, key) DO UPDATE SET value = excluded.value""".stripMargin
+    )
+    try {
+      ps.setBytes(1, sha256(key))
+      ps.setBytes(2, key)
+      ps.setBytes(3, value)
+      ps.executeUpdate()
+    } finally ps.close()
+  }
+
+  def delete(key: Array[Byte]): Unit = synchronized {
+    val ps = connection.prepareStatement(
+      "DELETE FROM cache WHERE key_hash = ? AND key = ?"
+    )
+    try {
+      ps.setBytes(1, sha256(key))
+      ps.setBytes(2, key)
+      ps.executeUpdate()
+    } finally ps.close()
+  }
+
+  def close(): Unit = synchronized {
+    _conn match {
+      case Some(c) if !c.isClosed =>
+        logger.debug("Closing SQLite cache")
+        c.close()
+        _conn = None
+      case _ =>
+    }
+  }
 }
