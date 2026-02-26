@@ -268,7 +268,7 @@ object MoodleStack {
         "[" + referenceSolutionSeq.mkString(", ") + "]"
       case Style.checkbox =>
         val label = element.tags(checkboxLabel)
-        s"""[["checked", true, "${quote(label.html)}"]]"""
+        s"""[["checked", true, ${quote(label.html)}]]"""
     }
 
     Input(
