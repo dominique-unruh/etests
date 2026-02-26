@@ -15,7 +15,10 @@ object MoodleStack {
 
   enum InputType {
     case algebraic
+    /** Input is a raw string */
     case string
+    /** Input is a number (appears to have no effect at least in Dynexite) */
+    case numerical
     /** Matrix of fixed size. The size is automatically determined from the reference solution. */
     case matrix
     /** Matrix of variable size. */
@@ -200,10 +203,14 @@ object MoodleStack {
     if (Seq(InputType.radio, InputType.checkbox, InputType.dropdown).contains(typ))
       throw IllegalArgumentException(s"Input element $name cannot have tag moodleInputType = $typ")
 
+    // Using ? instead of empty reference since empty reference produces error in Moodle/Stack
+    val reference = inputElement.tags.getOrElse(moodleReferenceSolution,
+      if (inputElement.reference != "") inputElement.reference else "?")
+
     Input(
       typ = typ,
       name = name,
-      reference = inputElement.tags.getOrElse(moodleReferenceSolution, inputElement.reference),
+      reference = reference,
       forbidWords = forbidWords,
       allowWords = allowWords,
       extraOptions = inputElement.tags(moodleExtraOptions) appended MoodleExtraOptions.allowEmpty,
