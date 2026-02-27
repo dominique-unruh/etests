@@ -277,6 +277,7 @@ object MoodleStack {
       reference = referenceSolution,
       forbidWords = Seq.empty,
       allowWords = Seq.empty,
+      //noinspection ScalaDeprecation
       extraOptions = element.tags(moodleExtraOptions) appended MoodleExtraOptions.allowEmpty,
       insertStars = element.tags(moodleInsertStars),
       boxsize = 15, // Not sure if this affects anything.

@@ -1,3 +1,42 @@
+@media screen {
+    .two-column-container {
+        display: grid;
+        grid-template-columns: 1fr 400px; /* Left column flexible, right column fixed width */
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    .left-column {
+        min-width: 0; /* Prevents grid overflow issues */
+    }
+
+    .right-column {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-left: 2px solid #dee2e6;
+        height: fit-content;
+    }
+
+    /* Make it responsive */
+    @media (max-width: 768px) {
+        .two-column-container {
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .right-column {
+            border-left: none;
+            border-top: 2px solid #dee2e6;
+        }
+    }
+}
+
+/* Style for the separator line */
+.content-separator {
+    grid-column: 1 / -1;
+    margin: 20px 0;
+}
+
 img {
     max-width: 100%;
     height: auto;
