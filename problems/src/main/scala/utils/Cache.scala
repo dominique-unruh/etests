@@ -1,6 +1,7 @@
 package utils
 
 import com.typesafe.scalalogging.Logger
+import org.sqlite.{SQLiteConnection, SQLiteException}
 
 import java.nio.file.{Files, Path}
 import java.security.MessageDigest
@@ -18,7 +19,13 @@ object Cache {
     _conn.filter(!_.isClosed).getOrElse {
       logger.debug("Opening SQLite cache")
 
-      val conn = DriverManager.getConnection("jdbc:sqlite:.cache")
+      val conn = try
+        DriverManager.getConnection("jdbc:sqlite:.cache")
+        catch {
+          case e: SQLiteException =>
+            e.printStackTrace()
+            throw RuntimeException(s"Error opening cache ${Path.of(".cache").toAbsolutePath}. Maybe corrupted? Delete that file to fix.", e)
+        }
       conn.setAutoCommit(true)
 
       conn.createStatement().execute(
@@ -38,6 +45,9 @@ object Cache {
     }
   }
 
+  /** Not required but will make sure DB connection errors are thrown here. */
+  def forceInitialization(): Unit = connection
+  
   def get(key: Array[Byte]): Option[Array[Byte]] = synchronized {
     val ps = connection.prepareStatement(
       "SELECT value FROM cache WHERE key_hash = ? AND key = ?"

@@ -10,8 +10,6 @@
     <option name="vmparams" value="-Xms512M -Xmx1024M -Xss1M" />
     <option name="workingDir" value="$PROJECT_DIR$" />
     <option name="envFilePaths" />
-    <method v="2">
-      <option name="Make" enabled="true" />
-    </method>
+    <method v="2" />
   </configuration>
 </component>
