@@ -1,6 +1,7 @@
 package assessments;
 
-import scala.StringContext;
+import scala.StringContext
+import scala.collection.mutable;
 
 /** An interpolated string.
  * That is, it represents an arbitrary string with objects of type `T` interspersed in it.
@@ -82,6 +83,19 @@ extends InterpolatedText[T, String, InterpolatedString] {
     builder.result()
   }
 
+  override def flatMapArgs[U](f: T => InterpolatedString[U]): InterpolatedString[U] = {
+    val builder = InterpolatedString.newBuilder[U]
+    val pi = parts.iterator
+    val ai = args.iterator
+    builder.addAll(pi.next())
+    while (ai.hasNext) {
+      builder.addAll(f(ai.next()))
+      builder.addAll(pi.next())
+    }
+    builder.result()
+  }
+
+
   override def ++[U >: T](other: InterpolatedString[U]): InterpolatedString[U] =
     new InterpolatedString[U](
       parts.dropRight(1) ++ Seq(parts.last + other.parts.head) ++ other.parts.tail,
@@ -102,4 +116,49 @@ object InterpolatedString extends InterpolatedTextC[String, InterpolatedString] 
   extension (is: InterpolatedString[String]) {
     def mkString: String = is.parts.zipAll(is.args, "", "").map((p,a) => p+a).mkString
   }
+
+  class Builder[T] extends mutable.ReusableBuilder[T, InterpolatedString[T]] {
+    private val parts: mutable.Builder[String, Seq[String]] = Seq.newBuilder[String]
+    private val args: mutable.Builder[T, Seq[T]] = Seq.newBuilder[T]
+    private val lastPart = new StringBuilder
+
+    def addAll(string: String): this.type = {
+      lastPart.append(string)
+      this
+    }
+
+    override def addOne(arg: T): this.type = {
+      parts += lastPart.result()
+      args += arg
+      lastPart.clear()
+      this
+    }
+
+    inline final def ++=(string: String): this.type = addAll(string)
+    inline final def ++=(interpolatedString: InterpolatedString[T]): this.type = addAll(interpolatedString)
+
+    def addAll(interpolatedString: InterpolatedString[T]): this.type = {
+      val pi = interpolatedString.parts.iterator
+      val ai = interpolatedString.args.iterator
+      addAll(pi.next())
+      while (ai.hasNext) {
+        addOne(ai.next())
+        addAll(pi.next())
+      }
+      this
+    }
+
+    override def result(): InterpolatedString[T] = {
+      parts += lastPart.result()
+      InterpolatedString(parts.result(), args.result())
+    }
+
+    override def clear(): Unit = {
+      parts.clear()
+      args.clear()
+      lastPart.clear()
+    }
+  }
+
+  def newBuilder[T]: Builder[T] = new Builder
 }

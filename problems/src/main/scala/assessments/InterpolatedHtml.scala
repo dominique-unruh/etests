@@ -24,6 +24,9 @@ final class InterpolatedHtml[+T](val interpolatedString: InterpolatedString[T])
   override def flatMapArgs(f: T => Html): Html =
     Html(interpolatedString.flatMapArgs(t => f(t).html))
 
+  override def flatMapArgs[U](f: T => InterpolatedHtml[U]): InterpolatedHtml[U] =
+    new InterpolatedHtml(interpolatedString.flatMapArgs(t => f(t).interpolatedString))
+
   override def args: Seq[T] =
     interpolatedString.args
 

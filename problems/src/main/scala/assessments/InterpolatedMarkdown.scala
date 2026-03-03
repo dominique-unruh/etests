@@ -23,6 +23,9 @@ final class InterpolatedMarkdown[+T](val interpolatedString: InterpolatedString[
   override def flatMapArgs(f: T => Markdown): Markdown =
     Markdown(interpolatedString.flatMapArgs(t => f(t).markdown))
 
+  override def flatMapArgs[U](f: T => InterpolatedMarkdown[U]): InterpolatedMarkdown[U] =
+    new InterpolatedMarkdown(interpolatedString.flatMapArgs(t => f(t).interpolatedString))
+
   override def args: Seq[T] =
     interpolatedString.args
 

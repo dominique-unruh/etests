@@ -1,5 +1,7 @@
 package assessments
 
+import scala.collection.mutable
+
 /** Common interface for different variants of interpolated text.
  * See [[InterpolatedString]] for an explanation.
  * */
@@ -10,6 +12,7 @@ trait InterpolatedText[+T, Text, Self[+U] <: InterpolatedText[U, Text, Self]] {
   def isComplete: Boolean
   def completeText: Text
   def flatMapArgs(f: T => Text): Text
+  def flatMapArgs[U](f: T => Self[U]): Self[U]
   def args: Seq[T]
   def ++[U >: T](other: Self[U]): Self[U]
 }
