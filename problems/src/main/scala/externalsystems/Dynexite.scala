@@ -1,8 +1,7 @@
 package externalsystems
 
 import scala.language.implicitConversions
-
-import assessments.pageelements.{AnswerElement, MultipleChoice}
+import assessments.pageelements.{AnswerElement, InputElement, MultipleChoice}
 import assessments.{Assessment, ElementName, Exam, ExceptionContext, ExceptionWithContext, MarkdownAssessment, Points}
 import externalsystems.Dynexite.ResultInputFieldKey
 import upickle.core.AbortException
@@ -364,6 +363,8 @@ object Dynexite {
       builder.toMap
     }
 
+    val answerElements = Map.from(elements.map(e => e.name -> e))
+
     val answers = mutable.Map[ElementName, String]()
 
     val subRegex = "(.*)_sub_([0-9]+)_([0-9]+)".r
@@ -375,10 +376,15 @@ object Dynexite {
          if name != "COMMENT_FIELD") {
       val elementName = expectedNames.getOrElse(name,
           throw ExceptionWithContext(s"$name (answer name from Dynexite/Stack) not in the list of input fields of ${assessment.name} (${expectedNames.keys.mkString(", ")})",
-            name, assessment, expectedNames)
-      )
+            name, assessment, expectedNames))
       assert(!answers.contains(elementName))
-      answers.update(elementName, value)
+      val processedValue = answerElements(elementName) match {
+        case _: InputElement => value
+        case choice: MultipleChoice =>
+          choice.options.keys.toSeq(Integer.parseInt(value) - 1)
+      }
+
+      answers.update(elementName, processedValue)
     }
 
     val matrices: mutable.Map[String, mutable.Map[(Int, Int), String]] = mutable.Map()
