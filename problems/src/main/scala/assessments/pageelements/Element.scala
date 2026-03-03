@@ -37,4 +37,6 @@ case class ElementAction(element: ElementName, data: JsValue)
 object ElementAction {
   def error(message: String): ElementAction =
     ElementAction(ElementName.errordisplay, JsObject(Map("message" -> JsString(message))))
+  def extraData(data: String): ElementAction =
+    ElementAction(ElementName.extraData, JsObject(Map("data" -> JsString(data))))
 }

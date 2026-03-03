@@ -306,4 +306,14 @@ object Utils {
     }
     None
   }
+
+  /** Returns an exception message and prints whole stack trace */  
+  def exceptionMessage(e: Throwable): String = e match {
+    case e: ExceptionWithContext =>
+      e.printStackTrace()
+      e.getMessage
+    case e: Throwable =>
+      e.printStackTrace()
+      e.toString
+  }
 }

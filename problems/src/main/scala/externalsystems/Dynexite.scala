@@ -364,12 +364,15 @@ object Dynexite {
     val answers = mutable.Map[ElementName, String]()
 
     val subRegex = "(.*)_sub_([0-9]+)_([0-9]+)".r
-    
+
+    var comment = ""
+
     for ((name, value) <- block.answers;
-         if !subRegex.matches(name)) {
+         if !subRegex.matches(name)
+         if name != "COMMENT_FIELD") {
       val elementName = expectedNames.getOrElse(name,
-        throw ExceptionWithContext(s"$name (answer name from Dynexite/Stack) not in the list of input fields of ${assessment.name} (${expectedNames.keys.mkString(", ")})",
-          name, assessment, expectedNames)
+          throw ExceptionWithContext(s"$name (answer name from Dynexite/Stack) not in the list of input fields of ${assessment.name} (${expectedNames.keys.mkString(", ")})",
+            name, assessment, expectedNames)
       )
       assert(!answers.contains(elementName))
       answers.update(elementName, value)
@@ -405,6 +408,13 @@ object Dynexite {
     for (expected <- expectedNames.values
          if !answers.contains(expected))
       answers.put(expected, "")
+
+    block.answers.get("COMMENT_FIELD") match {
+      case None | Some("") =>
+        answers.put(ElementName.extraData, "")
+      case Some(value) =>
+        answers.put(ElementName.extraData, "Comment field: "+value)
+    }
 
     answers.toMap
   }

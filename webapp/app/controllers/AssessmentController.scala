@@ -102,11 +102,17 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     Ok(answersToActions(assessment, answers))
   }
 
-  private def answersToActions(assessment: Assessment, answers: Map[ElementName, String]): JsArray =
-    JsArray(
-      for ((element, content) <- answers.toSeq;
-           action <- assessment.pageElements(element).asInstanceOf[AnswerElement].setAction(content))
-      yield elementActionAsJson(action))
+  private def answersToActions(assessment: Assessment, answers: Map[ElementName, String]): JsArray = {
+    val actions = Seq.newBuilder[ElementAction]
+    for ((element, content) <- answers.toSeq) {
+      if (element == ElementName.extraData)
+        actions += ElementAction.extraData(content) 
+      else
+        actions ++= assessment.pageElements(element).asInstanceOf[AnswerElement].setAction(content)
+    }
+
+    JsArray(actions.result().map(elementActionAsJson))
+  }
 
   def loadAnswers(examName: String, assessmentName: String, registrationNumber: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     given ExceptionContext = ExceptionContext.initialExceptionContext("Responding to web-query for student answers from Dynexite exam", assessmentName, registrationNumber)
@@ -118,7 +124,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
       Ok(answersToActions(assessment, answers))
     } catch {
       case e: Throwable =>
-        Ok(JsArray(Seq(elementActionAsJson(ElementAction.error(ExceptionUtils.getStackTrace(e))))))
+        Ok(JsArray(Seq(elementActionAsJson(ElementAction.error(Utils.exceptionMessage(e))))))
     }
   }
 

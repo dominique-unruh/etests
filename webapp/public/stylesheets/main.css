@@ -41,3 +41,16 @@ img {
     max-width: 100%;
     height: auto;
 }
+
+.internal-error {
+    color:red;
+    font-weight: bold;
+    /* Preserve indentation, but wrap long lines */
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.extra-data-text {
+    color: green;
+    font-weight: bold;
+}

@@ -65,6 +65,7 @@
                 <a href="javascript:loadReference()">Load reference...</a> |
                 <a href="javascript:dynexiteAnswers()">Raw Dynexite answers...</a>
                 <h3><a href="javascript:sendState()">Grading (<span id="grading-points"></span>/@reachablePoints points)</a></h3>
+
                 <div id="grading-report"></div>
                 <script>
                     function @(ElementName.grader.jsElementCallbackName)(json) {
@@ -74,10 +75,21 @@
                     }
                 </script>
 
+                <div>
+                    <h3>Extra data</h3>
+                    <span id="extra-data" class="extra-data-text"></span>
+                </div>
+                <script>
+                    function @(ElementName.extraData.jsElementCallbackName)(json) {
+                        console.error(json);
+                        document.getElementById('extra-data').textContent = json['data']
+                    }
+                </script>
+
                 <div id="errors-section" style="display: none">
                     <h3>Internal errors</h3>
                     <button onclick="clearErrors()">Clear</button>
-                    <pre id="errors" style="color:red; font-weight: bold"></pre>
+                    <pre id="errors" class="internal-error"></pre>
                     <script>
                         function @(ElementName.errordisplay.jsElementCallbackName)(json) {
                             document.getElementById('errors-section').style.display = 'block';

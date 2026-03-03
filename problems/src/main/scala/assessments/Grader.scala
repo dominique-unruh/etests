@@ -3,11 +3,12 @@ package assessments
 import assessments.Comment.Kind
 import assessments.ExceptionContext.initialExceptionContext
 import assessments.Grader.logger
-import assessments.pageelements.{AnswerElement, ElementAction, InputElement, DynamicElement}
+import assessments.pageelements.{AnswerElement, DynamicElement, ElementAction, InputElement}
 import com.typesafe.scalalogging.Logger
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.commons.text.StringEscapeUtils
 import play.api.libs.json.{JsNumber, JsObject, JsString, JsValue}
+import utils.Utils
 
 abstract class Grader(val name: ElementName) extends DynamicElement {
   override def renderHtml: Html = Html.empty
@@ -42,9 +43,7 @@ abstract class Grader(val name: ElementName) extends DynamicElement {
       report ++= Comment.seqToHtml(GradingContext.comments(using context).toSeq).html
       Seq(ElementAction(name, JsObject(Map("points" -> JsString(context.points.decimalFractionString(2)), "report" -> JsString(report.result())))))
     } catch {
-      case e : Throwable =>
-        val message = ExceptionUtils.getStackTrace(e)
-        Seq(ElementAction.error(message))
+      case e: Throwable => Seq(ElementAction.error(Utils.exceptionMessage(e)))
     }
   }
 }
