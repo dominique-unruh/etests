@@ -120,12 +120,27 @@ object Utils {
     prop
   }
 
+  def getSystemPropertyOptional(property: String, description: String): Option[String] = {
+    loadSystemProperties()
+    Option(System.getProperty(property))
+  }
+
   def getSystemPropertyPath(property: String, fileDescription: String): Path = {
     val path = getSystemProperty(property, s"path to $fileDescription")
     val path2 = Path.of(path)
     if (!path2.isAbsolute)
       throw new RuntimeException(s"$property in java.properties must refer to an absolute path")
     path2
+  }
+
+  def getSystemPropertyPathOptional(property: String, fileDescription: String): Option[Path] = {
+    val path = getSystemProperty(property, s"path to $fileDescription")
+    if (path == null)
+      return None
+    val path2 = Path.of(path)
+    if (!path2.isAbsolute)
+      throw new RuntimeException(s"$property in java.properties must refer to an absolute path")
+    Some(path2)
   }
 
   def getSystemPropertyClass[T](property: String, classDescription: String)(implicit typeTag: TypeTag[T]): Class[T] = {
@@ -224,9 +239,12 @@ object Utils {
   case class Timeout(message: String, extraData: Any*)(implicit context: ExceptionContext) extends ExceptionWithContext(message, extraData)
   /** Runs code with a timeout. Far from perfect: the code may continue running in the background
    * because JVM does not support killing threads (just asking them in a friendly way).
-   * Tasks will stop fully when they call [[checkInterrupt]] or in certain System operations (like waiting) */
+   * Tasks will stop fully when they call [[checkInterrupt]] or in certain System operations (like waiting).
+   *
+   * @throws Timeout if the timeout occurs.
+   * @throws Throwable exceptions from the `body` will be forwarded. */
   def runWithTimeout[A](timeout: Duration, label: String, body: => A)(implicit context: ExceptionContext): A = {
-    var threadPromise = Promise[Thread]()
+    val threadPromise = Promise[Thread]()
     val executor = Executors.newSingleThreadExecutor((r: Runnable) => {
       val thread = new Thread(r)
       threadPromise.success(thread)

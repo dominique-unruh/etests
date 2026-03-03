@@ -19,7 +19,7 @@ import externalsystems.Dynexite
 import io.github.classgraph.{ClassGraph, ClassInfoList}
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.commons.text.StringEscapeUtils
-import utils.{Cache, IndentedInterpolator}
+import utils.{Cache, IndentedInterpolator, Utils}
 
 import scala.annotation.experimental
 import scala.jdk.CollectionConverters.CollectionHasAsScala
@@ -181,5 +181,13 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
   def dynexiteLink(examName: String, regno: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     val exam = getExam(examName)
     Redirect(Dynexite.getLinkForLearner(exam, regno))
+  }
+
+  def defaultRedirect(): Action[AnyContent] = Action {
+    Utils.getSystemPropertyOptional("current.exam", "Currently edited exam (for preview)") match {
+      case Some(exam) => Redirect(routes.AssessmentController.exam(exam))
+      case None => Redirect(routes.AssessmentController.allExams())
+    }
+
   }
 }
