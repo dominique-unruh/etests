@@ -12,6 +12,25 @@ extends InterpolatedText[T, String, InterpolatedString] {
   override def mapArgs[U](f: T => U) : InterpolatedString[U] =
     new InterpolatedString[U](parts, args.map(f))
 
+  def stripCommonIndentation: InterpolatedString[T] = {
+    val exampleCompletion = flatMapArgs({ _ => "X" })
+    var minIndent = Int.MaxValue
+    for (line <- exampleCompletion.linesIterator
+         if !(raw"""^\s*$$""".r.matches(line))) {
+      val indent = "^ *".r.findFirstIn(line).get
+      minIndent = Math.min(minIndent, indent.length)
+    }
+    if (minIndent == Int.MaxValue || minIndent == 0)
+      this
+    else {
+      val indentRegex = s"(?s)\n {$minIndent}".r
+      val parts1 = parts.map(s => indentRegex.replaceAllIn(s, "\n"))
+      val indentRegex2 = s"(?s)^ {$minIndent}".r
+      val parts2 = Seq(indentRegex2.replaceFirstIn(parts1.head, "")) ++ parts1.tail
+      InterpolatedString(parts2, args)
+    }
+  }
+
   override def mapCompleteText(f: String => String): InterpolatedString[T] = {
     val marker1 = '\uffef'
     val marker2 = '\ufeff'

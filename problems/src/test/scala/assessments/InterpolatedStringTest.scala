@@ -17,4 +17,11 @@ class InterpolatedStringTest extends AnyFunSuiteLike {
     val expected = InterpolatedString(Seq("test","end this","is"), Seq(2,1))
     assert(is2 == expected)
   }
+
+  test("stripCommonIndentation") {
+    val str = InterpolatedString(Seq("  x\n\n ", "  \n    z\n"), Seq(1))
+    val str2 = str.stripCommonIndentation.flatMapArgs(_.toString)
+    println(s"[$str2]")
+    assert(str2 == " x\n\n1  \n   z\n")
+  }
 }
