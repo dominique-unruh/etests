@@ -75,6 +75,9 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
   /** See [[xorBit]] */
   def orBit(other: SympyExpr) = SympyExpr(SympyExpr.orBit(python, other.python))
 
+  /** Invokes `this[index]` in Python (e.g., get entry of a vector) */
+  def arrayIndex(index: Int) = SympyExpr(SympyExpr.arrayIndex(python, index))
+
   @targetName("substituteString")
   def substitute(map: (String, SympyExpr)*): SympyExpr =
     substitute(map.map { (k, v) => (SympyExpr.symbol(k), v) } *)
@@ -220,6 +223,7 @@ class gcd(sympy.Function):
   lazy val xorBit: py.Dynamic = Python.define("def xorBit(a,b): from sympy import Integer; return (a+b)%Integer(2)\nreturn xorBit")
   lazy val andBit: py.Dynamic = Python.define("def xorBit(a,b): from sympy import Integer; return (a*b)%Integer(2)\nreturn xorBit")
   lazy val orBit: py.Dynamic = Python.define("def orBit(a,b): from sympy import Integer; return max(a%Integer(2),b%Integer(2))\nreturn orBit")
+  lazy val arrayIndex: py.Dynamic = Python.define("def arrayIndex(a,b): return a[b]\nreturn arrayIndex")
   def array(components: SympyExpr*): SympyExpr = SympyExpr(sympy.Array(components.map(_.python).toPythonProxy))
   def matrix(rows: SympyExpr*): SympyExpr = SympyExpr(sympy.Matrix(rows.map(_.python).toPythonProxy))
   /** Converts a string into a SympyExpr using the sympy-parser.

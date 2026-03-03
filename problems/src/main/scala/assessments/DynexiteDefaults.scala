@@ -92,6 +92,7 @@ object DynexiteDefaults {
     def latex(using gradingContext: GradingContext, mathContext: MathContext): String = math.toSympyMC(allowUndefined = true).latex
     def math(using gradingContext: GradingContext): StackMath = ie.stringValue.math(ie)
     def refmath: StackMath = ie.reference.math(ie)
+    /** See another `mathTry` for documentation. */
     def mathTry(using gradingContext: GradingContext): StackMath =
       ie.stringValue.mathTry(ie.humanName, ie)
   }
