@@ -119,7 +119,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     try {
       val exam = getExam(examName)
       val assessment = getAssessment(exam, assessmentName)
-      val answers = Dynexite.getDynexiteAnswers(assessment = assessment, exam = exam, registrationNumber = registrationNumber)
+      val answers = Dynexite.getDynexiteAnswers(problem = assessment, exam = exam, registrationNumber = registrationNumber)
       assert(answers.forall(_._2 != null))
       Ok(answersToActions(assessment, answers))
     } catch {

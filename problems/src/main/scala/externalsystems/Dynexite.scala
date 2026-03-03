@@ -238,27 +238,30 @@ object Dynexite {
     }
   }
 
-  def getDynexiteAnswers(assessment: Assessment,
+  def getDynexiteAnswers(problem: Assessment,
                          exam: Exam,
                          registrationNumber: String)
                         (implicit exceptionContext: ExceptionContext):
   Map[ElementName, String] = {
-    given ExceptionContext = ExceptionContext.addToExceptionContext(s"Matching Dynexite answers up with our exam implementation for $registrationNumber, ${assessment.name}", registrationNumber, assessment)
+    given ExceptionContext = ExceptionContext.addToExceptionContext(s"Matching Dynexite answers up with our exam implementation for $registrationNumber, ${problem.name}", registrationNumber, problem)
     val (answers, points, reachable) = resultsByLearner(exam).get(registrationNumber) match {
       case None => throw ExceptionWithContext(s"No student with registration number $registrationNumber known.")
       case Some(None) => throw ExceptionWithContext(s"Student with registration number $registrationNumber made no attempt.")
       case Some(Some(attempt)) =>
-        val assessmentIndex = exam.assessmentIndex(assessment)
-        if (assessmentIndex >= attempt.items.length)
-          throw ExceptionWithContext("Dynexite has less items than there are problems?!")
-        val item = attempt.items(assessmentIndex)
-        val assessmentDynexiteName = assessment.tags.getOrElse(dynexiteQuestionName, assessment.name)
-        if (item.name != assessmentDynexiteName)
-          throw ExceptionWithContext(s"Dynexite problem has name '${item.name}', our problem has name '$assessmentDynexiteName'. Should be equal.")
-        getDynexiteAnswers(item = item, assessment = assessment)
+        assert(Utils.isDistinct(attempt.items.map(_.name)))
+
+        val dynexiteProblems = Map.from(attempt.items.map(item => item.name -> item))
+        val examProblems = Map.from(exam.problems.map(problem => problem.tags.getOrElse(dynexiteQuestionName, problem.name) -> problem))
+
+        if ((dynexiteProblems.keySet -- examProblems.keySet).nonEmpty)
+          throw ExceptionWithContext(s"The following problems exist in Dynexite but not in our exam (fix name or use tag dynexiteQuestionName?): ${(dynexiteProblems.keySet -- examProblems.keySet).mkString(", ")}")
+        if ((examProblems.keySet -- dynexiteProblems.keySet).nonEmpty)
+          throw ExceptionWithContext(s"The following problems exist in our exam but not in Dynexite: ${(examProblems.keySet -- dynexiteProblems.keySet).mkString(", ")}")
+
+        getDynexiteAnswers(item = dynexiteProblems(problem.tags.getOrElse(dynexiteQuestionName, problem.name)), assessment = problem)
     }
-    if (reachable != assessment.reachablePoints)
-      throw ExceptionWithContext(s"Dynexite says there are $reachable reachable points, we say ${assessment.reachablePoints}")
+    if (reachable != problem.reachablePoints)
+      throw ExceptionWithContext(s"Dynexite says there are $reachable reachable points, we say ${problem.reachablePoints}")
     answers
   }
 
