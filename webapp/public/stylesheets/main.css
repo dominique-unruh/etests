@@ -54,3 +54,9 @@ img {
     color: green;
     font-weight: bold;
 }
+
+.math-preview {
+    font-weight: bold;
+    background-color: lightgray;
+    display: inline-block;
+}

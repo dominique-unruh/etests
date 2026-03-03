@@ -17,7 +17,7 @@ class MathPreviewElement(val name: ElementName,
                          val latexRenderer: String => String) extends DynamicElement {
   override val tags: Tag.Tags[MathPreviewElement.this.type] = Tags.empty
   override def renderHtml: Html =
-    Html(ind"""<span style="font-weight: bold; background-color: lightgray;" id="${name.jsElementId}">Preview...</span><script>
+    Html(ind"""<span class="math-preview" id="${name.jsElementId}">Preview...</span><script>
          |  function ${name.jsElementCallbackName}(json) {
          |    let span = document.getElementById("${name.jsElementId}");
          |    console.log(span);
@@ -41,7 +41,7 @@ class MathPreviewElement(val name: ElementName,
 
   override def renderStaticHtml(answers: Map[ElementName, String]): Html = {
     val rendered = contentToPreview(answers(observed))
-    Html(s"""<span class="mathjax-render" style="background-color: lightgray;">$rendered</span>""")
+    Html(s"""<span class="mathjax-render" class="math-preview">$rendered</span>""")
   }
 
   override def updateAction(assessment: Assessment, state: Map[ElementName, JsValue]): IterableOnce[ElementAction] = {
