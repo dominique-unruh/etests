@@ -16,7 +16,7 @@ import scala.annotation.targetName
 
 object StackUtils {
   // TODO memoize. But this needs first a hashable SympyExpr or something
-  @deprecated
+  @deprecated("Use checkEqualityNew instead")
   def checkEquality(x: SympyExpr, y: SympyExpr, assumption: SympyAssumption = SympyAssumption.positive): Boolean =
     x.algebraicEqual(y, assumption)
 
@@ -77,7 +77,7 @@ object StackUtils {
     countMapped(Seq(x,y)){ case (map, Seq(x,y)) => f(map)(x,y) }
 
 
-  def checkEqualityDebug(x: StackMath, y: StackMath,
+/*  def checkEqualityDebug(x: StackMath, y: StackMath,
                          mapLeft: SympyExpr => SympyExpr = identity,
                          mapRight: SympyExpr => SympyExpr = identity,
                         )(using MathContext): Seq[(Map[String, StackMath], SympyExpr, SympyExpr, Boolean)] = {
@@ -87,8 +87,20 @@ object StackUtils {
       val y2 = mapRight(y.mapVariables(subst).toSympyMC(allowUndefined = false))
       (subst, x2, y2, x2.algebraicEqual(y2))
     }
-  }
+  }*/
 
+  /** Checks equality `value == expected`.
+   *
+   * If `value` and `expected` are number-expressions (i.e., contain no variables), the check is done by Sympy.
+   *
+   * If they contain variables, the equality check is done for every combination of test values configured in the [[MathContext]]
+   * using [[MathContext.testValues]] or [[MathContext.fixVar]].
+   *
+   * If variables occur for which there are no test values, an exception is thrown.
+   *
+   * @param mapLeft This function is applied to `value` before testing (but after substituting test values)
+   * @param mapRight This function is applied to `expected` before testing (but after substituting test values)
+   * */
   def checkEqualityNew(value: StackMath, expected: StackMath,
                        mapLeft: SympyExpr => SympyExpr = identity,
                        mapRight: SympyExpr => SympyExpr = identity)(using MathContext): Boolean =
