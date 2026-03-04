@@ -4,7 +4,7 @@ import assessments.DynexiteDefaults.*
 import assessments.GradingContext.*
 import assessments.InterpolatedMarkdown.md
 import assessments.pageelements.{Element, InputElement}
-import assessments.stack.StackMath
+import assessments.math.StackMath
 import assessments.{DynexiteDefaults, ExceptionContext, GradingContext, InterpolatedMarkdown, MarkdownAssessment, MathContext, Points}
 
 object ExampleProblem extends MarkdownAssessment {

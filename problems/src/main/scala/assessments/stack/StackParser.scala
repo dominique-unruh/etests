@@ -1,8 +1,9 @@
 package assessments.stack
 
+import assessments.math.StackMath
 import assessments.{ElementName, Html, SyntaxError}
 import assessments.pageelements.InputElement
-import assessments.stack.StackMath.{Operation, Ops}
+import assessments.math.StackMath.{Operation, Ops}
 import externalsystems.MoodleStack.{Question, Quiz, inputElementToMoodle}
 import ujson.{Arr, Str, transform}
 import utils.Docker

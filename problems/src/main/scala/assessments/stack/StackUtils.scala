@@ -1,6 +1,7 @@
 package assessments.stack
 
-import StackMath.*
+import assessments.math.StackMath
+import assessments.math.StackMath.*
 import assessments.{ExceptionContext, MathContext, UserError}
 import assessments.stack.SympyExpr.{ErrorTerm, _equalsTrue, function, get_functions, get_symbols, logger, sympy}
 import com.typesafe.scalalogging.Logger
@@ -9,9 +10,6 @@ import me.shadaj.scalapy.py.{PyQuote, PythonException, SeqConverters}
 import utils.{Python, Utils}
 
 import scala.annotation.targetName
-
-
-
 
 
 object StackUtils {

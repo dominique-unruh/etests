@@ -1,8 +1,9 @@
-package assessments.stack
+package assessments.math
 
-import assessments.{ExceptionContext, ExceptionWithContext, MathContext, UserError}
-import assessments.stack.StackMath.{Bool, Foreign, Funcall, Integer, Operation, Ops, Sympy, Variable, addToStringBuilderCommaSep}
+import assessments.math.StackMath.{Bool, Foreign, Funcall, Integer, Operation, Ops, Sympy, Variable, addToStringBuilderCommaSep}
 import assessments.stack.SympyExpr.sympy
+import assessments.stack.{SympyExpr}
+import assessments.{ExceptionContext, ExceptionWithContext, MathContext, UserError}
 import me.shadaj.scalapy.py
 import utils.TypeChecker
 

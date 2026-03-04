@@ -1,6 +1,7 @@
 package assessments
 
 import assessments.GradingContext.comments
+import assessments.math.StackMath
 
 import scala.language.implicitConversions
 import assessments.pageelements.*
@@ -8,7 +9,7 @@ import assessments.pageelements.DynamicElement.humanName
 import assessments.pageelements.MultipleChoice.Style.select
 import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
-import assessments.stack.{StackMath, SympyAssumption, SympyExpr}
+import assessments.stack.{SympyAssumption, SympyExpr}
 import com.typesafe.scalalogging.Logger
 import utils.Tag.Tags
 import utils.Utils

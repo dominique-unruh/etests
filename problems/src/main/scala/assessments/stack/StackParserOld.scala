@@ -1,7 +1,8 @@
 package assessments.stack
 
 import assessments.SyntaxError
-import assessments.stack.StackMath.{Bool, Funcall, Integer, Operation, Ops, Variable}
+import assessments.math.StackMath
+import assessments.math.StackMath.{Bool, Funcall, Integer, Operation, Ops, Variable}
 
 @deprecated
 // TODO remove

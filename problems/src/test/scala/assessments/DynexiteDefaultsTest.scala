@@ -2,7 +2,7 @@ package assessments
 
 import assessments.DynexiteDefaults.{InputElementMethods, PageElementMethods, input}
 import assessments.GradingContext.comments
-import assessments.stack.StackMath
+import assessments.math.StackMath
 import org.scalatest.funsuite.AnyFunSuiteLike
 
 class DynexiteDefaultsTest extends AnyFunSuiteLike {
