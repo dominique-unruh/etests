@@ -77,7 +77,7 @@ object StackUtils {
     countMapped(Seq(x,y)){ case (map, Seq(x,y)) => f(map)(x,y) }
 
 
-/*  def checkEqualityDebug(x: StackMath, y: StackMath,
+  def checkEqualityDebug(x: StackMath, y: StackMath,
                          mapLeft: SympyExpr => SympyExpr = identity,
                          mapRight: SympyExpr => SympyExpr = identity,
                         )(using MathContext): Seq[(Map[String, StackMath], SympyExpr, SympyExpr, Boolean)] = {
@@ -87,7 +87,7 @@ object StackUtils {
       val y2 = mapRight(y.mapVariables(subst).toSympyMC(allowUndefined = false))
       (subst, x2, y2, x2.algebraicEqual(y2))
     }
-  }*/
+  }
 
   /** Checks equality `value == expected`.
    *

@@ -22,11 +22,11 @@ object TypeChecker {
       }
   }
 
-  given union[A, B](using aChecker: TypeChecker[A], bChecker: TypeChecker[B]): TypeChecker[A | B] =
+  def union[A, B](aChecker: TypeChecker[A], bChecker: TypeChecker[B]): TypeChecker[A | B] =
     UnionTypeChecker(aChecker, bChecker)
 
-  given BasicTypeChecker[Long]
-  given BasicTypeChecker[Int]
-  given BasicTypeChecker[String]
-  given BasicTypeChecker[Boolean]
+  given long: BasicTypeChecker[Long] = new BasicTypeChecker[Long]
+  given int: BasicTypeChecker[Int] = new BasicTypeChecker[Int]
+  given string: BasicTypeChecker[String] = new BasicTypeChecker[String]
+  given boolean: BasicTypeChecker[Boolean] = new BasicTypeChecker[Boolean]
 }
