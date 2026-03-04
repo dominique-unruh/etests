@@ -44,16 +44,21 @@ case class MathContext private (variables: Map[String, VarOptions],
   def testValues(name: String, values: StackMath*): MathContext =
     symbol(name, VarOptions(testValues = values))
   /** Specifies the behavior of the function or operator `name` by giving an evaluation function. */
+  @deprecated
   def sympyFunction(name: String | StackMath.Ops, function: PartialFunction[Seq[SympyExpr], SympyExpr]): MathContext =
     copy(sympyFunctions = sympyFunctions + (name -> function))
+  @deprecated
   def sympyFunction(name: String | StackMath.Ops, function: py.Dynamic, argNumber: Int): MathContext = {
     sympyFunction(name, {
       case args if args.length == argNumber => SympyExpr(function(args.map(_.python)*)) 
     })
   }
+
+  @deprecated
   def preprocessor(preprocessor: StackMath => StackMath): MathContext =
     copy(preprocessors = preprocessors.appended(preprocessor))
 
+  @deprecated
   def preprocessor(functionName: String, preprocessor: Seq[StackMath] => StackMath): MathContext =
     this.preprocessor { m => m.mapFunction(functionName, preprocessor) }
 
@@ -64,8 +69,8 @@ case class MathContext private (variables: Map[String, VarOptions],
   /** Adds an interpretation to function `name`.
    *
    * Note: by default, this does not overwrite previous interpretations.
-   * Instead, when a function is evaluated, the result of the first-add interpretation that succeeds is used.
-   * */
+   * Instead, when a function is evaluated (e.g., [[StackMath.eval]]), the result of the first-add interpretation that succeeds is used.
+   **/
   def withFunctionPartial(name: String | StackMath.Ops, function: PartialFunction[Seq[Any], Any], overwrite: Boolean = false): MathContext = {
     val existing = if (overwrite) Seq.empty else functions.getOrElse(name, Seq.empty)
     copy(functions = functions.updated(name, existing appended function))
@@ -75,7 +80,7 @@ case class MathContext private (variables: Map[String, VarOptions],
     withFunctionPartial(name, { case Seq(x) => function(x.asInstanceOf[X]) }, overwrite = overwrite)
 
   def withFunction2[X, Y](name: String | StackMath.Ops, function: (X, Y) => Any, overwrite: Boolean = false): MathContext =
-    withFunctionPartial(name, { case Seq(x, y) => function(x.asInstanceOf[X], y.asInstanceOf[Y]) }, overwrite = overwrite) 
+    withFunctionPartial(name, { case Seq(x, y) => function(x.asInstanceOf[X], y.asInstanceOf[Y]) }, overwrite = overwrite)
 }
 
 object MathContext {

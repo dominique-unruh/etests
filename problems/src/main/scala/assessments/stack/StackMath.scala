@@ -279,6 +279,7 @@ object StackMath {
   case class Variable(name: String) extends StackMath
   case class Integer(int: BigInt) extends StackMath
   case class Bool(bool: Boolean) extends StackMath
+  @deprecated
   case class Sympy(op: SympyOperator, arguments: StackMath*) extends StackMath
   case class Foreign(value: Any) extends StackMath
 
@@ -297,8 +298,7 @@ object StackMath {
       new SympyOperator(name, function)
     }
   }
-  
-  
+
   def addToStringBuilderCommaSep(builder: StringBuilder, items: IterableOnce[StackMath]): Unit = {
     val iterator = items.iterator
     if (iterator.hasNext) {

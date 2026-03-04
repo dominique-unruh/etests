@@ -1,7 +1,7 @@
 package assessments.stack
 
 import StackMath.*
-import assessments.{MathContext, UserError}
+import assessments.{ExceptionContext, MathContext, UserError}
 import assessments.stack.SympyExpr.{ErrorTerm, _equalsTrue, function, get_functions, get_symbols, logger, sympy}
 import com.typesafe.scalalogging.Logger
 import me.shadaj.scalapy.py
@@ -15,7 +15,6 @@ import scala.annotation.targetName
 
 
 object StackUtils {
-  // TODO memoize. But this needs first a hashable SympyExpr or something
   @deprecated("Use checkEqualityNew instead")
   def checkEquality(x: SympyExpr, y: SympyExpr, assumption: SympyAssumption = SympyAssumption.positive): Boolean =
     x.algebraicEqual(y, assumption)
@@ -77,6 +76,7 @@ object StackUtils {
     countMapped(Seq(x,y)){ case (map, Seq(x,y)) => f(map)(x,y) }
 
 
+  @deprecated
   def checkEqualityDebug(x: StackMath, y: StackMath,
                          mapLeft: SympyExpr => SympyExpr = identity,
                          mapRight: SympyExpr => SympyExpr = identity,
@@ -101,6 +101,7 @@ object StackUtils {
    * @param mapLeft This function is applied to `value` before testing (but after substituting test values)
    * @param mapRight This function is applied to `expected` before testing (but after substituting test values)
    * */
+  @deprecated
   def checkEqualityNew(value: StackMath, expected: StackMath,
                        mapLeft: SympyExpr => SympyExpr = identity,
                        mapRight: SympyExpr => SympyExpr = identity)(using MathContext): Boolean =
@@ -111,4 +112,19 @@ object StackUtils {
         mapLeft(x.toSympyMC(allowUndefined = false))
           .algebraicEqual(mapRight(y.toSympyMC(allowUndefined = false)))
       }
+
+  /** Checks equality `value == expected`.
+   *
+   * If `value` and `expected` contain no variables, the check is done by running [[StackMath.eval]] on
+   * both and performing an equality check on the resulting rhs and lhs.
+   *
+   * If they contain variables, the equality check is done for every combination of test values configured in the [[MathContext]]
+   * using [[MathContext.testValues]] or [[MathContext.fixVar]].
+   *
+   * If variables occur for which there are no test values, an exception is thrown.
+   **/
+  def testEquality(value: StackMath, expected: StackMath, equality: (Any,Any) => Boolean)
+                  (using MathContext, ExceptionContext): Boolean = {
+    forallMapped(value, expected) { _ => (x, y) => equality(x.eval[Any], y.eval[Any]) }
+  }
 }
