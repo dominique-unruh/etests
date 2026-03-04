@@ -6,6 +6,9 @@ import assessments.stack.SympyExpr.sympy
 import me.shadaj.scalapy.py
 import utils.TypeChecker
 
+import scala.util.boundary
+import scala.util.boundary.break
+
 sealed trait StackMath {
   def cos: StackMath = Funcall("cos", this)
   def /(other: StackMath): StackMath = Operation(Ops.divide, this, other)
@@ -56,8 +59,7 @@ sealed trait StackMath {
     case Funcall(name, arguments*) => Funcall(f(name), arguments.map(_.mapIdentifiers(f))*)
     case Sympy(op, arguments*) => Sympy(op, arguments.map(_.mapIdentifiers(f))*)
     case Variable(name) => Variable(f(name))
-    case Integer(int) => this
-    case Bool(bool) => this
+    case Integer(_) | Bool(_) | Foreign(_) => this
   }
 
   def mapVariables(f: String => Option[StackMath]): StackMath = this match
@@ -65,8 +67,7 @@ sealed trait StackMath {
     case Sympy(op, arguments*) => Sympy(op, arguments.map(_.mapVariables(f))*)
     case Funcall(name, arguments*) => Funcall(name, arguments.map(_.mapVariables(f))*)
     case Variable(name) => f(name).getOrElse(this)
-    case Integer(int) => this
-    case Bool(bool) => this
+    case Integer(_) | Bool(_) | Foreign(_) => this
 
   def mapVariables(map: Map[String, StackMath]): StackMath = mapVariables(map.get)
 
@@ -107,7 +108,7 @@ sealed trait StackMath {
   def toSympyMC(allowUndefined: Boolean = false,
                 allowUndefinedFunctions: Boolean = false)(using mathContext: MathContext): SympyExpr = {
     def to(math: StackMath): SympyExpr = math match
-      case Operation(operator, arguments@_*) =>
+      case Operation(operator, arguments*) =>
         mathContext.sympyFunctions.get(operator) match
           case Some(function) => function.lift(arguments.map(to)) match
             case Some(value) => value
@@ -133,6 +134,9 @@ sealed trait StackMath {
       case Bool(true) => SympyExpr.`true`
       case Bool(false) => SympyExpr.`false`
       case Sympy(op, arguments*) => op.function(arguments.map(to))
+      case Foreign(sympy: SympyExpr) => sympy
+      case Foreign(value) =>
+        throw RuntimeException(s"Encountered Foreign($value) in .toSympyMC. Not supported.")
 
     to(this.fixValues)
   }
@@ -174,25 +178,36 @@ sealed trait StackMath {
       res
     case Funcall(fname, arguments*) =>
       Funcall(fname, arguments.map(_.mapFunction(name, f))*)
-    case Variable(name) => this
-    case Integer(int) => this
-    case Bool(bool) => this
+    case Variable(_) | Integer(_) | Bool(_) | Foreign(_) => this
 
   def eval[A](using exceptionContext: ExceptionContext, mathContext: MathContext, typeChecker: TypeChecker[A])
              (debug: Boolean = false): A = {
     given ExceptionContext = ExceptionContext.addToExceptionContext(s"Evaluating formula $this", this)
 
+    def applyFunction(name: String | StackMath.Ops, arguments: Seq[StackMath]): Any = {
+      val functions = mathContext.functions(name)
+      val args = arguments.map(e)
+      boundary[Any] {
+        for (f <- functions)
+          f.lift(args) match {
+            case None =>
+            case Some(value) =>
+              break(value)
+          }
+        throw ExceptionWithContext(s"Operator or function applied to wrong number of arguments or wrong types")
+      }
+    }
+
     def e(math: StackMath): Any = {
       val result = math match {
         case StackMath.Funcall(name, arguments*) if mathContext.functions.contains(name) =>
-          val function = mathContext.functions(name)
-          function(arguments.map(e))
+          applyFunction(name, arguments)
         case StackMath.Operation(Ops.equal, x, y) =>
           e(x) == e(y) // TODO make configurable
         case StackMath.Operation(operator, arguments*) =>
-          throw ExceptionWithContext(s"Unknown operator $operator (or wrong number of arguments)")
+          throw ExceptionWithContext(s"Unknown operator $operator")
         case StackMath.Funcall(name, arguments*) =>
-          throw ExceptionWithContext(s"Unknown function $name (or wrong number of arguments)")
+          throw ExceptionWithContext(s"Unknown function $name")
         case StackMath.Variable(name) =>
           throw ExceptionWithContext(s"Encountered variable $name")
         case StackMath.Integer(int) => int // TODO configurable
