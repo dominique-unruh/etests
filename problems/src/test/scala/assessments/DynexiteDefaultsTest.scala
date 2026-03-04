@@ -2,7 +2,7 @@ package assessments
 
 import assessments.DynexiteDefaults.{InputElementMethods, PageElementMethods, input}
 import assessments.GradingContext.comments
-import assessments.math.StackMath
+import assessments.math.Math
 import org.scalatest.funsuite.AnyFunSuiteLike
 
 class DynexiteDefaultsTest extends AnyFunSuiteLike {
@@ -26,7 +26,7 @@ class DynexiteDefaultsTest extends AnyFunSuiteLike {
     val x = input("15")
     val result = x.mathTry
     println(result)
-    assert(result == StackMath.noAnswer)
+    assert(result == Math.noAnswer)
     assert(comments.length == 1)
     assert(comments.head.toPlaintext == "Could not parse x (error: Error parsing 12 + : '+' is an invalid final character in <span class=\"stacksyntaxexample\">12 +</span>), treating as no answer")
   }

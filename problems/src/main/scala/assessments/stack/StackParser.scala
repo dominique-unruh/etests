@@ -1,9 +1,9 @@
 package assessments.stack
 
-import assessments.math.StackMath
+import assessments.math.Math
 import assessments.{ElementName, Html, SyntaxError}
 import assessments.pageelements.InputElement
-import assessments.math.StackMath.{Operation, Ops}
+import assessments.math.Math.{Operation, Ops}
 import externalsystems.MoodleStack.{Question, Quiz, inputElementToMoodle}
 import ujson.{Arr, Str, transform}
 import utils.Docker
@@ -31,18 +31,18 @@ object StackParser {
       MaximaInteger(BigInt(int))
     case _ => throw RuntimeException(s"Invalid json found coming from maxima: $json")
 
-  def maximaToStackMath(maximaTerm: MaximaTerm): StackMath = {
-    def to(term: MaximaTerm): StackMath = term match
+  def maximaToStackMath(maximaTerm: MaximaTerm): Math = {
+    def to(term: MaximaTerm): Math = term match
       case MaximaSymbol(name) =>
         if (!name.startsWith("%"))
-          StackMath.Variable(name)
+          Math.Variable(name)
         else name match
-          case "%i" => StackMath.imaginaryUnit
-          case "%e" => StackMath.eulerConstant
-          case "%pi" => StackMath.pi
+          case "%i" => Math.imaginaryUnit
+          case "%e" => Math.eulerConstant
+          case "%pi" => Math.pi
           case _ => throw RuntimeException(s"Unknown maxima special symbol '$name' encountered in $maximaTerm")
       case MaximaAtom(name) => ???
-      case MaximaInteger(int) => StackMath.Integer(int)
+      case MaximaInteger(int) => Math.Integer(int)
       case MaximaOperation(MaximaAtom(name), args*) =>
         val nameStripped = name.stripSuffix("\"").stripPrefix("\"")
         val (op, iter) = (nameStripped, args.length) match
@@ -64,20 +64,20 @@ object StackParser {
         if (iter)
           args.tail.foldLeft(to(args.head))((t, a) => Operation(op, t, to(a)))
         else
-          StackMath.Operation(op, args.map(to) *)
+          Math.Operation(op, args.map(to) *)
       case MaximaOperation(MaximaSymbol(name), args*) =>
-        StackMath.Funcall(name, args.map(to) *)
+        Math.Funcall(name, args.map(to) *)
 
     to(maximaTerm)
   }
 
   @deprecated
-  def parse(input: String): StackMath = {
+  def parse(input: String): Math = {
     val pageElement = InputElement(ElementName("input"), "reference", Tags())
     parse(input, pageElement)
   }
 
-  def parse(expression: String, inputElement: InputElement): StackMath = {
+  def parse(expression: String, inputElement: InputElement): Math = {
     if (expression.trim.isEmpty)
       throw SyntaxError("empty string is not a valid math expression")
 

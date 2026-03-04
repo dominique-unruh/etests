@@ -3,7 +3,7 @@ package tmp
 import assessments.DynexiteDefaults.{InputElementMethods, elementName, math}
 import assessments.pageelements.InputElement
 import assessments.stack.{StackParser, SympyExpr}
-import assessments.math.StackMath.Ops
+import assessments.math.Math.Ops
 import assessments.stack.StackParser.{maximaToStackMath, parseArray}
 import assessments.{DynexiteDefaults, ElementName, Exam, Html, MathContext, Points, SyntaxError}
 import externalsystems.MoodleStack

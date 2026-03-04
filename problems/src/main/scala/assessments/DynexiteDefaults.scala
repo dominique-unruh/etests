@@ -1,7 +1,7 @@
 package assessments
 
 import assessments.GradingContext.comments
-import assessments.math.StackMath
+import assessments.math.Math
 
 import scala.language.implicitConversions
 import assessments.pageelements.*
@@ -51,7 +51,7 @@ object DynexiteDefaults {
       catch
         case e: SyntaxError => SympyExpr.errorTerm(e.getMessage)
     }
-    def math(inputElement: InputElement): StackMath =
+    def math(inputElement: InputElement): Math =
       parse(str, inputElement)
     /**
      * Attempts to parse and evaluate a mathematical expression from this string
@@ -60,24 +60,24 @@ object DynexiteDefaults {
      * (E.g., `"1+2".mathTry("first question", ans1)`)
      *
      * This method tries to parse the mathematical content (with the parser of `inputElement`)
-     * If the input is empty or contains syntax errors, it returns a "no answer" result ([[StackMath.noAnswer]])
+     * If the input is empty or contains syntax errors, it returns a "no answer" result ([[Math.noAnswer]])
      * and logs appropriate feedback to the grading context.
      *
      * @param name           The human-readable name of the input field, used for error messages
      * @param inputElement   The input element relative to which parsing should take place
-     * @return [[StackMath.noAnswer]] if input is empty or contains syntax errors,
+     * @return [[Math.noAnswer]] if input is empty or contains syntax errors,
      *         otherwise returns the parsed mathematical result from math(inputElement)
      */
-    def mathTry(name: String, inputElement: InputElement)(using gradingContext: GradingContext): StackMath = {
+    def mathTry(name: String, inputElement: InputElement)(using gradingContext: GradingContext): Math = {
       if (str == "")
-        StackMath.noAnswer
+        Math.noAnswer
       else
         try
           math(inputElement)
         catch
           case e: SyntaxError =>
             comments += s"Could not parse $name (error: ${e.getMessage}), treating as no answer"
-            StackMath.noAnswer
+            Math.noAnswer
     }
   }
 
@@ -91,10 +91,10 @@ object DynexiteDefaults {
     @deprecated("Use .math.toSympyMC()")
     def sympy(using gradingContext: GradingContext): SympyExpr = ie.stringValue.sympy
     def latex(using gradingContext: GradingContext, mathContext: MathContext): String = math.toSympyMC(allowUndefined = true).latex
-    def math(using gradingContext: GradingContext): StackMath = ie.stringValue.math(ie)
-    def refmath: StackMath = ie.reference.math(ie)
+    def math(using gradingContext: GradingContext): Math = ie.stringValue.math(ie)
+    def refmath: Math = ie.reference.math(ie)
     /** See another `mathTry` for documentation. */
-    def mathTry(using gradingContext: GradingContext): StackMath =
+    def mathTry(using gradingContext: GradingContext): Math =
       ie.stringValue.mathTry(ie.humanName, ie)
   }
 
@@ -105,9 +105,9 @@ object DynexiteDefaults {
   }*/
 
   private val renderMathContext: MathContext = MathContext.default
-    .fixVar("i", StackMath.imaginaryUnit)
-    .fixVar("e", StackMath.eulerConstant)
-    .fixVar("pi", StackMath.pi)
+    .fixVar("i", Math.imaginaryUnit)
+    .fixVar("e", Math.eulerConstant)
+    .fixVar("pi", Math.pi)
     .sympyFunction("root", { case Seq(x) => x.sqrt })
   
   private def stackMathRender(pageElement: InputElement)(string: String): String = {

@@ -1,6 +1,6 @@
 package assessments.stack
 
-import assessments.math.StackMath.{Operation, Ops}
+import assessments.math.Math.{Operation, Ops}
 import org.scalatest.funsuite.AnyFunSuiteLike
 
 class StackParserTest extends AnyFunSuiteLike {

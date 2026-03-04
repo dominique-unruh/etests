@@ -1,8 +1,8 @@
 package assessments.stack
 
 import assessments.SyntaxError
-import assessments.math.StackMath
-import assessments.math.StackMath.{Bool, Funcall, Integer, Operation, Ops, Variable}
+import assessments.math.Math
+import assessments.math.Math.{Bool, Funcall, Integer, Operation, Ops, Variable}
 
 @deprecated
 // TODO remove
@@ -47,35 +47,35 @@ object StackParserOld {
 
   def identifier[$: P]: P[String] = P((CharIn(Strings.letters) ~ CharsWhileIn(Strings.letters_digits_underscore, 0)).!)
 
-  def variable[$: P]: P[StackMath] = P(identifier.map(Variable.apply))
+  def variable[$: P]: P[Math] = P(identifier.map(Variable.apply))
 
-  def integer[$: P]: P[StackMath] = P(CharsWhileIn(Strings.digits, 1).!.map(i => Integer(i.toInt)))
+  def integer[$: P]: P[Math] = P(CharsWhileIn(Strings.digits, 1).!.map(i => Integer(i.toInt)))
 
-  def function_application[$: P]: P[StackMath] = P((identifier ~ "(" ~ num_expr.rep(sep = ",") ~ ")")
-    .map { case (head: String, args: Seq[StackMath]) => Funcall(head, args *) })
+  def function_application[$: P]: P[Math] = P((identifier ~ "(" ~ num_expr.rep(sep = ",") ~ ")")
+    .map { case (head: String, args: Seq[Math]) => Funcall(head, args *) })
 
-  def atom[$: P]: P[StackMath] = P("(" ~ num_expr ~ ")" | function_application | variable | integer)
+  def atom[$: P]: P[Math] = P("(" ~ num_expr ~ ")" | function_application | variable | integer)
 
-  def power_like[$: P]: P[StackMath] = P((atom ~ "^" ~ atom).map((x, y) => Operation(Ops.power, x, y)) | atom)
+  def power_like[$: P]: P[Math] = P((atom ~ "^" ~ atom).map((x, y) => Operation(Ops.power, x, y)) | atom)
 
 
-  def mult_like[$: P]: P[StackMath] =
+  def mult_like[$: P]: P[Math] =
     P(infixl_rep_map(power_like, "*" -> Ops.times, "/" -> Ops.divide))
 
-  def infixl_rep_map[$: P](argument: => P[StackMath], map: (String, Ops)*): P[StackMath] =
+  def infixl_rep_map[$: P](argument: => P[Math], map: (String, Ops)*): P[Math] =
     infixl_rep(argument, selector(map *), { (a, o, b) => Operation(o, a, b) })
 
-  def unary_add_like[$: P]: P[StackMath] =
+  def unary_add_like[$: P]: P[Math] =
     ("-" ~ mult_like).map(Operation(Ops.unaryMinus, _)) | ("+" ~ mult_like).map(Operation(Ops.unaryPlus, _)) | mult_like
 
-  def add_like[$: P]: P[StackMath] = P(
+  def add_like[$: P]: P[Math] = P(
     infixl_rep_map(unary_add_like, "+" -> Ops.plus, "-" -> Ops.minus))
 
   def comparison_ops: Seq[(String, Ops)] =
     Seq("=" -> Ops.equal, "<=" -> Ops.less_eq, "=>" -> Ops.greater_eq,
       ">" -> Ops.greater, "<" -> Ops.less)
 
-  def comparison[$: P]: P[StackMath] = P {
+  def comparison[$: P]: P[Math] = P {
     (add_like ~ (selector(comparison_ops *) ~ add_like).?) map {
       case (e, None) => e
       case (e, Some(op, e2)) => Operation(op, e, e2)
@@ -84,19 +84,19 @@ object StackParserOld {
 
   def boolean[$: P]: P[Bool] = selector("true" -> Bool(true), "false" -> Bool(false))
 
-  def bool_atom[$: P]: P[StackMath] = ("(" ~ bool_expr ~ ")") | comparison | variable | boolean
+  def bool_atom[$: P]: P[Math] = ("(" ~ bool_expr ~ ")") | comparison | variable | boolean
 
-  def not_like[$: P]: P[StackMath] = P((LiteralStr("not") ~/ not_like).map(x => Operation(Ops.not, x)) | bool_atom)
+  def not_like[$: P]: P[Math] = P((LiteralStr("not") ~/ not_like).map(x => Operation(Ops.not, x)) | bool_atom)
 
-  def and_like[$: P]: P[StackMath] = infixl_rep_map(not_like, "and" -> Ops.and)
+  def and_like[$: P]: P[Math] = infixl_rep_map(not_like, "and" -> Ops.and)
 
-  def or_like[$: P]: P[StackMath] = infixl_rep_map(not_like, "or" -> Ops.or, "xor" -> Ops.xor)
+  def or_like[$: P]: P[Math] = infixl_rep_map(not_like, "or" -> Ops.or, "xor" -> Ops.xor)
 
-  def num_expr[$: P]: P[StackMath] = P(add_like)
+  def num_expr[$: P]: P[Math] = P(add_like)
 
-  def bool_expr[$: P]: P[StackMath] = P(or_like)
+  def bool_expr[$: P]: P[Math] = P(or_like)
 
-  def expr[$: P]: P[StackMath] = num_expr
+  def expr[$: P]: P[Math] = num_expr
 //  def expr[$: P]: P[StackMath] = bool_expr | num_expr
 
   def parseWith[A](input: String, parser: fastparse.ParsingRun[?] ?=> fastparse.ParsingRun[A]): A =
@@ -107,5 +107,5 @@ object StackParserOld {
       case failure: Parsed.Failure => throw SyntaxError(failure.msg)
     }
 
-  def parse(input: String): StackMath = parseWith(input, comparison | expr)
+  def parse(input: String): Math = parseWith(input, comparison | expr)
 }

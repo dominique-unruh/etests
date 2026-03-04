@@ -1,8 +1,8 @@
 package assessments.math
 
-import assessments.math.StackMath.{Bool, Foreign, Funcall, Integer, Operation, Ops, Sympy, Variable, addToStringBuilderCommaSep}
+import assessments.math.Math.{Bool, Foreign, Funcall, Integer, Operation, Ops, Sympy, Variable, addToStringBuilderCommaSep}
 import assessments.stack.SympyExpr.sympy
-import assessments.stack.{SympyExpr}
+import assessments.stack.SympyExpr
 import assessments.{ExceptionContext, ExceptionWithContext, MathContext, UserError}
 import me.shadaj.scalapy.py
 import utils.TypeChecker
@@ -10,31 +10,31 @@ import utils.TypeChecker
 import scala.util.boundary
 import scala.util.boundary.break
 
-sealed trait StackMath {
-  def cos: StackMath = Funcall("cos", this)
-  def /(other: StackMath): StackMath = Operation(Ops.divide, this, other)
+sealed trait Math {
+  def cos: Math = Funcall("cos", this)
+  def /(other: Math): Math = Operation(Ops.divide, this, other)
   
   def variables: Set[String] = {
     val builder = Set.newBuilder[String]
-    def collect(math: StackMath): Unit = math match
+    def collect(math: Math): Unit = math match
       case Operation(operator, arguments*) => arguments.foreach(collect)
       case Funcall(name, arguments*) => arguments.foreach(collect)
       case Sympy(op, arguments*) => arguments.foreach(collect)
       case Variable(name) => builder += name
-      case Integer(int) =>
-      case Bool(bool) =>
+      case Integer(_) | Bool(_) | Foreign(_) =>
     collect(this)
     builder.result()
   }
 
-  def +(other: StackMath): Operation = Operation(Ops.plus, this, other)
-  def *(other: StackMath): Operation = Operation(Ops.times, this, other)
+  def +(other: Math): Operation = Operation(Ops.plus, this, other)
+  def *(other: Math): Operation = Operation(Ops.times, this, other)
   
   override def toString: String = {
     val builder = new StringBuilder
     addToStringBuilder(builder)
     builder.result()
   }
+
   def addToStringBuilder(builder: StringBuilder): Unit = this match {
     case Operation(operator, arguments*) =>
       builder ++= operator.toString += '('
@@ -55,7 +55,7 @@ sealed trait StackMath {
       builder ++= "[" ++= value.toString ++= "]"
   }
 
-  def mapIdentifiers(f: String => String): StackMath = this match {
+  def mapIdentifiers(f: String => String): Math = this match {
     case Operation(operator, arguments*) => Operation(operator, arguments.map(_.mapIdentifiers(f))*)
     case Funcall(name, arguments*) => Funcall(f(name), arguments.map(_.mapIdentifiers(f))*)
     case Sympy(op, arguments*) => Sympy(op, arguments.map(_.mapIdentifiers(f))*)
@@ -63,19 +63,19 @@ sealed trait StackMath {
     case Integer(_) | Bool(_) | Foreign(_) => this
   }
 
-  def mapVariables(f: String => Option[StackMath]): StackMath = this match
+  def mapVariables(f: String => Option[Math]): Math = this match
     case Operation(operator, arguments*) => Operation(operator, arguments.map(_.mapVariables(f))*)
     case Sympy(op, arguments*) => Sympy(op, arguments.map(_.mapVariables(f))*)
     case Funcall(name, arguments*) => Funcall(name, arguments.map(_.mapVariables(f))*)
     case Variable(name) => f(name).getOrElse(this)
     case Integer(_) | Bool(_) | Foreign(_) => this
 
-  def mapVariables(map: Map[String, StackMath]): StackMath = mapVariables(map.get)
+  def mapVariables(map: Map[String, Math]): Math = mapVariables(map.get)
 
-  def mapVariables(subst: (String, StackMath)*): StackMath = mapVariables(Map(subst*))
+  def mapVariables(subst: (String, Math)*): Math = mapVariables(Map(subst*))
 
   /** Applied preprocessors and then fixed values (according to [[MathContext]] */
-  def fixValues(using mathContext: MathContext): StackMath = {
+  def fixValues(using mathContext: MathContext): Math = {
     val fixed1 = mathContext.preprocessors.foldLeft(this)((math, preprocessor) => preprocessor(math))
     val fixed2 =
       fixed1.mapVariables { name =>
@@ -89,7 +89,7 @@ sealed trait StackMath {
   /** Substitutes the variables for which test cases are set in the [[MathContext]] via `fixVar` or `testValues`.
    * However, not all test values are used, instead the first of the configured test values are used for each specific variable.
    * */
-  def someTestValues(using mathContext: MathContext): StackMath = {
+  def someTestValues(using mathContext: MathContext): Math = {
     val fixed1 = fixValues
     val fixed2 = fixed1.mapVariables { name =>
       for (options <- mathContext.variables.get(name);
@@ -99,16 +99,17 @@ sealed trait StackMath {
     fixed2
   }
 
-  def fixUnderscoreInt: StackMath = mapIdentifiers {
-    case StackMath.UnderscoreIntRegex(prefix, suffix) => s"${prefix}_${suffix}"
+  def fixUnderscoreInt: Math = mapIdentifiers {
+    case Math.UnderscoreIntRegex(prefix, suffix) => s"${prefix}_${suffix}"
     case name => name
   }
 
-  def fix: StackMath = fixUnderscoreInt
+  def fix: Math = fixUnderscoreInt
 
+  @deprecated
   def toSympyMC(allowUndefined: Boolean = false,
                 allowUndefinedFunctions: Boolean = false)(using mathContext: MathContext): SympyExpr = {
-    def to(math: StackMath): SympyExpr = math match
+    def to(math: Math): SympyExpr = math match
       case Operation(operator, arguments*) =>
         mathContext.sympyFunctions.get(operator) match
           case Some(function) => function.lift(arguments.map(to)) match
@@ -144,7 +145,7 @@ sealed trait StackMath {
 
   @deprecated("Will transition to toSympyMC")
   def toSympy: SympyExpr = {
-    def toSympy(stack: StackMath): py.Dynamic = stack match {
+    def toSympy(stack: Math): py.Dynamic = stack match {
       case Funcall("mod", x, y) => toSympy(x).__mod__(toSympy(y))
       case Funcall("gcd", x, y) => SympyExpr.gcd(toSympy(x), toSympy(y))
       case Funcall("sqrt", x) => sympy.sqrt(toSympy(x))
@@ -167,7 +168,7 @@ sealed trait StackMath {
     SympyExpr(toSympy(this.fix))
   }
 
-  def mapFunction(name: String | Ops, f: Seq[StackMath] => StackMath): StackMath = this match
+  def mapFunction(name: String | Ops, f: Seq[Math] => Math): Math = this match
     case Operation(operator, arguments*) if operator == name =>
       f(arguments)
     case Operation(operator, arguments*) =>
@@ -185,7 +186,7 @@ sealed trait StackMath {
              (debug: Boolean = false): A = {
     given ExceptionContext = ExceptionContext.addToExceptionContext(s"Evaluating formula $this", this)
 
-    def applyFunction(name: String | StackMath.Ops, arguments: Seq[StackMath]): Any = {
+    def applyFunction(name: String | Math.Ops, arguments: Seq[Math]): Any = {
       val functions = mathContext.functions(name)
       val args = arguments.map(e)
       boundary[Any] {
@@ -199,23 +200,23 @@ sealed trait StackMath {
       }
     }
 
-    def e(math: StackMath): Any = {
+    def e(math: Math): Any = {
       val result = math match {
-        case StackMath.Funcall(name, arguments*) if mathContext.functions.contains(name) =>
+        case Math.Funcall(name, arguments*) if mathContext.functions.contains(name) =>
           applyFunction(name, arguments)
-        case StackMath.Operation(Ops.equal, x, y) =>
+        case Math.Operation(Ops.equal, x, y) =>
           e(x) == e(y) // TODO make configurable
-        case StackMath.Operation(operator, arguments*) =>
+        case Math.Operation(operator, arguments*) =>
           throw ExceptionWithContext(s"Unknown operator $operator")
-        case StackMath.Funcall(name, arguments*) =>
+        case Math.Funcall(name, arguments*) =>
           throw ExceptionWithContext(s"Unknown function $name")
-        case StackMath.Variable(name) =>
+        case Math.Variable(name) =>
           throw ExceptionWithContext(s"Encountered variable $name")
-        case StackMath.Integer(int) => int // TODO configurable
-        case StackMath.Bool(bool) => bool // TODO configurable
-        case StackMath.Sympy(op, arguments*) =>
+        case Math.Integer(int) => int // TODO configurable
+        case Math.Bool(bool) => bool // TODO configurable
+        case Math.Sympy(op, arguments*) =>
           throw ExceptionWithContext(s"Encountered sympy operation $op")
-        case StackMath.Foreign(value) => value
+        case Math.Foreign(value) => value
       }
       if (debug)
         println(s"Eval: $math -> $result")
@@ -230,11 +231,11 @@ sealed trait StackMath {
     }
   }
 
-  def hasSubterm(predicate: StackMath): Boolean =
+  def hasSubterm(predicate: Math): Boolean =
     hasSubterm(t => t == predicate)
   
-  def hasSubterm(predicate: StackMath => Boolean): Boolean = {
-    def has(math: StackMath): Boolean = {
+  def hasSubterm(predicate: Math => Boolean): Boolean = {
+    def has(math: Math): Boolean = {
       if (predicate(math))
         true
       else math match {
@@ -244,7 +245,7 @@ sealed trait StackMath {
         case Integer(int) => false
         case Bool(bool) => false
         case Sympy(op, arguments*) => arguments.exists(has)
-        case StackMath.Foreign(value) => false
+        case Math.Foreign(value) => false
       }
     }
 
@@ -252,12 +253,12 @@ sealed trait StackMath {
   }
 }
 
-object StackMath {
-  given Conversion[Int, StackMath] = int => Integer(BigInt(int))
+object Math {
+  given Conversion[Int, Math] = int => Integer(BigInt(int))
 
-  given Conversion[Long, StackMath] = int => Integer(BigInt(int))
+  given Conversion[Long, Math] = int => Integer(BigInt(int))
 
-  given Conversion[BigInt, StackMath] = int => Integer(int)
+  given Conversion[BigInt, Math] = int => Integer(int)
 
 
   private val UnderscoreIntRegex = "(.*[^0-9_])([0-9]+)".r
@@ -275,18 +276,18 @@ object StackMath {
     case noAnswer
   }
 
-  case class Operation(operator: Ops, arguments: StackMath*) extends StackMath
-  case class Funcall(name: String, arguments: StackMath*) extends StackMath
-  case class Variable(name: String) extends StackMath
-  case class Integer(int: BigInt) extends StackMath
-  case class Bool(bool: Boolean) extends StackMath
+  case class Operation(operator: Ops, arguments: Math*) extends Math
+  case class Funcall(name: String, arguments: Math*) extends Math
+  case class Variable(name: String) extends Math
+  case class Integer(int: BigInt) extends Math
+  case class Bool(bool: Boolean) extends Math
   @deprecated
-  case class Sympy(op: SympyOperator, arguments: StackMath*) extends StackMath
-  case class Foreign(value: Any) extends StackMath
+  case class Sympy(op: SympyOperator, arguments: Math*) extends Math
+  case class Foreign(value: Any) extends Math
 
   class SympyOperator(val name: String, val function: MathContext ?=> Seq[SympyExpr] => SympyExpr) {
     override def toString: String = name
-    def apply(arguments: StackMath*): Sympy = Sympy(this, arguments*)
+    def apply(arguments: Math*): Sympy = Sympy(this, arguments*)
   }
 
   object SympyOperator {
@@ -300,7 +301,7 @@ object StackMath {
     }
   }
 
-  def addToStringBuilderCommaSep(builder: StringBuilder, items: IterableOnce[StackMath]): Unit = {
+  def addToStringBuilderCommaSep(builder: StringBuilder, items: IterableOnce[Math]): Unit = {
     val iterator = items.iterator
     if (iterator.hasNext) {
       iterator.next().addToStringBuilder(builder)

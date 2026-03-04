@@ -1,7 +1,7 @@
 package assessments.stack
 
-import assessments.math.StackMath
-import assessments.math.StackMath.*
+import assessments.math.Math
+import assessments.math.Math.*
 import assessments.{ExceptionContext, MathContext, UserError}
 import assessments.stack.SympyExpr.{ErrorTerm, _equalsTrue, function, get_functions, get_symbols, logger, sympy}
 import com.typesafe.scalalogging.Logger
@@ -20,7 +20,7 @@ object StackUtils {
   // TODO: Should be an interable, lazily computed
   /** For every assignment of test values to the variables, call f.
    * @return Sequences of all the return values of f */
-  def enumerate[A](variables: Set[String])(f: Map[String, StackMath] => A)(using mathContext: MathContext): Seq[A] = {
+  def enumerate[A](variables: Set[String])(f: Map[String, Math] => A)(using mathContext: MathContext): Seq[A] = {
     val loops = mathContext.variables.toList map { (varName, options) =>
       if (options.fixedValue.nonEmpty)
         (varName, Seq(options.fixedValue.get))
@@ -30,7 +30,7 @@ object StackUtils {
         ???
     }
     val results = Seq.newBuilder[A]
-    def iter(loops: List[(String, Seq[StackMath])], map: Map[String, StackMath]): Unit = loops match
+    def iter(loops: List[(String, Seq[Math])], map: Map[String, Math]): Unit = loops match
       case (name, values) :: rest =>
         for (value <- values)
           iter(rest, map + (name -> value))
@@ -41,44 +41,44 @@ object StackUtils {
   }
   /** For every assignment of test values to the variables, call f.
    * @return True if all calls to f returned true */
-  def forall(variables: Set[String])(f: Map[String, StackMath] => Boolean)(using mathContext: MathContext): Boolean =
+  def forall(variables: Set[String])(f: Map[String, Math] => Boolean)(using mathContext: MathContext): Boolean =
     enumerate(variables)(f).forall(identity)
   /** For every assignment of test values to all variables occurring in terms, call f.
    * f is called with the assignment and with the terms after substituting the assignment.
    * @return Sequences of all the return values of f
    * */
-  def enumerateMapped[A](terms: Seq[StackMath])(f: (Map[String, StackMath], Seq[StackMath]) => A)(using mathContext: MathContext): Seq[A] =
+  def enumerateMapped[A](terms: Seq[Math])(f: (Map[String, Math], Seq[Math]) => A)(using mathContext: MathContext): Seq[A] =
     enumerate(terms.flatMap(_.variables).toSet) { map =>
       val termsMapped = terms.map(_.mapVariables(map))
       f(map, termsMapped)
     }
-  def enumerateMapped[A](x: StackMath, y: StackMath)(f: Map[String, StackMath] => (StackMath, StackMath) => A)(using mathContext: MathContext): Seq[A] =
+  def enumerateMapped[A](x: Math, y: Math)(f: Map[String, Math] => (Math, Math) => A)(using mathContext: MathContext): Seq[A] =
     enumerateMapped(Seq(x,y)) { case (map, Seq(x,y)) => f(map)(x,y) }
 
   /** Like [[enumerateMapped]] but returns whether all f-calls return true. */
-  def forallMapped(terms: Seq[StackMath])(f: (Map[String, StackMath], Seq[StackMath]) => Boolean)(using mathContext: MathContext): Boolean =
+  def forallMapped(terms: Seq[Math])(f: (Map[String, Math], Seq[Math]) => Boolean)(using mathContext: MathContext): Boolean =
     enumerateMapped(terms)(f).forall(identity)
   /** Like the other `forallMapped` but specifically for two terms */
-  def forallMapped(x: StackMath, y: StackMath)(f: Map[String, StackMath] => (StackMath, StackMath) => Boolean)(using mathContext: MathContext): Boolean =
+  def forallMapped(x: Math, y: Math)(f: Map[String, Math] => (Math, Math) => Boolean)(using mathContext: MathContext): Boolean =
     forallMapped(Seq(x,y)){ case (map, Seq(x,y)) => f(map)(x,y) }
 
   /** Like [[enumerateMapped]] but counts how many f-calls return true.
    * @return (true,total) true=number of true calls, total=total number of calls */
-  def countMapped(terms: Seq[StackMath])(f: (Map[String, StackMath], Seq[StackMath]) => Boolean)(using mathContext: MathContext): (Int, Int) = {
+  def countMapped(terms: Seq[Math])(f: (Map[String, Math], Seq[Math]) => Boolean)(using mathContext: MathContext): (Int, Int) = {
     val booleans = enumerateMapped(terms)(f)
     val trues = booleans.count(identity)
     (trues, booleans.length)
   }
   /** Like the other `countMapped` but specifically for two terms */
-  def countMapped(x: StackMath, y: StackMath)(f: Map[String, StackMath] => (StackMath, StackMath) => Boolean)(using mathContext: MathContext): (Int, Int) =
+  def countMapped(x: Math, y: Math)(f: Map[String, Math] => (Math, Math) => Boolean)(using mathContext: MathContext): (Int, Int) =
     countMapped(Seq(x,y)){ case (map, Seq(x,y)) => f(map)(x,y) }
 
 
   @deprecated
-  def checkEqualityDebug(x: StackMath, y: StackMath,
+  def checkEqualityDebug(x: Math, y: Math,
                          mapLeft: SympyExpr => SympyExpr = identity,
                          mapRight: SympyExpr => SympyExpr = identity,
-                        )(using MathContext): Seq[(Map[String, StackMath], SympyExpr, SympyExpr, Boolean)] = {
+                        )(using MathContext): Seq[(Map[String, Math], SympyExpr, SympyExpr, Boolean)] = {
     val variables: Set[String] = x.variables ++ y.variables
     enumerate(variables) { subst =>
       val x2 = mapLeft(x.mapVariables(subst).toSympyMC(allowUndefined = false))
@@ -100,10 +100,10 @@ object StackUtils {
    * @param mapRight This function is applied to `expected` before testing (but after substituting test values)
    * */
   @deprecated
-  def checkEqualityNew(value: StackMath, expected: StackMath,
+  def checkEqualityNew(value: Math, expected: Math,
                        mapLeft: SympyExpr => SympyExpr = identity,
                        mapRight: SympyExpr => SympyExpr = identity)(using MathContext): Boolean =
-    if (value == StackMath.noAnswer || expected == StackMath.noAnswer)
+    if (value == Math.noAnswer || expected == Math.noAnswer)
       value == expected
     else
       forallMapped(value, expected) { _ =>(x, y) =>
@@ -113,7 +113,7 @@ object StackUtils {
 
   /** Checks equality `value == expected`.
    *
-   * If `value` and `expected` contain no variables, the check is done by running [[StackMath.eval]] on
+   * If `value` and `expected` contain no variables, the check is done by running [[Math.eval]] on
    * both and performing an equality check on the resulting rhs and lhs.
    *
    * If they contain variables, the equality check is done for every combination of test values configured in the [[MathContext]]
@@ -121,7 +121,7 @@ object StackUtils {
    *
    * If variables occur for which there are no test values, an exception is thrown.
    **/
-  def testEquality(value: StackMath, expected: StackMath, equality: (Any,Any) => Boolean)
+  def testEquality(value: Math, expected: Math, equality: (Any,Any) => Boolean)
                   (using MathContext, ExceptionContext): Boolean = {
     forallMapped(value, expected) { _ => (x, y) => equality(x.eval[Any], y.eval[Any]) }
   }

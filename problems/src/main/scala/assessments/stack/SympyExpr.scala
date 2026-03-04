@@ -1,6 +1,6 @@
 package assessments.stack
 
-import assessments.math.StackMath.*
+import assessments.math.Math.*
 import assessments.{MathContext, UserError}
 import assessments.stack.SympyExpr.{ErrorTerm, _equalsTrue, function, get_functions, get_symbols, logger, sympy, sympyPhysicsQuantum}
 import com.typesafe.scalalogging.Logger

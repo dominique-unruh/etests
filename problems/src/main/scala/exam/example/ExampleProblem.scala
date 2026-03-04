@@ -4,7 +4,7 @@ import assessments.DynexiteDefaults.*
 import assessments.GradingContext.*
 import assessments.InterpolatedMarkdown.md
 import assessments.pageelements.{Element, InputElement}
-import assessments.math.StackMath
+import assessments.math.Math
 import assessments.{DynexiteDefaults, ExceptionContext, GradingContext, InterpolatedMarkdown, MarkdownAssessment, MathContext, Points}
 
 object ExampleProblem extends MarkdownAssessment {
@@ -42,7 +42,7 @@ But 10 itself is not a valid answer.
       return
 
     val parsed = answer.mathTry
-    if (parsed == StackMath.noAnswer)
+    if (parsed == Math.noAnswer)
       return
 
     if (parsed.toSympyMC() `algebraicEqual` 10)

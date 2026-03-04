@@ -4,7 +4,7 @@ import assessments.DynexiteDefaults.*
 import assessments.GradingContext.*
 import assessments.InterpolatedMarkdown.md
 import assessments.pageelements.{Element, InputElement, StaticElement}
-import assessments.math.StackMath
+import assessments.math.Math
 import assessments.{Common, DynexiteDefaults, ExceptionContext, GradingContext, InterpolatedMarkdown, MarkdownAssessment, MathContext, Points}
 
 object ExampleProblem2 extends MarkdownAssessment {
@@ -39,7 +39,7 @@ Of course, there are many other possibilities like \(5+5\).
     given MathContext = MathContext.default
 
     val parsed = answer.mathTry
-    if (parsed == StackMath.noAnswer)
+    if (parsed == Math.noAnswer)
       return
 
     if (parsed.toSympyMC() `algebraicEqual` 10)
