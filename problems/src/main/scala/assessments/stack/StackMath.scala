@@ -1,9 +1,10 @@
 package assessments.stack
 
-import assessments.{MathContext, UserError}
+import assessments.{ExceptionContext, ExceptionWithContext, MathContext, UserError}
 import assessments.stack.StackMath.{Bool, Funcall, Integer, Operation, Ops, Sympy, Variable, addToStringBuilderCommaSep}
 import assessments.stack.SympyExpr.sympy
 import me.shadaj.scalapy.py
+import utils.TypeChecker
 
 sealed trait StackMath {
   def cos: StackMath = Funcall("cos", this)
@@ -82,6 +83,9 @@ sealed trait StackMath {
     fixed2
   }
 
+  /** Substitutes the variables for which test cases are set in the [[MathContext]] via `fixVar` or `testValues`.
+   * However, not all test values are used, instead the first of the configured test values are used for each specific variable.
+   * */
   def someTestValues(using mathContext: MathContext): StackMath = {
     val fixed1 = fixValues
     val fixed2 = fixed1.mapVariables { name =>
@@ -172,6 +176,36 @@ sealed trait StackMath {
     case Variable(name) => this
     case Integer(int) => this
     case Bool(bool) => this
+
+  def eval[A](using exceptionContext: ExceptionContext, mathContext: MathContext, typeChecker: TypeChecker[A]): A = {
+    given ExceptionContext = ExceptionContext.addToExceptionContext(s"Evaluating formula $this", this)
+
+    fixValues.evalRaw match {
+      case typeChecker(result) => result
+      case value =>
+        throw ExceptionWithContext(s"Formula did not evaluate to a ${typeChecker.name} value but to $value", value)
+    }
+  }
+
+
+  private def evalRaw(using exceptionContext: ExceptionContext, mathContext: MathContext): Any = this match {
+    case StackMath.Funcall(name, arguments*) if mathContext.functions.contains(name) =>
+      val function = mathContext.functions(name)
+      function(arguments.map(_.evalRaw))
+    case StackMath.Operation(Ops.equal, x, y) =>
+      x.evalRaw == y.evalRaw // TODO make configurable
+    case StackMath.Operation(operator, arguments*) =>
+      throw ExceptionWithContext(s"Unknown operator $operator (or wrong number of arguments)")
+    case StackMath.Funcall(name, arguments*) =>
+      throw ExceptionWithContext(s"Unknown function $name (or wrong number of arguments)")
+    case StackMath.Variable(name) =>
+      throw ExceptionWithContext(s"Encountered variable $name")
+    case StackMath.Integer(int) => int // TODO configurable
+    case StackMath.Bool(bool) => bool // TODO configurable
+    case StackMath.Sympy(op, arguments*) =>
+      throw ExceptionWithContext(s"Encountered sympy operation $op")
+    case StackMath.Foreign(value) => value
+  }
 }
 
 object StackMath {
@@ -203,6 +237,7 @@ object StackMath {
   case class Integer(int: BigInt) extends StackMath
   case class Bool(bool: Boolean) extends StackMath
   case class Sympy(op: SympyOperator, arguments: StackMath*) extends StackMath
+  case class Foreign(value: Any) extends StackMath
 
   class SympyOperator(val name: String, val function: MathContext ?=> Seq[SympyExpr] => SympyExpr) {
     override def toString: String = name
