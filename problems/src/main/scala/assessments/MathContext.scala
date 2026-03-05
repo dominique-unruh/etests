@@ -1,6 +1,6 @@
 package assessments
 
-import assessments.MathContext.VarOptions
+import assessments.MathContext.{FunctionResult, VarOptions}
 import assessments.MathContext
 import assessments.math.Math
 import assessments.math.Math.Ops
@@ -11,7 +11,7 @@ import me.shadaj.scalapy.py
 import scala.annotation.constructorOnly
 
 case class MathContext private (variables: Map[String, VarOptions],
-                                functions: Map[String | Math.Ops, Seq[PartialFunction[Seq[Any], Any]]],
+                                functions: Map[String | Math.Ops, Seq[Seq[Any] => FunctionResult]],
                                 sympyFunctions: Map[String | Math.Ops, PartialFunction[Seq[SympyExpr], SympyExpr]],
                                 preprocessors: Seq[Math => Math],
                                ) {
@@ -56,16 +56,16 @@ case class MathContext private (variables: Map[String, VarOptions],
    * Note: by default, this does not overwrite previous interpretations.
    * Instead, when a function is evaluated (e.g., [[Math.eval]]), the result of the first-add interpretation that succeeds is used.
    **/
-  def withFunctionPartial(name: String | Math.Ops, function: PartialFunction[Seq[Any], Any], overwrite: Boolean = false): MathContext = {
+  def withFunction(name: String | Math.Ops, function: Seq[Any] => FunctionResult, overwrite: Boolean = false): MathContext = {
     val existing = if (overwrite) Seq.empty else functions.getOrElse(name, Seq.empty)
     copy(functions = functions.updated(name, existing appended function))
   }
 
   def withFunction1[X](name: String | Math.Ops, function: X => Any, overwrite: Boolean = false): MathContext =
-    withFunctionPartial(name, { case Seq(x) => function(x.asInstanceOf[X]) }, overwrite = overwrite)
+    withFunction(name, { case Seq(x) => FunctionResult.Success(function(x.asInstanceOf[X])) }, overwrite = overwrite)
 
   def withFunction2[X, Y](name: String | Math.Ops, function: (X, Y) => Any, overwrite: Boolean = false): MathContext =
-    withFunctionPartial(name, { case Seq(x, y) => function(x.asInstanceOf[X], y.asInstanceOf[Y]) }, overwrite = overwrite)
+    withFunction(name, { case Seq(x, y) => FunctionResult.Success(function(x.asInstanceOf[X], y.asInstanceOf[Y])) }, overwrite = overwrite)
 }
 
 object MathContext {
@@ -102,6 +102,13 @@ object MathContext {
                         fixedValue: Option[Math] = None,
                         testValues: Seq[Math] = Seq.empty) {
     assert(fixedValue.isEmpty || testValues.isEmpty)
+  }
+  
+  sealed trait FunctionResult
+  object FunctionResult {
+    case object Inapplicable extends FunctionResult
+    case class Error(reason: String) extends FunctionResult
+    case class Success(value: Any) extends FunctionResult
   }
 }
 

@@ -1,5 +1,6 @@
 package assessments.math
 
+import assessments.MathContext.FunctionResult
 import assessments.math.Math.{Bool, Foreign, Funcall, Integer, Operation, Ops, Sympy, Variable, addToStringBuilderCommaSep}
 import assessments.stack.SympyExpr.sympy
 import assessments.stack.SympyExpr
@@ -191,12 +192,14 @@ sealed trait Math {
       val args = arguments.map(e)
       boundary[Any] {
         for (f <- functions)
-          f.lift(args) match {
-            case None =>
-            case Some(value) =>
+          f(args) match {
+            case FunctionResult.Inapplicable =>
+            case FunctionResult.Error(message) =>
+              throw EvalFailedFunctionApplication(name, arguments, args, message)
+            case FunctionResult.Success(value) =>
               break(value)
           }
-        throw ExceptionWithContext(s"Operator or function applied to wrong number of arguments or wrong types")
+        throw EvalInapplicableFunction(name, arguments, args)
       }
     }
 
@@ -207,11 +210,11 @@ sealed trait Math {
         case Math.Operation(Ops.equal, x, y) =>
           e(x) == e(y) // TODO make configurable
         case Math.Operation(operator, arguments*) =>
-          throw ExceptionWithContext(s"Unknown operator $operator")
+          throw EvalNonexistingFunction(operator, arguments)
         case Math.Funcall(name, arguments*) =>
-          throw ExceptionWithContext(s"Unknown function $name")
+          throw EvalNonexistingFunction(name, arguments)
         case Math.Variable(name) =>
-          throw ExceptionWithContext(s"Encountered variable $name")
+          throw EvalEncounteredVariable(name)
         case Math.Integer(int) => int // TODO configurable
         case Math.Bool(bool) => bool // TODO configurable
         case Math.Sympy(op, arguments*) =>
@@ -227,7 +230,7 @@ sealed trait Math {
     e(fixValues) match {
       case typeChecker(result) => result
       case value =>
-        throw ExceptionWithContext(s"Formula did not evaluate to a ${typeChecker.name} value but to $value", value)
+        throw EvalWrongResultType(this, typeChecker, value)
     }
   }
 
@@ -318,4 +321,34 @@ object Math {
   val noAnswer: Operation = Operation(Ops.noAnswer)
 }
 
+/** In `eval`, an existing function-symbol `f` was encountered
+ * (i.e., MathContext.withFunction(f, ...) was done) but
+ * no implementation of `f` for the concrete arguments existed
+ * (i.e., wrong arity, wrong types, or rejected for whichever other reasons)
+ **/
+case class EvalInapplicableFunction(name: String | Ops, arguments: Seq[Math], argumentsEvaluated: Seq[Any])(using exceptionContext: ExceptionContext)
+  extends ExceptionWithContext(s"Operator/function $name applied to wrong number of arguments or wrong types",
+    name, arguments, argumentsEvaluated)
+
+/** In `eval`, an existing function-symbol `f` was encountered
+ * but the implementation indicated an error.
+ * (As opposed to just no applicable implementation existing.)
+ **/
+case class EvalFailedFunctionApplication(name: String | Ops,
+                                         arguments: Seq[Math],
+                                         argumentsEvaluated: Seq[Any],
+                                         reason: String)(using exceptionContext: ExceptionContext)
+  extends ExceptionWithContext(s"Operator/function $name application failed: $reason",
+    name, arguments, argumentsEvaluated, reason)
+
+case class EvalNonexistingFunction(name: String | Ops, arguments: Seq[Math])(using exceptionContext: ExceptionContext)
+  extends ExceptionWithContext(s"Unknown function $name", name, arguments)
+
+case class EvalEncounteredVariable(name: String)(using exceptionContext: ExceptionContext)
+  extends ExceptionWithContext(s"Encountered variable $name", name)
+
+case class EvalWrongResultType[A](math: Math, typeChecker: TypeChecker[A], value: Any)(using exceptionContext: ExceptionContext)
+  extends ExceptionWithContext(s"Formula did not evaluate to a ${typeChecker.name} value but to $value", math, typeChecker, value)
+
+@deprecated
 case class UndefinedVariableException(message: String, varname: String) extends Exception(message)
