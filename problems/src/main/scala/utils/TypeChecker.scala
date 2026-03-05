@@ -8,6 +8,10 @@ trait TypeChecker[A] {
   /** Tests whether `x` is of type `T`.
    * In contrast to `x.isInstanceOf[T]`, this also checks whether the type parameters are correct (as far as this is
    * still determinable by recursive inspection of `x`).
+   *
+   * Note: Semantics of types are w.r.t. to the interpretation that Null is separate from AnyRef
+   * (like with the [explicit nulls](https://docs.scala-lang.org/scala3/reference/experimental/explicit-nulls.html)
+   * option). So to match, e.g., a string that can be null, use a TypeChecker[String|Null].
    **/
   def isInstance(x: Any): Boolean
   final def unapply(x: Any): Option[A & x.type] =
@@ -67,15 +71,12 @@ object TypeChecker {
   }
 
   object NullTypeChecker extends TypeChecker[Null] {
-    override val name: String = "Null"
+    override val name: String = "null"
     override def isInstance(x: Any): Boolean = x match {
       case null => true
       case _ => false
     }
   }
-
-  given literalImplicit[T <: Singleton](using value: ValueOf[T]): TypeChecker[T] =
-    literal(valueOf[T]).asInstanceOf[TypeChecker[T]]
 
   def literal[T <: Singleton](value: T): TypeChecker[value.type] = {
     // We need this helper function because the match gives a compile error
@@ -102,7 +103,12 @@ object TypeChecker {
 
   def basic[A](using clazz: ClassTag[A]): TypeChecker[A] = new BasicTypeChecker[A]
 
+  given literalImplicit[T <: Singleton](using value: ValueOf[T]): TypeChecker[T] =
+    literal(valueOf[T]).asInstanceOf[TypeChecker[T]]
+  given orNull[A](using aChecker: TypeChecker[A]) : TypeChecker[A | Null] =
+    union(aChecker, NullTypeChecker)
   given any: TypeChecker[Any] = AnyTypeChecker
+  given nul: TypeChecker[Null] = NullTypeChecker
   given nothing: TypeChecker[Nothing] = NothingTypeChecker
   given long: TypeChecker[Long] = basic
   given int: TypeChecker[Int] = basic
