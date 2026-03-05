@@ -4,6 +4,7 @@ import assessments.ExceptionContext
 import org.scalatest.funsuite.AnyFunSuiteLike
 
 import scala.concurrent.duration.Duration
+import Utils.toUpperCaseFirst
 
 class UtilsTest extends AnyFunSuiteLike {
 
@@ -33,5 +34,10 @@ class UtilsTest extends AnyFunSuiteLike {
     }
     Thread.sleep(3000)
     assert(!tralala)
+  }
+
+  test("toUpperCaseFirst") {
+    val upperCase = "this IS small".toUpperCaseFirst
+    assert(upperCase == "This IS small")
   }
 }

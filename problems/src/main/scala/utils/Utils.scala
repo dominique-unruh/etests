@@ -316,4 +316,14 @@ object Utils {
       e.printStackTrace()
       e.toString
   }
+  
+  extension (str: String) {
+    def toUpperCaseFirst: String = {
+      if (str.isEmpty) return ""
+      val first = str.head
+      val upper = Character.toUpperCase(first)
+      if (first == upper) return str 
+      upper.toString + str.tail
+    }
+  }
 }

@@ -7,6 +7,7 @@ import assessments.stack.SympyExpr
 import assessments.{ExceptionContext, ExceptionWithContext, MathContext, UserError}
 import me.shadaj.scalapy.py
 import utils.TypeChecker
+import utils.Utils.toUpperCaseFirst
 
 import scala.util.boundary
 import scala.util.boundary.break
@@ -207,6 +208,8 @@ sealed trait Math {
       val result = math match {
         case Math.Funcall(name, arguments*) if mathContext.functions.contains(name) =>
           applyFunction(name, arguments)
+        case Math.Operation(name, arguments*) if mathContext.functions.contains(name) =>
+          applyFunction(name, arguments)
         case Math.Operation(Ops.equal, x, y) =>
           e(x) == e(y) // TODO make configurable
         case Math.Operation(operator, arguments*) =>
@@ -278,6 +281,12 @@ object Math {
     /** Special symbol to denote a missing answer */
     case noAnswer
   }
+  object Ops {
+    def functionOperatorString(name: Ops | String): String = name match {
+      case name: String => s"function $name"
+      case name: Ops => s"operator $name"
+    }
+  }
 
   case class Operation(operator: Ops, arguments: Math*) extends Math
   case class Funcall(name: String, arguments: Math*) extends Math
@@ -338,11 +347,11 @@ case class EvalFailedFunctionApplication(name: String | Ops,
                                          arguments: Seq[Math],
                                          argumentsEvaluated: Seq[Any],
                                          reason: String)(using exceptionContext: ExceptionContext)
-  extends ExceptionWithContext(s"Operator/function $name application failed: $reason",
+  extends ExceptionWithContext(s"${Ops.functionOperatorString(name).toUpperCaseFirst} application failed: $reason",
     name, arguments, argumentsEvaluated, reason)
 
 case class EvalNonexistingFunction(name: String | Ops, arguments: Seq[Math])(using exceptionContext: ExceptionContext)
-  extends ExceptionWithContext(s"Unknown function $name", name, arguments)
+  extends ExceptionWithContext(s"Unknown ${Ops.functionOperatorString(name)}", name, arguments)
 
 case class EvalEncounteredVariable(name: String)(using exceptionContext: ExceptionContext)
   extends ExceptionWithContext(s"Encountered variable $name", name)
