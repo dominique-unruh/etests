@@ -5,6 +5,10 @@ import scala.reflect.ClassTag
 trait TypeChecker[A] {
   override def toString: String = s"Type: $name"
   val name: String
+  /** Tests whether `x` is of type `T`.
+   * In contrast to `x.isInstanceOf[T]`, this also checks whether the type parameters are correct (as far as this is
+   * still determinable by recursive inspection of `x`).
+   **/
   def isInstance(x: Any): Boolean
   final def unapply(x: Any): Option[A & x.type] =
     if (isInstance(x))
@@ -64,9 +68,10 @@ object TypeChecker {
 
   def basic[A](using clazz: ClassTag[A]): BasicTypeChecker[A] = new BasicTypeChecker[A]
 
+  given any: AnyTypeChecker.type = AnyTypeChecker
   given long: BasicTypeChecker[Long] = basic
   given int: BasicTypeChecker[Int] = basic
   given string: BasicTypeChecker[String] = basic
   given boolean: BasicTypeChecker[Boolean] = basic
-  given any: AnyTypeChecker.type = AnyTypeChecker
+  given bigInt: BasicTypeChecker[BigInt] = basic
 }
