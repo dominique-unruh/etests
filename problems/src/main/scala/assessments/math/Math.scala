@@ -297,6 +297,7 @@ object Math {
   case class Sympy(op: SympyOperator, arguments: Math*) extends Math
   case class Foreign(value: Any) extends Math
 
+  @deprecated
   class SympyOperator(val name: String, val function: MathContext ?=> Seq[SympyExpr] => SympyExpr) {
     override def toString: String = name
     def apply(arguments: Math*): Sympy = Sympy(this, arguments*)

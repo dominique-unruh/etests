@@ -20,7 +20,7 @@ trait TypeChecker[A] {
 }
 
 object TypeChecker {
-  class BasicTypeChecker[A](using clazz: ClassTag[A]) extends TypeChecker[A] {
+  final class BasicTypeChecker[A](using clazz: ClassTag[A]) extends TypeChecker[A] {
     require(clazz.runtimeClass.getTypeParameters.isEmpty,
       s"${clazz.runtimeClass.getSimpleName} must not have type parameters")
     override val name: String = clazz.runtimeClass.getSimpleName
@@ -32,17 +32,17 @@ object TypeChecker {
     }
   }
 
-  class UnionTypeChecker[A, B](aChecker: TypeChecker[A], bChecker: TypeChecker[B]) extends TypeChecker[A | B] {
+  final class UnionTypeChecker[A, B](aChecker: TypeChecker[A], bChecker: TypeChecker[B]) extends TypeChecker[A | B] {
     override val name: String = s"${aChecker.name} | ${bChecker.name}"
     override def isInstance(x: Any): Boolean = aChecker.isInstance(x) || bChecker.isInstance(x)
   }
 
-  class IntersectionTypeChecker[A, B](aChecker: TypeChecker[A], bChecker: TypeChecker[B]) extends TypeChecker[A & B] {
+  final class IntersectionTypeChecker[A, B](aChecker: TypeChecker[A], bChecker: TypeChecker[B]) extends TypeChecker[A & B] {
     override val name: String = s"${aChecker.name} & ${bChecker.name}"
     override def isInstance(x: Any): Boolean = aChecker.isInstance(x) && bChecker.isInstance(x)
   }
 
-  class IterableTypeChecker[A, C <: Iterable[A]](aChecker: TypeChecker[A], classTag: ClassTag[C]) extends TypeChecker[C] {
+  final class IterableTypeChecker[A, C <: Iterable[A]](aChecker: TypeChecker[A], classTag: ClassTag[C]) extends TypeChecker[C] {
     override val name: String = s"${classTag.runtimeClass.getSimpleName}[${aChecker.name}]"
     override def isInstance(x: Any): Boolean = {
       classTag.runtimeClass.isInstance(x) &&
@@ -60,18 +60,53 @@ object TypeChecker {
     override def isInstance(x: Any): Boolean = true
   }
 
-  def union[A, B](aChecker: TypeChecker[A], bChecker: TypeChecker[B]): UnionTypeChecker[A, B] =
+  /** Private because it's unsafe (easy to construct a wrong type checker using the wrong arguments) */
+  private final class LiteralTypeChecker[T](value: T, predicate: Any => Boolean) extends TypeChecker[? <: T & Singleton] {
+    override val name: String = s"$value.type"
+    override def isInstance(x: Any): Boolean = predicate(x)
+  }
+
+  object NullTypeChecker extends TypeChecker[Null] {
+    override val name: String = "Null"
+    override def isInstance(x: Any): Boolean = x match {
+      case null => true
+      case _ => false
+    }
+  }
+
+  given literalImplicit[T <: Singleton](using value: ValueOf[T]): TypeChecker[T] =
+    literal(valueOf[T]).asInstanceOf[TypeChecker[T]]
+
+  def literal[T <: Singleton](value: T): TypeChecker[value.type] = {
+    // We need this helper function because the match gives a compile error
+    // if value : T  (supposedly for singleton types, the cases are unreachable code)
+    def mkLiteral[U](value: U): TypeChecker[value.type] = value match {
+      case valueRef: AnyRef =>
+        LiteralTypeChecker(value, { case x: AnyRef => x eq valueRef; case _ => false })
+          .asInstanceOf[TypeChecker[value.type]]
+      case valueVal: AnyVal =>
+        LiteralTypeChecker(value, x => valueVal == x)
+          .asInstanceOf[TypeChecker[value.type]]
+      case null =>
+        NullTypeChecker.asInstanceOf[TypeChecker[value.type]]
+    }
+    mkLiteral(value)
+  }
+
+
+  def union[A, B](aChecker: TypeChecker[A], bChecker: TypeChecker[B]): TypeChecker[A | B] =
     UnionTypeChecker(aChecker, bChecker)
 
-  def intersection[A, B](aChecker: TypeChecker[A], bChecker: TypeChecker[B]): IntersectionTypeChecker[A, B] =
+  def intersection[A, B](aChecker: TypeChecker[A], bChecker: TypeChecker[B]): TypeChecker[A & B] =
     IntersectionTypeChecker(aChecker, bChecker)
 
-  def basic[A](using clazz: ClassTag[A]): BasicTypeChecker[A] = new BasicTypeChecker[A]
+  def basic[A](using clazz: ClassTag[A]): TypeChecker[A] = new BasicTypeChecker[A]
 
-  given any: AnyTypeChecker.type = AnyTypeChecker
-  given long: BasicTypeChecker[Long] = basic
-  given int: BasicTypeChecker[Int] = basic
-  given string: BasicTypeChecker[String] = basic
-  given boolean: BasicTypeChecker[Boolean] = basic
-  given bigInt: BasicTypeChecker[BigInt] = basic
+  given any: TypeChecker[Any] = AnyTypeChecker
+  given nothing: TypeChecker[Nothing] = NothingTypeChecker
+  given long: TypeChecker[Long] = basic
+  given int: TypeChecker[Int] = basic
+  given string: TypeChecker[String] = basic
+  given boolean: TypeChecker[Boolean] = basic
+  given bigInt: TypeChecker[BigInt] = basic
 }
