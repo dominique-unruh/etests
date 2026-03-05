@@ -20,7 +20,12 @@ object TypeChecker {
     require(clazz.runtimeClass.getTypeParameters.isEmpty,
       s"${clazz.runtimeClass.getSimpleName} must not have type parameters")
     override val name: String = clazz.runtimeClass.getSimpleName
-    override def isInstance(x: Any): Boolean = clazz.runtimeClass.isInstance(x)
+    override def isInstance(x: Any): Boolean = {
+      // clazz.runtimeClass.isInstance(x) would seem to be the same and faster but:
+      // e.g., summon[ClassTag[Boolean]].runtimeClass.isInstance(true) == false
+      // (due to differences between boxes and primitive types)
+      clazz.unapply(x).nonEmpty
+    }
   }
 
   class UnionTypeChecker[A, B](aChecker: TypeChecker[A], bChecker: TypeChecker[B]) extends TypeChecker[A | B] {
