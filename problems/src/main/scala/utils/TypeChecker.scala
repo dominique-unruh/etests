@@ -1,8 +1,8 @@
 package utils
 
-import scala.reflect.ClassTag
+import scala.reflect.{ClassTag, Typeable}
 
-trait TypeChecker[A] {
+trait TypeChecker[A] extends Typeable[A] {
   override def toString: String = s"Type: $name"
   val name: String
   /** Tests whether `x` is of type `T`.
