@@ -86,6 +86,9 @@ object TaskGradeEveryone extends Task {
       report
     }
 
+    val pdfReportFile = studentDir.resolve("grading.pdf")
+    Utils.htmlToPdf(reportFile, pdfReportFile)
+
     Using.resource(new PrintWriter(reportFile.toFile)) { writer =>
       val pdfLink = if (includePDFs) """<li><a href="dynexite.pdf">Dynexite PDF</a> (for comparison)</li>""" else ""
       writer.println(
