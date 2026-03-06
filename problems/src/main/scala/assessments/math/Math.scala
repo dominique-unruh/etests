@@ -170,16 +170,20 @@ sealed trait Math {
     SympyExpr(toSympy(this.fix))
   }
 
-  def mapFunction(name: String | Ops, f: Seq[Math] => Math): Math = this match
+  def mapFunction(name: String | Ops, f: Seq[Math] => Math): Math =
+    mapFunction(name, PartialFunction.fromFunction(f))
+
+  def mapFunction(name: String | Ops, f: PartialFunction[Seq[Math], Math]): Math = this match
     case Operation(operator, arguments*) if operator == name =>
-      f(arguments)
+      val mappedArgs = arguments.map(_.mapFunction(name, f))
+      f.applyOrElse(mappedArgs, _ => Operation(operator, mappedArgs*))
     case Operation(operator, arguments*) =>
       Operation(operator, arguments.map(_.mapFunction(name, f))*)
     case Sympy(op, arguments*) =>
       Sympy(op, arguments.map(_.mapFunction(name, f))*)
     case Funcall(fname, arguments*) if fname == name =>
-      val res = f(arguments)
-      res
+      val mappedArgs = arguments.map(_.mapFunction(name, f))
+      f.applyOrElse(mappedArgs, _ => Funcall(fname, mappedArgs*))
     case Funcall(fname, arguments*) =>
       Funcall(fname, arguments.map(_.mapFunction(name, f))*)
     case Variable(_) | Integer(_) | Bool(_) | Foreign(_) => this

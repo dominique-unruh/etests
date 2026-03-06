@@ -139,6 +139,10 @@ abstract class MarkdownAssessment {
     val tests = Seq.newBuilder[(String, AssessmentTest)]
 //    tests += "testName" -> testName() // Automatically found below because it has no arguments
     tests += "testSolution" -> testSolution(allowNoGraderYet = true)
+    val emptyReference = 
+      for (case (answerElement: AnswerElement) <- assessment.pageElements.values)
+        yield answerElement -> ""
+    tests += "testEmptySolution" -> testSolution(allowNoGraderYet = true, changes = emptyReference.toSeq, expected = 0)
 
     for (method <- this.getClass.getMethods
          if method.getParameterCount == 0

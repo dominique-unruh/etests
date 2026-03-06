@@ -76,6 +76,9 @@ case class MathContext private (variables: Map[String, VarOptions],
   def withFunction2[X, Y](name: String | Math.Ops, function: (X, Y) => Any, overwrite: Boolean = false): MathContext =
     withFunction(name, { case Seq(x, y) => FunctionResult.Success(function(x.asInstanceOf[X], y.asInstanceOf[Y])) }, overwrite = overwrite)
 
+  def withFunction3[X, Y, Z](name: String | Math.Ops, function: (X, Y, Z) => Any, overwrite: Boolean = false): MathContext =
+    withFunction(name, { case Seq(x, y, z) => FunctionResult.Success(function(x.asInstanceOf[X], y.asInstanceOf[Y], z.asInstanceOf[Z])) }, overwrite = overwrite)
+
   def withChange(change: (MathContext => MathContext)*): MathContext = change.foldLeft(this)((ctxt, change) => change(ctxt))
 
   def withIntegerConversion(conversion: BigInt => Any): MathContext =
