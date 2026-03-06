@@ -12,6 +12,7 @@ import scala.annotation.constructorOnly
 
 case class MathContext private (variables: Map[String, VarOptions],
                                 functions: Map[String | Math.Ops, Seq[Seq[Any] => FunctionResult]],
+                                integerConversion: BigInt => Any,
                                 sympyFunctions: Map[String | Math.Ops, PartialFunction[Seq[SympyExpr], SympyExpr]],
                                 preprocessors: Seq[Math => Math],
                                ) {
@@ -25,6 +26,13 @@ case class MathContext private (variables: Map[String, VarOptions],
   /** Sets the fixed value of the variable `name` */
   def fixVar(name: String, value: Math): MathContext =
     symbol(name, VarOptions(fixedValue = Some(value)))
+
+  def fixVars(namesValues: (String, Math)*): MathContext =
+    namesValues.foldLeft(this) { case (ctxt, (name, value)) => ctxt.fixVar(name, value) }
+
+  def fixVars(map: Map[String, Math]): MathContext =
+    fixVars(map.toSeq *)
+
   def testValues(name: String, values: Math*): MathContext =
     symbol(name, VarOptions(testValues = values))
 
@@ -32,10 +40,11 @@ case class MathContext private (variables: Map[String, VarOptions],
   @deprecated
   def sympyFunction(name: String | Math.Ops, function: PartialFunction[Seq[SympyExpr], SympyExpr]): MathContext =
     copy(sympyFunctions = sympyFunctions + (name -> function))
+
   @deprecated
   def sympyFunction(name: String | Math.Ops, function: py.Dynamic, argNumber: Int): MathContext = {
     sympyFunction(name, {
-      case args if args.length == argNumber => SympyExpr(function(args.map(_.python)*)) 
+      case args if args.length == argNumber => SympyExpr(function(args.map(_.python) *))
     })
   }
 
@@ -55,7 +64,7 @@ case class MathContext private (variables: Map[String, VarOptions],
    *
    * Note: by default, this does not overwrite previous interpretations.
    * Instead, when a function is evaluated (e.g., [[Math.eval]]), the result of the first-add interpretation that succeeds is used.
-   **/
+   * */
   def withFunction(name: String | Math.Ops, function: Seq[Any] => FunctionResult, overwrite: Boolean = false): MathContext = {
     val existing = if (overwrite) Seq.empty else functions.getOrElse(name, Seq.empty)
     copy(functions = functions.updated(name, existing appended function))
@@ -66,6 +75,11 @@ case class MathContext private (variables: Map[String, VarOptions],
 
   def withFunction2[X, Y](name: String | Math.Ops, function: (X, Y) => Any, overwrite: Boolean = false): MathContext =
     withFunction(name, { case Seq(x, y) => FunctionResult.Success(function(x.asInstanceOf[X], y.asInstanceOf[Y])) }, overwrite = overwrite)
+
+  def withChange(change: (MathContext => MathContext)*): MathContext = change.foldLeft(this)((ctxt, change) => change(ctxt))
+
+  def withIntegerConversion(conversion: BigInt => Any): MathContext =
+    copy(integerConversion = conversion)
 }
 
 object MathContext {
@@ -94,6 +108,7 @@ object MathContext {
   val default = new MathContext(
     variables = Map.empty,
     functions = Map.empty,
+    integerConversion = identity,
     preprocessors = Seq.empty,
     sympyFunctions =  sympyFunctions,
   )

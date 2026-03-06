@@ -218,7 +218,7 @@ sealed trait Math {
           throw EvalNonexistingFunction(name, arguments)
         case Math.Variable(name) =>
           throw EvalEncounteredVariable(name)
-        case Math.Integer(int) => int // TODO configurable
+        case Math.Integer(int) => mathContext.integerConversion(int)
         case Math.Bool(bool) => bool // TODO configurable
         case Math.Sympy(op, arguments*) =>
           throw ExceptionWithContext(s"Encountered sympy operation $op")

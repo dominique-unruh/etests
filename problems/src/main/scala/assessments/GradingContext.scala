@@ -50,10 +50,15 @@ object GradingContext {
   /** To be used inside [[GradingContext.gradeBlock]] */
   def max(using context: GradingContext): Points = context.reachable
 
-  /** To be used inside [[GradingContext.gradeBlock]] */
-  def done(points: Points = null, comment: String = null, condition: Boolean | Null = null)
+  /** To be used inside [[GradingContext.gradeBlock]].
+   * Exits the current grade block (by default without rolling back).
+   * @param points Points to give in the grade block
+   * @param comment Add this comment (same as `comments += comment`)
+   * @param condition If this is false, to [[abort()]] instead
+   * */
+  def done(points: Points = null, comment: String = null, condition: Boolean = true)
           (using context: GradingContext, label: Label[GradeBlockExit], exceptionContext: ExceptionContext): Nothing = {
-    if (condition == false)
+    if (!condition)
       abort()
     context.assertLabel(label)
     if (points != null) {

@@ -22,7 +22,7 @@ final class MultipleChoice(override val name: ElementName,
 
   checkArguments()
 
-  private def checkArguments() = {
+  private def checkArguments(): Unit = {
     // Reference solution is one of the options
     if (!options.contains(reference))
       throw IllegalArgumentException(s"Multiple choice element $name has reference solution \"$reference\", but it should be one of ${options.keys.map(s => s"\"$s\"").mkString(", ")}")

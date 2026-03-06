@@ -87,6 +87,16 @@ object DynexiteDefaults {
     def setValue(value: String)(using gradingContext: GradingContext): Unit = GradingContext.answers(pe.name) = value
   }
 
+  extension (mc:MultipleChoice) {
+    /** Compares the answer of this MultipleChoice element to `string`.
+     * @throws RuntimeException if `string` is not a possible answer. */
+    def ===(string: String)(using gradingContext: GradingContext): Boolean = {
+      if (string != "" && !mc.options.keySet(string))
+        throw RuntimeException(s"Comparing MultipleChoice ${mc.name} with invalid option $string. Options are: ${mc.options.keys.mkString(", ")}")
+      mc.stringValue == string
+    }
+  }
+
   implicit class InputElementMethods(ie: InputElement) {
     @deprecated("Use .math.toSympyMC()")
     def sympy(using gradingContext: GradingContext): SympyExpr = ie.stringValue.sympy

@@ -19,7 +19,7 @@ class DockerTest extends AnyFunSuiteLike {
     for ((future, index) <- futures.zipWithIndex) {
       println(s"Checking result $index")
       val result = future.awaitResult()
-      assert(result.exitCode() == 0)
+      assert(result.exitCode == 0)
     }
   }
 
