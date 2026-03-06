@@ -65,19 +65,22 @@ case class MathContext private (variables: Map[String, VarOptions],
    * Note: by default, this does not overwrite previous interpretations.
    * Instead, when a function is evaluated (e.g., [[Math.eval]]), the result of the first-add interpretation that succeeds is used.
    * */
-  def withFunction(name: String | Math.Ops, function: Seq[Any] => FunctionResult, overwrite: Boolean = false): MathContext = {
+  def withFunctionGeneral(name: String | Math.Ops, function: Seq[Any] => FunctionResult, overwrite: Boolean = false): MathContext = {
     val existing = if (overwrite) Seq.empty else functions.getOrElse(name, Seq.empty)
     copy(functions = functions.updated(name, existing appended function))
   }
 
-  def withFunction1[X](name: String | Math.Ops, function: X => Any, overwrite: Boolean = false): MathContext =
-    withFunction(name, { case Seq(x) => FunctionResult.Success(function(x.asInstanceOf[X])) }, overwrite = overwrite)
+  def withFunctionPartial(name: String | Math.Ops, function: PartialFunction[Seq[Any], Any], overwrite: Boolean = false): MathContext =
+    withFunctionGeneral(name, args => { function.lift(args) match { case None => FunctionResult.Inapplicable; case Some(result) => FunctionResult.Success(result) } })
 
-  def withFunction2[X, Y](name: String | Math.Ops, function: (X, Y) => Any, overwrite: Boolean = false): MathContext =
-    withFunction(name, { case Seq(x, y) => FunctionResult.Success(function(x.asInstanceOf[X], y.asInstanceOf[Y])) }, overwrite = overwrite)
+  def withFunction[X](name: String | Math.Ops, function: X => Any, overwrite: Boolean = false): MathContext =
+    withFunctionPartial(name, { case Seq(x) => function(x.asInstanceOf[X]) }, overwrite = overwrite)
 
-  def withFunction3[X, Y, Z](name: String | Math.Ops, function: (X, Y, Z) => Any, overwrite: Boolean = false): MathContext =
-    withFunction(name, { case Seq(x, y, z) => FunctionResult.Success(function(x.asInstanceOf[X], y.asInstanceOf[Y], z.asInstanceOf[Z])) }, overwrite = overwrite)
+  def withFunction[X, Y](name: String | Math.Ops, function: (X, Y) => Any): MathContext =
+    withFunctionPartial(name, { case Seq(x, y) => function(x.asInstanceOf[X], y.asInstanceOf[Y]) })
+
+  def withFunction[X, Y, Z](name: String | Math.Ops, function: (X, Y, Z) => Any): MathContext =
+    withFunctionPartial(name, { case Seq(x, y, z) => function(x.asInstanceOf[X], y.asInstanceOf[Y], z.asInstanceOf[Z]) })
 
   def withChange(change: (MathContext => MathContext)*): MathContext = change.foldLeft(this)((ctxt, change) => change(ctxt))
 

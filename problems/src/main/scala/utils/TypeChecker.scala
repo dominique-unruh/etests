@@ -78,6 +78,15 @@ object TypeChecker {
     }
   }
 
+  class PairTypeChecker[A,B](typeCheckerA: TypeChecker[A], typeCheckerB: TypeChecker[B])
+    extends TypeChecker[(A,B)] {
+    override val name: String = s"(${typeCheckerA.name}, ${typeCheckerB.name})"
+    override def isInstance(x: Any): Boolean = x match {
+      case (a: Any, b: Any) => typeCheckerA.isInstance(a) && typeCheckerB.isInstance(b)
+      case _ => false
+    }
+  }
+
   def literal[T <: Singleton](value: T): TypeChecker[value.type] = {
     // We need this helper function because the match gives a compile error
     // if value : T  (supposedly for singleton types, the cases are unreachable code)
@@ -103,6 +112,11 @@ object TypeChecker {
 
   def basic[A](using clazz: ClassTag[A]): TypeChecker[A] = new BasicTypeChecker[A]
 
+  def typeChecker[A](using typeChecker: TypeChecker[A]): TypeChecker[A] = typeChecker
+
+  def pair[A, B](typeCheckerA: TypeChecker[A], typeCheckerB: TypeChecker[B]): TypeChecker[(A, B)] =
+    PairTypeChecker(typeCheckerA, typeCheckerB)
+
   given literalImplicit[T <: Singleton](using value: ValueOf[T]): TypeChecker[T] =
     literal(valueOf[T]).asInstanceOf[TypeChecker[T]]
   given orNull[A](using aChecker: TypeChecker[A]) : TypeChecker[A | Null] =
@@ -115,4 +129,6 @@ object TypeChecker {
   given string: TypeChecker[String] = basic
   given boolean: TypeChecker[Boolean] = basic
   given bigInt: TypeChecker[BigInt] = basic
+  given pairImplicit[A,B](using typeCheckerA: TypeChecker[A], typeCheckerB: TypeChecker[B]): TypeChecker[(A,B)] =
+    PairTypeChecker(typeCheckerA, typeCheckerB)
 }

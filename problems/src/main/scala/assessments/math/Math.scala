@@ -202,6 +202,7 @@ sealed trait Math {
             case FunctionResult.Error(message) =>
               throw EvalFailedFunctionApplication(name, arguments, args, message)
             case FunctionResult.Success(value) =>
+              assert(!value.isInstanceOf[FunctionResult]) // FIXME remove
               break(value)
           }
         throw EvalInapplicableFunction(name, arguments, args)
