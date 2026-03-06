@@ -17,6 +17,8 @@ import scala.collection.mutable.ListBuffer
 import scala.jdk.CollectionConverters.IteratorHasAsScala
 import scala.util.control.Breaks.{break, breakable}
 
+// TODO remove (unused)
+@deprecated
 object DynexiteGrader {
   case class Result(points: Points, reachable: Points, report: String, shortReport: String, grade: String)
   case class QuestionResult(points: Points, reachable: Points, report: String)

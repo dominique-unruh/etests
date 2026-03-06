@@ -81,3 +81,8 @@ lazy val exams = (project in file("exams"))
   )
   .dependsOn(problems)
 
+lazy val tasks = (project in file("tasks"))
+  .settings(
+      Compile / scalaSource := baseDirectory.value
+  )
+  .dependsOn(exams)

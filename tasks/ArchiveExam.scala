@@ -1,5 +1,3 @@
-package assessments.tasks
-
 import assessments.Exam.{courseName, examDate}
 import assessments.{Assessment, Exam, MarkdownAssessment, Points, Task}
 import com.fasterxml.jackson.annotation.JsonPropertyOrder
