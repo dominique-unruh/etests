@@ -10,6 +10,7 @@ import me.shadaj.scalapy.py.{PyQuote, PythonException, SeqConverters}
 import utils.{Python, Utils}
 
 import scala.annotation.targetName
+import scala.collection.IterableOnce
 
 
 object StackUtils {
@@ -17,7 +18,25 @@ object StackUtils {
   def checkEquality(x: SympyExpr, y: SympyExpr, assumption: SympyAssumption = SympyAssumption.positive): Boolean =
     x.algebraicEqual(y, assumption)
 
-  // TODO: Should be an interable, lazily computed
+  /** For every assignment of test values to the variables, call f.
+   * @return Sequences of all the return values of f (lazy evaluation) */
+  def enumerateLazy[A](variables: Set[String])(f: Map[String, Math] => A)(using mathContext: MathContext): Iterable[A] = {
+    val loops = mathContext.variables.toList map { (varName, options) =>
+      if (options.fixedValue.nonEmpty)
+        (varName, Seq(options.fixedValue.get))
+      else if (options.testValues.nonEmpty)
+        (varName, options.testValues)
+      else
+        ???
+    }
+    var iterable: Iterable[Map[String, Math]] = Iterable(Map.empty)
+    for ((name, testValues) <- loops)
+      iterable = for (map <- iterable; value <- testValues) yield map + (name -> value)
+
+    iterable.map(f)
+  }
+
+  // TODO: Use enumerateLazy instead?
   /** For every assignment of test values to the variables, call f.
    * @return Sequences of all the return values of f */
   def enumerate[A](variables: Set[String])(f: Map[String, Math] => A)(using mathContext: MathContext): Seq[A] = {
@@ -42,12 +61,14 @@ object StackUtils {
   /** For every assignment of test values to the variables, call f.
    * @return True if all calls to f returned true */
   def forall(variables: Set[String])(f: Map[String, Math] => Boolean)(using mathContext: MathContext): Boolean =
+    // TODO: Use enumerateLazy instead?
     enumerate(variables)(f).forall(identity)
   /** For every assignment of test values to all variables occurring in terms, call f.
    * f is called with the assignment and with the terms after substituting the assignment.
    * @return Sequences of all the return values of f
    * */
   def enumerateMapped[A](terms: Seq[Math])(f: (Map[String, Math], Seq[Math]) => A)(using mathContext: MathContext): Seq[A] =
+    // TODO: Use enumerateLazy instead and return an Iterable?
     enumerate(terms.flatMap(_.variables).toSet) { map =>
       val termsMapped = terms.map(_.mapVariables(map))
       f(map, termsMapped)

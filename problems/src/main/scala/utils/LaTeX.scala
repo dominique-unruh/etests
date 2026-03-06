@@ -2,6 +2,7 @@ package utils
 
 import Docker.runInDocker
 import com.typesafe.scalalogging.Logger
+import utils.Utils.awaitResult
 import utils.{IndentedInterpolator, Utils}
 
 import java.awt.image.BufferedImage
@@ -46,7 +47,7 @@ object LaTeX {
       command = Seq("/bin/bash", "script.sh"),
       files = Map("script.sh" -> script, "latex.tex" -> document),
       requestedOutputs = Seq("result.png", "latex.log", "convert.log")
-    )
+    ).awaitResult
 
     if (dockerResult.exitCode != 0) {
       (dockerResult.fileString("latex.log"), dockerResult.fileString("convert.log")) match {

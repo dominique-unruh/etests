@@ -16,7 +16,7 @@ import java.util.{Base64, Properties}
 import javax.swing.{JLabel, JOptionPane, JPanel, JPasswordField, SwingUtilities}
 import scala.jdk.CollectionConverters.given
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{Await, Awaitable, ExecutionContext, Future, Promise}
 import scala.concurrent.duration.Duration
 import scala.quoted.{Expr, Quotes, Type}
 import scala.reflect.ClassTag
@@ -325,5 +325,9 @@ object Utils {
       if (first == upper) return str 
       upper.toString + str.tail
     }
+  }
+  
+  extension[A] (awaitable: Awaitable[A]) {
+    def awaitResult: A = Await.result(awaitable, Duration.Inf)
   }
 }

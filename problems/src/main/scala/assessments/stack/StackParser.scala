@@ -8,9 +8,12 @@ import externalsystems.MoodleStack.{Question, Quiz, inputElementToMoodle}
 import ujson.{Arr, Str, transform}
 import utils.Docker
 import utils.Tag.Tags
+import utils.Utils.awaitResult
 
 import java.nio.file.Path
 import scala.collection.mutable.ArrayBuffer
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 object StackParser {
 
@@ -77,7 +80,10 @@ object StackParser {
     parse(input, pageElement)
   }
 
-  def parse(expression: String, inputElement: InputElement): Math = {
+  def parse(expression: String, inputElement: InputElement): Math =
+    parseFuture(expression, inputElement).awaitResult
+
+  def parseFuture(expression: String, inputElement: InputElement): Future[Math] = {
     if (expression.trim.isEmpty)
       throw SyntaxError("empty string is not a valid math expression")
 
@@ -88,30 +94,30 @@ object StackParser {
     ))
     val xml = quiz.prettyXml
 
-    val result = Docker.runInDocker(Path.of("docker/stack-parser"),
+    Docker.runInDocker(Path.of("docker/stack-parser"),
       Seq("bash", "/parse.sh"),
-      files=Map("expression.txt" -> expression, "question.xml" -> xml),
-      requestedOutputs = Seq("result.txt", "errors.txt"))
+      files = Map("expression.txt" -> expression, "question.xml" -> xml),
+      requestedOutputs = Seq("result.txt", "errors.txt")).map { result =>
 
-    if (result.exitCode != 0)
-      throw RuntimeException("Docker failed")
-//    if (result.fileString("status.txt").getOrElse("").contains("parsing"))
-//      throw SyntaxError(s"Could not parse $inputFixed using maxima")
-    for (errors <- result.fileString("errors.txt"))
-      throw SyntaxError(s"Error parsing $expression: $errors")
-    if (!result.files.contains("result.txt"))
-      throw RuntimeException("Could not parse with Stack, unknown reason")
-    val pseudoLatex = result.fileString("result.txt").get
-    if (pseudoLatex.isEmpty)
-      throw SyntaxError("Not parseable by Stack (unknown reason, stack gave empty parse result). This can happen if an expression of wrong number of lines is parsed as a fixed size matrix.")
-    assert(pseudoLatex.startsWith("\\[ "), pseudoLatex)
-    assert(pseudoLatex.endsWith(" \\]"), pseudoLatex)
-    val json = pseudoLatex.stripPrefix("\\[ ").stripSuffix(" \\]")
-    val array = ujson.read(json)
+      if (result.exitCode != 0)
+        throw RuntimeException("Docker failed")
+      //    if (result.fileString("status.txt").getOrElse("").contains("parsing"))
+      //      throw SyntaxError(s"Could not parse $inputFixed using maxima")
+      for (errors <- result.fileString("errors.txt"))
+        throw SyntaxError(s"Error parsing $expression: $errors")
+      if (!result.files.contains("result.txt"))
+        throw RuntimeException("Could not parse with Stack, unknown reason")
+      val pseudoLatex = result.fileString("result.txt").get
+      if (pseudoLatex.isEmpty)
+        throw SyntaxError("Not parseable by Stack (unknown reason, stack gave empty parse result). This can happen if an expression of wrong number of lines is parsed as a fixed size matrix.")
+      assert(pseudoLatex.startsWith("\\[ "), pseudoLatex)
+      assert(pseudoLatex.endsWith(" \\]"), pseudoLatex)
+      val json = pseudoLatex.stripPrefix("\\[ ").stripSuffix(" \\]")
+      val array = ujson.read(json)
 
-    val maximaTerm = parseArray(array)
+      val maximaTerm = parseArray(array)
 
-    maximaToStackMath(maximaTerm)
+      maximaToStackMath(maximaTerm)
+    }
   }
-
 }
