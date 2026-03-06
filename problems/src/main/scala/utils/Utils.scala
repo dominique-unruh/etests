@@ -326,8 +326,8 @@ object Utils {
       upper.toString + str.tail
     }
   }
-  
+
   extension[A] (awaitable: Awaitable[A]) {
-    def awaitResult: A = Await.result(awaitable, Duration.Inf)
+    def awaitResult(duration: Duration = Duration.Inf): A = Await.result(awaitable, duration)
   }
 }

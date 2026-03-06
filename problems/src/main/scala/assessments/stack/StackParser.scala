@@ -81,7 +81,7 @@ object StackParser {
   }
 
   def parse(expression: String, inputElement: InputElement): Math =
-    parseFuture(expression, inputElement).awaitResult
+    parseFuture(expression, inputElement).awaitResult()
 
   def parseFuture(expression: String, inputElement: InputElement): Future[Math] = {
     if (expression.trim.isEmpty)

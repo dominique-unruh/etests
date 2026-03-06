@@ -6,7 +6,7 @@ import utils.Utils.awaitResult
 class DockerTest extends AnyFunSuiteLike {
   test ("cp workdir") {
     val result = Docker.runInDocker(image = "archlinux:latest", command = "cp in.txt out.txt".split(' '),
-      files=Map("in.txt" -> "hello"), requestedOutputs = Seq("out.txt")).awaitResult
+      files=Map("in.txt" -> "hello"), requestedOutputs = Seq("out.txt")).awaitResult()
     assert(result.exitCode == 0)
     assert(result.fileString("out.txt").contains("hello"))
   }
@@ -18,8 +18,8 @@ class DockerTest extends AnyFunSuiteLike {
         files = Map("in.txt" -> random.toString), requestedOutputs = Seq.empty)
     for ((future, index) <- futures.zipWithIndex) {
       println(s"Checking result $index")
-      val result = future.awaitResult
-      assert(result.exitCode == 0)
+      val result = future.awaitResult()
+      assert(result.exitCode() == 0)
     }
   }
 

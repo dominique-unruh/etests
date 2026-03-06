@@ -47,7 +47,7 @@ object LaTeX {
       command = Seq("/bin/bash", "script.sh"),
       files = Map("script.sh" -> script, "latex.tex" -> document),
       requestedOutputs = Seq("result.png", "latex.log", "convert.log")
-    ).awaitResult
+    ).awaitResult()
 
     if (dockerResult.exitCode != 0) {
       (dockerResult.fileString("latex.log"), dockerResult.fileString("convert.log")) match {
