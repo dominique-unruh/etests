@@ -86,3 +86,6 @@ lazy val tasks = (project in file("tasks"))
       Compile / scalaSource := baseDirectory.value
   )
   .dependsOn(exams)
+
+fork := true
+javaOptions += "-XX:-OmitStackTraceInFastThrow"
