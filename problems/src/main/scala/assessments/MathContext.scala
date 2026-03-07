@@ -7,6 +7,7 @@ import assessments.math.Math.Ops
 import assessments.stack.SympyExpr.sympy
 import assessments.stack.SympyExpr
 import me.shadaj.scalapy.py
+import utils.TypeChecker
 
 import scala.annotation.constructorOnly
 
@@ -73,14 +74,17 @@ case class MathContext private (variables: Map[String, VarOptions],
   def withFunctionPartial(name: String | Math.Ops, function: PartialFunction[Seq[Any], Any], overwrite: Boolean = false): MathContext =
     withFunctionGeneral(name, args => { function.lift(args) match { case None => FunctionResult.Inapplicable; case Some(result) => FunctionResult.Success(result) } })
 
-  def withFunction[X](name: String | Math.Ops, function: X => Any, overwrite: Boolean = false): MathContext =
-    withFunctionPartial(name, { case Seq(x) => function(x.asInstanceOf[X]) }, overwrite = overwrite)
+  def withFunction[X](name: String | Math.Ops, function: X => Any, overwrite: Boolean = false)
+                     (using xChecker: TypeChecker[X]): MathContext =
+    withFunctionPartial(name, { case Seq(xChecker(x)) => function(x) }, overwrite = overwrite)
 
-  def withFunction[X, Y](name: String | Math.Ops, function: (X, Y) => Any): MathContext =
-    withFunctionPartial(name, { case Seq(x, y) => function(x.asInstanceOf[X], y.asInstanceOf[Y]) })
+  def withFunction[X, Y](name: String | Math.Ops, function: (X, Y) => Any)
+                        (using xChecker: TypeChecker[X], yChecker: TypeChecker[Y]): MathContext =
+    withFunctionPartial(name, { case Seq(xChecker(x), yChecker(y)) => function(x, y) })
 
-  def withFunction[X, Y, Z](name: String | Math.Ops, function: (X, Y, Z) => Any): MathContext =
-    withFunctionPartial(name, { case Seq(x, y, z) => function(x.asInstanceOf[X], y.asInstanceOf[Y], z.asInstanceOf[Z]) })
+  def withFunction[X, Y, Z](name: String | Math.Ops, function: (X, Y, Z) => Any)
+    (using xChecker: TypeChecker[X], yChecker: TypeChecker[Y], zChecker: TypeChecker[Z]): MathContext =
+    withFunctionPartial(name, { case Seq(xChecker(x), yChecker(y), zChecker(z)) => function(x, y, z) })
 
   def withChange(change: (MathContext => MathContext)*): MathContext = change.foldLeft(this)((ctxt, change) => change(ctxt))
 
@@ -98,6 +102,7 @@ object MathContext {
     "sqrt" -> { case Seq(x) => x.sqrt },
     "matrix" -> { case rows => SympyExpr.matrix(rows*) },
     Ops.power -> { case Seq(x,y) => x ** y },
+    Ops.factorial -> { case Seq(x) => x.factorial },
     Ops.plus -> { case Seq(x,y) => x + y },
     Ops.minus -> { case Seq(x,y) => x - y },
     Ops.times -> { case Seq(x,y) => x * y },
