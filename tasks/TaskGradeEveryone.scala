@@ -16,9 +16,9 @@ import scala.util.control.Breaks.{break, breakable}
 
 //noinspection ScalaFileName
 object TaskGradeEveryone extends Task {
-  val includePDFs = true
-
-  val stopAfterFirst = true
+  val includeDynexitePDFs = true
+  val stopAfterFirst = false
+  val generatePDFs = true
 
   val exam = Utils.getSystemPropertyObject[assessments.Exam]("current.exam", "the current exam")
 
@@ -83,7 +83,7 @@ object TaskGradeEveryone extends Task {
     }
 
     Using.resource(new PrintWriter(reportFile.toFile)) { writer =>
-      val pdfLink = if (includePDFs) """<li><a href="dynexite.pdf">Dynexite PDF</a> (for comparison)</li>""" else ""
+      val pdfLink = if (includeDynexitePDFs) """<li><a href="dynexite.pdf">Dynexite PDF</a> (for comparison)</li>""" else ""
       val title = s"${exam.name}. Student $student"
       writer.println(
         ind"""<!DOCTYPE html>
@@ -104,7 +104,7 @@ object TaskGradeEveryone extends Task {
              |<hr>
              |""")
 
-      if (includePDFs)
+      if (includeDynexitePDFs)
         tryWithError[Unit](errors, label = "Getting Dynexite PDF", student = student) {
           val pdf = Dynexite.getAnswerPDF(exam = exam, registrationNumber = student)
           Files.write(studentDir.resolve("dynexite.pdf"), pdf)
@@ -116,8 +116,10 @@ object TaskGradeEveryone extends Task {
       writer.write("</body></html>")
     }
 
-    val pdfReportFile = studentDir.resolve("grading.pdf")
-    Utils.htmlToPdf(reportFile, pdfReportFile)
+    if (generatePDFs) {
+      val pdfReportFile = studentDir.resolve("grading.pdf")
+      Utils.htmlToPdf(reportFile, pdfReportFile)
+    }
 
     totalPoints
   }

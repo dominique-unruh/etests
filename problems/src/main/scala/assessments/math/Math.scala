@@ -363,7 +363,7 @@ case class EvalEncounteredVariable(name: String)(using exceptionContext: Excepti
   extends ExceptionWithContext(s"Encountered variable $name", name)
 
 case class EvalWrongResultType[A](math: Math, typeChecker: TypeChecker[A], value: Any)(using exceptionContext: ExceptionContext)
-  extends ExceptionWithContext(s"Formula did not evaluate to a ${typeChecker.name} value but to $value", math, typeChecker, value)
+  extends ExceptionWithContext(s"Formula did not evaluate to a ${typeChecker.name} value but to $value (class: ${value.getClass.getName})", math, typeChecker, value)
 
 @deprecated
 case class UndefinedVariableException(message: String, varname: String) extends Exception(message)
