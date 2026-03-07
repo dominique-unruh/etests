@@ -76,14 +76,15 @@ sealed trait Math {
 
   def mapVariables(subst: (String, Math)*): Math = mapVariables(Map(subst*))
 
-  /** Applied preprocessors and then fixed values (according to [[MathContext]] */
+  /** Applied preprocessors and then fixed values (according to [[MathContext]]).
+   * Done recursively (the replacements are also subjected to fixValues) */
   def fixValues(using mathContext: MathContext): Math = {
     val fixed1 = mathContext.preprocessors.foldLeft(this)((math, preprocessor) => preprocessor(math))
     val fixed2 =
       fixed1.mapVariables { name =>
         for (options <- mathContext.variables.get(name);
              fixedValue <- options.fixedValue)
-        yield fixedValue
+        yield fixedValue.fixValues
       }
     fixed2
   }

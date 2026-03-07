@@ -127,7 +127,7 @@ object StackUtils {
     if (value == Math.noAnswer || expected == Math.noAnswer)
       value == expected
     else
-      forallMapped(value, expected) { _ =>(x, y) =>
+      forallMapped(value.fixValues, expected.fixValues) { _ =>(x, y) =>
         mapLeft(x.toSympyMC(allowUndefined = false))
           .algebraicEqual(mapRight(y.toSympyMC(allowUndefined = false)))
       }
