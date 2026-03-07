@@ -66,7 +66,13 @@ class Assessment (val name: String,
     val (body, explanation, gradingRules) = renderHtml(render)
     assert(fileMapBuilder.result().isEmpty)
 
-    (body, explanation, gradingRules)
+    val body2 = solution.get(ElementName.extraData) match {
+      case Some(value) if value.trim.nonEmpty =>
+        body + Html(s"""<div class="extra-data"><b>Extra data:</b> ${escapeHtml4(value)}""")
+      case _ => body
+    }
+
+    (body2, explanation, gradingRules)
   }
 
   lazy val renderHtml: (Html, Html, Html, Map[String, (String, Array[Byte])]) = {
