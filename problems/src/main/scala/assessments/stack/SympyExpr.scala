@@ -35,6 +35,8 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
 
   def **(other: SympyExpr): SympyExpr = SympyExpr(python.__pow__(other.python))
 
+  def factorial: SympyExpr = SympyExpr(sympy.factorial(python))
+
   @targetName("less")
   def <(other: SympyExpr): Boolean = SympyExpr(python.__lt__(other.python)).equalsTrue
   @targetName("greater")

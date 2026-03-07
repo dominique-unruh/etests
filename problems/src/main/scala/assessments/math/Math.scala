@@ -277,7 +277,7 @@ object Math {
   enum Ops {
     case and, not, or, xor
     case equal, less_eq, greater_eq, less, greater
-    case power
+    case power, factorial
     case plus, minus
     case times, divide
     case unaryPlus, unaryMinus
