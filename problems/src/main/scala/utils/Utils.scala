@@ -7,7 +7,7 @@ import sourcecode.{Enclosing, FileName}
 
 import java.awt.{GridBagConstraints, GridBagLayout, Insets, Toolkit}
 import java.awt.datatransfer.{Clipboard, StringSelection}
-import java.io.{BufferedReader, FileReader}
+import java.io.{BufferedReader, FileReader, IOException}
 import java.nio.file.{Files, Path, Paths}
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -24,6 +24,8 @@ import scala.util.{Using, boundary}
 import scala.util.boundary.break
 import scala.reflect.runtime.universe.{TypeTag, typeOf}
 import scala.sys.process.stringSeqToProcess
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.math.Ordering.Implicits.infixOrderingOps
 
 object Utils {
   private val logger = Logger[Utils.type]
@@ -274,7 +276,24 @@ object Utils {
     }
   }
 
-  def htmlToPdf(htmlFile: Path, pdfOutputFile: Path): Unit = {
+  def htmlToPdf(htmlFile: Path, pdfOutputFile: Path): Unit =
+    htmlToPdfAsync(htmlFile, pdfOutputFile).awaitResult()
+
+  def htmlToPdfAsync(htmlFile: Path, pdfOutputFile: Path): Future[Unit] = {
+    Docker.runInDocker(
+//      invalidateCache = true,
+      image = Path.of("docker/html-to-pdf"),
+      files = Map("input.html" -> Files.readAllBytes(htmlFile)),
+//      command = Seq("ls", "-lh", "/workdir"),
+      requestedOutputs = Seq("output.pdf")
+    ) map { result =>
+      if (result.exitCode != 0)
+        throw new IOException(s"Could not convert $htmlFile to PDF. Conversion script returned ${result.exitCode}")
+      Files.write(pdfOutputFile, result.files("output.pdf"))
+    }
+  }
+
+  def htmlToPdfOld(htmlFile: Path, pdfOutputFile: Path): Unit = {
     val command = Seq(
       "chromium",
       "--headless",
@@ -329,5 +348,20 @@ object Utils {
 
   extension[A] (awaitable: Awaitable[A]) {
     def awaitResult(duration: Duration = Duration.Inf): A = Await.result(awaitable, duration)
+  }
+
+  def isIncreasing[A: Ordering](seq: IterableOnce[A], strict: Boolean = false): Boolean = {
+    val iterator = seq.iterator
+    if (!iterator.hasNext)
+      return true
+    var previous = iterator.next()
+    while (iterator.hasNext) {
+      val current = iterator.next()
+      val increased = if (strict) current > previous else current >= previous
+      if (!increased)
+        return false
+      previous = current
+    }
+    true
   }
 }

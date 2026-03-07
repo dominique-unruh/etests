@@ -51,13 +51,12 @@ case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownA
       assessment.runTests()
     }
 
-    tags.get(Exam.reachablePoints) match {
-      case Some(points) =>
+    for (points <- tags.get(Exam.reachablePoints))
         if (points != reachablePoints)
           throw AssertionError(s"Exam has ${reachablePoints} reachable points, but you specified tag \"reachablePoints := ${points}\".")
-      case None =>
-    }
-
+    
+    for (scale <- tags.get(Exam.gradingScale))
+      scale.assertCorrect(reachable = tags(Exam.reachablePoints))
   }
   
   def main(args: Array[String]): Unit = {
@@ -106,4 +105,5 @@ object Exam {
   /** Reachable points of the exam. If specified, running the Exam will test if this
    * matches the total of the reachable points of the problems. */
   val reachablePoints: Tag[Exam, Points] = Tag[Exam, Points]()
+  val gradingScale: Tag[Exam, GradingScale] = Tag()
 }

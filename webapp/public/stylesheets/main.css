@@ -60,3 +60,46 @@ img {
     background-color: lightgray;
     display: inline-block;
 }
+
+.explanation {
+    background-color: lightgray;
+}
+
+.grading-rules {
+    background-color: lightblue;
+}
+
+.question-test {
+    
+}
+
+table.grade-scale {
+    border-collapse: collapse;
+    font-family: sans-serif;
+    font-size: 0.9em;
+    align-self: center;
+}
+
+table.grade-scale th,
+table.grade-scale td {
+    border: 1px solid #ccc;
+    padding: 4px 12px;
+    text-align: center;
+}
+
+table.grade-scale tr:first-child th {
+    background-color: #4a6fa5;
+    color: white;
+    font-size: 1em;
+    letter-spacing: 0.05em;
+}
+
+table.grade-scale tr:nth-child(2) th {
+    background-color: #e8edf4;
+    color: #333;
+    font-weight: bold;
+}
+
+table.grade-scale tr:nth-child(odd) td {
+    background-color: #f9f9f9;
+}

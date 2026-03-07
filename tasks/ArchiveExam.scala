@@ -34,12 +34,12 @@ object ArchiveExam extends Task {
        |  ${body.html}
        |</div>
        |
-       |<div style="background-color: lightgray;">
+       |<div class="explanation">
        |  <h2>Explanation</h2>
        |  ${explanation.html}
        |</div>
        |
-       |<div style="">
+       |<div class="grading-rules">
        |  <h2>Grading rules</h2>
        |  ${gradingRules.html}
        |</div>

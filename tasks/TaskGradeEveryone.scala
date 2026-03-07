@@ -1,4 +1,5 @@
 import assessments.*
+import assessments.Exam.gradingScale
 import assessments.ExceptionContext.initialExceptionContext
 import assessments.GradingContext.comments
 import externalsystems.Dynexite
@@ -10,31 +11,18 @@ import java.io.PrintWriter
 import java.nio.file.{Files, Path}
 import scala.collection.mutable
 import scala.util.Using
+import scala.util.control.Breaks
+import scala.util.control.Breaks.{break, breakable}
 
 //noinspection ScalaFileName
 object TaskGradeEveryone extends Task {
   val includePDFs = true
-  
+
+  val stopAfterFirst = true
+
   val exam = Utils.getSystemPropertyObject[assessments.Exam]("current.exam", "the current exam")
 
   makeReports()
-
-  def pointsToGrade(points: Points, reachable: Points) = {
-    val percent = points / reachable * 100
-    val grade: Double =
-      if percent >= 94 then 1
-      else if percent >= 88 then 1.3
-      else if percent >= 83 then 1.7
-      else if percent >= 78 then 2
-      else if percent >= 74 then 2.3
-      else if percent >= 70 then 2.7
-      else if percent >= 65 then 3
-      else if percent >= 60 then 3.3
-      else if percent >= 55 then 3.7
-      else if percent >= 50 then 4
-      else 5
-    grade
-  }
 
   private def makeQuestionReport(student: String, question: Assessment, errors: mutable.Queue[(String, Assessment, String)]): (Points, String) = {
     given ExceptionContext = initialExceptionContext(s"Creating report for $student, question '${question.name}'")
@@ -48,15 +36,22 @@ object TaskGradeEveryone extends Task {
       val answers = Dynexite.getDynexiteAnswers(question, exam, student)
       val (body, explanation, gradingRules) = question.renderStaticHtml(answers)
 
+      output ++= "<div class=\"question-text\">\n"
       output ++= "<h2>Question text</h2>\n"
       output ++= body.html += '\n'
+      output ++= "</div>\n"
 
+      output ++= "<div class=\"explanation\">\n"
       output ++= "<h2>Solution explanation</h2>\n"
       output ++= explanation.html += '\n'
+      output ++= "</div>\n"
 
+      output ++= "<div class=\"grading-rules\">"
       output ++= "<h2>Grading rules</h2>\n"
       output ++= gradingRules.html += '\n'
+      output ++= "</div>\n"
 
+      output ++= "<div class=\"grading-report\">"
       output ++= "<h2>Your grading</h2>\n"
       val context = GradingContext(
         answers = answers,
@@ -71,6 +66,7 @@ object TaskGradeEveryone extends Task {
         output ++= s"""<pre style="color:red">${escapeHtml4(ExceptionUtils.getStackTrace(e))}</pre>\n"""
         errors += ((student, question, s"Exception: <pre>${escapeHtml4(e.toString)}</pre>"))
     }
+    output ++= "</div>\n"
     output ++= "<hr>"
     (points, output.result())
   }
@@ -86,14 +82,14 @@ object TaskGradeEveryone extends Task {
       report
     }
 
-    val pdfReportFile = studentDir.resolve("grading.pdf")
-    Utils.htmlToPdf(reportFile, pdfReportFile)
-
     Using.resource(new PrintWriter(reportFile.toFile)) { writer =>
       val pdfLink = if (includePDFs) """<li><a href="dynexite.pdf">Dynexite PDF</a> (for comparison)</li>""" else ""
+      val title = s"${exam.name}. Student $student"
       writer.println(
-        ind"""<html>
+        ind"""<!DOCTYPE html>
+             |<html>
              |<head>
+             |  <title>${escapeHtml4(title)}</title>
              |  ${Assessment.htmlHeader.html}
              |</head>
              |<body>
@@ -101,7 +97,9 @@ object TaskGradeEveryone extends Task {
              |<ul>
              |  <li>Registration number: ${escapeHtml4(student)}</li>
              |  <li>Total points: ${totalPoints.decimalFractionString(2)} / ${exam.reachablePoints.decimalFractionString(2)}</li>
+             |  <li>Grade: ${exam.tags(gradingScale).grade(totalPoints)}</li>
              |  $pdfLink
+             |  <br/>${exam.tags(gradingScale).html.html}
              |</ul>
              |<hr>
              |""")
@@ -117,6 +115,9 @@ object TaskGradeEveryone extends Task {
 
       writer.write("</body></html>")
     }
+
+    val pdfReportFile = studentDir.resolve("grading.pdf")
+    Utils.htmlToPdf(reportFile, pdfReportFile)
 
     totalPoints
   }
@@ -139,11 +140,11 @@ object TaskGradeEveryone extends Task {
     }
   }
 
-  private def makePointsCSV(targetDir: Path, points: Map[String, Points], reachable: Points): Unit = {
+  private def makePointsCSV(targetDir: Path, points: Map[String, Points], exam: Exam): Unit = {
     Using.resource(new PrintWriter(targetDir.resolve("results.csv").toFile)) { writer =>
       writer.println(s"student;points;grade")
       for ((student, points) <- points) {
-        val grade = pointsToGrade(points, reachable)
+        val grade = exam.tags(gradingScale).grade(points)
 
         writer.println(s"$student;$points;$grade")
       }
@@ -171,16 +172,20 @@ object TaskGradeEveryone extends Task {
     val errors = mutable.Queue[(String, Assessment, String)]()
     tryWithError[Unit](errors, label = "Exam tests failed") {
       exam.runTests() }
-      
+
     val students = Dynexite.resultsByLearner(exam).toSeq.collect { case (student, results) if results.nonEmpty => student }
     
     val pointMap = Map.newBuilder[String, Points]
-    for (student <- students) {
-      val points = makeReport(exam, student, targetDir, errors)
-      pointMap += (student -> points)
+    breakable {
+      for (student <- students) {
+        val points = makeReport(exam, student, targetDir, errors)
+        pointMap += (student -> points)
+        if (stopAfterFirst)
+          break
+      }
     }
     makeErrorReport(errors, targetDir.resolve("errors.html"))
-    makePointsCSV(targetDir, pointMap.result(), reachable = exam.reachablePoints)
+    makePointsCSV(targetDir, pointMap.result(), exam = exam)
     println(s"\n\nReports in $targetDir, errors in ${targetDir.resolve("errors.html")}")
     if (errors.nonEmpty)
       println("***** THERE WERE ERRORS *****")

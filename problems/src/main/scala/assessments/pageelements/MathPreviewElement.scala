@@ -41,7 +41,7 @@ class MathPreviewElement(val name: ElementName,
 
   override def renderStaticHtml(answers: Map[ElementName, String]): Html = {
     val rendered = contentToPreview(answers(observed))
-    Html(s"""<span class="mathjax-render" class="math-preview">$rendered</span>""")
+    Html(s"""<span class="math-preview">$rendered</span>""")
   }
 
   override def updateAction(assessment: Assessment, state: Map[ElementName, JsValue]): IterableOnce[ElementAction] = {
