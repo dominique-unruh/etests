@@ -129,15 +129,24 @@ object TaskGradeEveryone extends Task {
       if (errors.isEmpty)
         writer.println("<h1>No errors</h1>")
       else {
+        def e(str: String) = escapeHtml4(str)
+        writer.println(
+          """<!DOCTYPE html><html><head>
+            |<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css" />
+            |<script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
+            |</head>
+            |<body>
+            |""".stripMargin)
         writer.println(s"<h1>Errors</h1>")
         writer.println(s"There were ${errors.length} errors and warnings")
         writer.println("<ul>")
         for ((student, question, message) <- errors) {
-          writer.println(s"""<li>$student, <a href="$student/grading.html">${question.name}</a>:""")
-          //        writer.println(s"""(<a href="http://localhost:9000/preview/${question.getClass.getName}/">Webapp</a>):""")
-          writer.println(s"""<span style="color:red">$message</span></li>""")
+          writer.println(s"""<li>${e(student)}<sl-copy-button value=\"${e(student)}\"></sl-copy-button>, <b>${question.name}</b>""")
+          writer.println(s"""[<a target="_blank" href="${e(student)}/grading.html">Document</a> |""")
+          writer.println(s"""<a target="_blank" href="http://localhost:9000/preview/${e(exam.id)}/${e(question.name)}/">Webapp</a>]<br>""")
+          writer.println(s"""<span style="color:red">${message}</span></li>""")
         }
-        writer.println("</ul>")
+        writer.println("</ul></body>")
       }
     }
   }
@@ -165,7 +174,7 @@ object TaskGradeEveryone extends Task {
       case e: Exception =>
 //        e.printStackTrace()
         System.err.println(e.toString)
-        errors += ((student, question, if (label == "") e.toString else s"$label: $e"))
+        errors += ((student, question, s"${if (label == "") "" else s"${escapeHtml4(label)}: "}<pre>${escapeHtml4(e.toString)}</pre>"))
         fallback
   }
   
