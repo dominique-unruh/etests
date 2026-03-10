@@ -49,6 +49,7 @@ object GradingScale {
     .set(85, 1.7)
     .set(80, 2)
     .set(75, 2.3)
+    .set(70, 2.7)
     .set(65, 3)
     .set(60, 3.3)
     .set(55, 3.7)

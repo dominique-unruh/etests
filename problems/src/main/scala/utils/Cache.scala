@@ -61,6 +61,16 @@ object Cache {
     } finally ps.close()
   }
 
+  def getOrCompute[A](key: Array[Byte], toBytes: A => Array[Byte], fromBytes: Array[Byte] => A)(body: => A): A = synchronized {
+    get(key) match {
+      case Some(cached) => fromBytes(cached)
+      case None => 
+        val result = body
+        put(key, toBytes(result))
+        result
+    }
+  }
+
   def put(key: Array[Byte], value: Array[Byte]): Unit = synchronized {
     val ps = connection.prepareStatement(
       """INSERT INTO cache (key_hash, key, value) VALUES (?, ?, ?)

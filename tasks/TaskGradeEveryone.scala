@@ -19,6 +19,7 @@ object TaskGradeEveryone extends Task {
   val includeDynexitePDFs = true
   val stopAfterFirst = false
   val generatePDFs = true
+  val generateHTMLs = false
 
   val exam = Utils.getSystemPropertyObject[assessments.Exam]("current.exam", "the current exam")
 
@@ -119,6 +120,10 @@ object TaskGradeEveryone extends Task {
     if (generatePDFs) {
       val pdfReportFile = studentDir.resolve("grading.pdf")
       Utils.htmlToPdf(reportFile, pdfReportFile)
+    }
+
+    if (!generateHTMLs) {
+      Files.delete(reportFile)
     }
 
     totalPoints

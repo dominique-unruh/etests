@@ -9,8 +9,9 @@ import java.awt.{GridBagConstraints, GridBagLayout, Insets, Toolkit}
 import java.awt.datatransfer.{Clipboard, StringSelection}
 import java.io.{BufferedReader, FileReader, IOException}
 import java.nio.file.{Files, Path, Paths}
-import java.time.LocalDate
+import java.time.{Instant, LocalDate}
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.concurrent.{Executors, TimeUnit}
 import java.util.{Base64, Properties}
 import javax.swing.{JLabel, JOptionPane, JPanel, JPasswordField, SwingUtilities}
@@ -364,4 +365,13 @@ object Utils {
     }
     true
   }
-}
+
+
+  def waitUntil(target: Instant): Unit = {
+    if (target.isBefore(Instant.now())) return
+    var remaining = Instant.now().until(target, ChronoUnit.MILLIS)
+    while (remaining > 0) {
+      Thread.sleep(remaining)
+      remaining = Instant.now().until(target, ChronoUnit.MILLIS)
+    }
+  }}
