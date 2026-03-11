@@ -42,7 +42,20 @@ object GradingContext {
   def comments(using context: GradingContext): mutable.IndexedBuffer[Comment] = context.comments
   def points(using context: GradingContext): Points.Mutable = context.points
   def points_=(points: Points)(using context: GradingContext): Unit = context.points := points
-  def answers(using context: GradingContext): mutable.Map[ElementName, String] = context.answers
+  def answers(using context: GradingContext): mutable.Map[ElementName | AnswerElement, String] = new mutable.Map {
+    private val answers = context.answers
+    private def toName(name: ElementName | AnswerElement): ElementName = name match
+      case name: ElementName => name
+      case element: AnswerElement => element.name
+    override def addOne(elem: (ElementName | AnswerElement, String)): this.type = {
+      answers.addOne((toName(elem._1), elem._2)); this
+    }
+    override def get(key: ElementName | AnswerElement): Option[String] = answers.get(toName(key))
+    override def iterator: Iterator[(ElementName, String)] = answers.iterator
+    override def subtractOne(elem: ElementName | AnswerElement): this.type = {
+      answers.subtractOne(toName(elem)); this
+    }
+  }
 
   def apply(answers: Map[ElementName, String], registrationNumber: String, reachable: Points): GradingContext =
     new GradingContext(answers.to(mutable.Map), registrationNumber, reachable, label = None)
@@ -92,11 +105,13 @@ object GradingContext {
     def unapply(arg: Case): Some[String] = Some(arg.name)
   }
 
+  @deprecated("Just use `answers(name) = ...` or `answers.updateWith(...)`.")
   def fixAnswer(name: ElementName)(f: PartialFunction[String, String])(using gradingContext: GradingContext): Unit =
     f.lift(answers(name)) match
       case Some(value) => answers(name) = value
       case None =>
 
+  @deprecated("Just use `answers(name) = ...` or `answers.updateWith(...)`.")
   def fixAnswer(element: AnswerElement)(f: PartialFunction[String, String])(using gradingContext: GradingContext): Unit =
     fixAnswer(element.name)(f)
 
@@ -126,7 +141,6 @@ object GradingContext {
    * @param max  Number of reachable points for this subproblem.
    * @param body A block which does grading for the subproblem
    * */
-  // TODO: Should be in `object GradingContext`
   def gradeBlock(max: Points)(body: (GradingContext, Label[GradeBlockExit], ExceptionContext) ?=> Unit)
                 (using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
     val (result, subcontext) = bareGradeBlock(max)(body)
