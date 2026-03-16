@@ -1,5 +1,6 @@
 package externalsystems
 
+import com.typesafe.scalalogging.Logger
 import org.aarboard.nextcloud.api.{AuthenticationConfig, NextcloudConnector}
 import org.aarboard.nextcloud.api.filesharing.{Share, SharePermissions, ShareType}
 import utils.{Cache, Utils}
@@ -35,8 +36,11 @@ object Sciebo {
           share.getShareType == ShareType.PUBLIC_LINK)
       val share = existing.getOrElse(
         client.doShare(path, ShareType.PUBLIC_LINK, null, false, null, permissions))
+      logger.debug(s"Link to $path: ${share.getUrl}${if (existing.nonEmpty) " (already existed)" else ""}")
       lastRequest = Instant.now()
       share.getUrl
       }
   }
+
+  private val logger = Logger[Sciebo$]
 }
