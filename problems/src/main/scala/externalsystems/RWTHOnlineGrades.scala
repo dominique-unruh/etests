@@ -58,7 +58,7 @@ object RWTHOnlineGrades {
      * @param allowWorse Allow the grade to become worse. */
     def setGrade(grade: String, allowWorse: Boolean = false): Entry = {
       if (!allowWorse) {
-        val oldGrade = grade
+        val oldGrade = this.grade
         if (oldGrade != "" && oldGrade != grade && oldGrade.toDouble < grade.toDouble)
           throw RuntimeException(s"Worsening of grade from $oldGrade to $grade (reg.no. $registrationNumber)")
       }
