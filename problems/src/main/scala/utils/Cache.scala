@@ -16,15 +16,17 @@ object Cache {
     MessageDigest.getInstance("SHA-256").digest(bytes)
 
   private def connection: Connection = synchronized {
+    val cachePath =
+      Utils.getSystemPropertyPath("cache.file", "cache file (e.g., /tmp/etests.cache), doesn't have to exist yet")
     _conn.filter(!_.isClosed).getOrElse {
       logger.debug("Opening SQLite cache")
 
       val conn = try
-        DriverManager.getConnection("jdbc:sqlite:.cache")
+        DriverManager.getConnection(s"jdbc:sqlite:$cachePath")
         catch {
           case e: SQLiteException =>
             e.printStackTrace()
-            throw RuntimeException(s"Error opening cache ${Path.of(".cache").toAbsolutePath}. Maybe corrupted? Delete that file to fix.", e)
+            throw RuntimeException(s"Error opening cache $cachePath. Maybe corrupted? Delete that file to fix.", e)
         }
       conn.setAutoCommit(true)
 
@@ -47,18 +49,17 @@ object Cache {
 
   /** Not required but will make sure DB connection errors are thrown here. */
   def forceInitialization(): Unit = connection
-  
+
+  private lazy val getStatement = connection.prepareStatement(
+    "SELECT value FROM cache WHERE key_hash = ? AND key = ?"
+  )
+
   def get(key: Array[Byte]): Option[Array[Byte]] = synchronized {
-    val ps = connection.prepareStatement(
-      "SELECT value FROM cache WHERE key_hash = ? AND key = ?"
-    )
-    try {
-      ps.setBytes(1, sha256(key))
-      ps.setBytes(2, key)
-      val rs = ps.executeQuery()
-      try if (rs.next()) Some(rs.getBytes(1)) else None
-      finally rs.close()
-    } finally ps.close()
+    getStatement.setBytes(1, sha256(key))
+    getStatement.setBytes(2, key)
+    val rs = getStatement.executeQuery()
+    try if (rs.next()) Some(rs.getBytes(1)) else None
+    finally rs.close()
   }
 
   def getOrCompute[A](key: Array[Byte], toBytes: A => Array[Byte], fromBytes: Array[Byte] => A)(body: => A): A = synchronized {
@@ -71,33 +72,50 @@ object Cache {
     }
   }
 
+  private lazy val putStatement = connection.prepareStatement(
+    """INSERT INTO cache (key_hash, key, value) VALUES (?, ?, ?)
+      |ON CONFLICT(key_hash, key) DO UPDATE SET value = excluded.value""".stripMargin
+  )
+
   def put(key: Array[Byte], value: Array[Byte]): Unit = synchronized {
-    val ps = connection.prepareStatement(
-      """INSERT INTO cache (key_hash, key, value) VALUES (?, ?, ?)
-        |ON CONFLICT(key_hash, key) DO UPDATE SET value = excluded.value""".stripMargin
-    )
-    try {
-      ps.setBytes(1, sha256(key))
-      ps.setBytes(2, key)
-      ps.setBytes(3, value)
-      ps.executeUpdate()
-    } finally ps.close()
+    putStatement.setBytes(1, sha256(key))
+    putStatement.setBytes(2, key)
+    putStatement.setBytes(3, value)
+    putStatement.executeUpdate()
   }
 
+  private lazy val deleteStatement = connection.prepareStatement(
+    "DELETE FROM cache WHERE key_hash = ? AND key = ?"
+  )
+
+
   def delete(key: Array[Byte]): Unit = synchronized {
-    val ps = connection.prepareStatement(
-      "DELETE FROM cache WHERE key_hash = ? AND key = ?"
-    )
-    try {
-      ps.setBytes(1, sha256(key))
-      ps.setBytes(2, key)
-      ps.executeUpdate()
-    } finally ps.close()
+    deleteStatement.setBytes(1, sha256(key))
+    deleteStatement.setBytes(2, key)
+    deleteStatement.executeUpdate()
   }
+
+/*
+  def thinOutCache(): Unit = synchronized {
+    val fraction = 0.001
+    logger.info(s"Removing $fraction of all cache entries")
+    val statement = connection.prepareStatement(
+      s"""DELETE FROM cache
+        |WHERE rowid IN (
+        |  SELECT rowid FROM cache
+        |  ORDER BY random()
+        |  LIMIT (SELECT CAST(ROUND(COUNT(*) * $fraction))))""".stripMargin)
+    try
+      statement.executeUpdate()
+    finally
+      statement.close()
+  }
+*/
 
   def close(): Unit = synchronized {
     _conn match {
       case Some(c) if !c.isClosed =>
+//        thinOutCache() // Do a bit of tidying up
         logger.debug("Closing SQLite cache")
         c.close()
         _conn = None
