@@ -11,7 +11,7 @@ import sourcecode.Enclosing
 import java.io.{ByteArrayOutputStream, InputStream, Reader}
 
 case class ImageElement(png: Array[Byte], basename: String) extends StaticElement {
-  override def renderHtml(associatedFiles: FileMapBuilder): Html = {
+  override def renderHtml(context: RenderContext, associatedFiles: FileMapBuilder): Html = {
     val name = associatedFiles.add(basename = basename, extension = "png", mimeType = "image/png", content = png)
     Html(s"""<img src="${escapeHtml4(name)}"/>""")
   }

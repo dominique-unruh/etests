@@ -1,6 +1,6 @@
 package assessments
 
-import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, ErrorElement, ImageElement, StaticElement}
+import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, ErrorElement, ImageElement, RenderContext, StaticElement}
 import com.eed3si9n.eval.Eval
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
@@ -54,14 +54,11 @@ class Assessment (val name: String,
     (body, explanation, gradingRules)
   }
 
+  // TODO: Just have a single renderHtml, with a renderContext
   def renderStaticHtml(solution: Map[ElementName, String]): (Html, Html, Html) = {
+    val renderContext = RenderContext(RenderContext.dynamic := false, RenderContext.studentAnswers := solution)
     val fileMapBuilder = DataUrlFileMapBuilder()
-    def render(element: Element) = element match {
-      case element: DynamicElement =>
-        element.renderStaticHtml(solution)
-      case element: StaticElement =>
-        element.renderHtml(fileMapBuilder)
-    }
+    def render(element: Element) = element.renderHtml(renderContext, fileMapBuilder)
 
     val (body, explanation, gradingRules) = renderHtml(render)
     assert(fileMapBuilder.result().isEmpty)
@@ -76,13 +73,9 @@ class Assessment (val name: String,
   }
 
   lazy val renderHtml: (Html, Html, Html, Map[String, (String, Array[Byte])]) = {
+    val renderContext = RenderContext(RenderContext.dynamic := true)
     val fileMapBuilder = DefaultFileMapBuilder("")
-    def render(element: Element) = element match {
-      case element: DynamicElement =>
-        element.renderHtml
-      case element: StaticElement =>
-        element.renderHtml(fileMapBuilder)
-    }
+    def render(element: Element) = element.renderHtml(renderContext, fileMapBuilder)
 
     val (body, explanation, gradingRules) = renderHtml(render)
     (body, explanation, gradingRules, fileMapBuilder.result())

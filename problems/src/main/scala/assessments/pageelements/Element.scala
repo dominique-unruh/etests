@@ -10,11 +10,11 @@ import utils.Tag.Tags
 
 import scala.util.Using
 
-sealed trait Element
-
-trait StaticElement extends Element {
-  def renderHtml(associatedFiles: FileMapBuilder): Html
+sealed trait Element {
+  def renderHtml(context: RenderContext, associatedFiles: FileMapBuilder): Html
 }
+
+trait StaticElement extends Element
 
 /** Potentially interactive elements on an assessment page. */
 trait DynamicElement extends Element { self =>
@@ -22,8 +22,6 @@ trait DynamicElement extends Element { self =>
   /** Human readable name.
    * @return the value of the tag [[DynamicElement.humanName]] or else the name of this element. */
   def humanName: String = tags.getOrElse(DynamicElement.humanName, name.toString)
-  def renderHtml: Html
-  def renderStaticHtml(answers: Map[ElementName, String]): Html
   def updateAction(assessment: Assessment, state: Map[ElementName, JsValue]): IterableOnce[ElementAction] = Seq.empty
   val tags: Tag.Tags[self.type]
   val initialState: JsValue = JsObject(collection.Seq("content" -> JsString("")))

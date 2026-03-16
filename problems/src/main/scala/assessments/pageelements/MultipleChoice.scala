@@ -2,7 +2,7 @@ package assessments.pageelements
 
 import assessments.pageelements.MultipleChoice.Style.checkbox
 import assessments.pageelements.MultipleChoice.{Style, checkboxLabel, notSelectedString}
-import assessments.{ElementName, Html, Points}
+import assessments.{ElementName, FileMapBuilder, Html, Points}
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import play.api.libs.json.{JsNumber, JsObject, JsString}
@@ -46,14 +46,19 @@ final class MultipleChoice(override val name: ElementName,
   }
 
 
-  override def renderHtml: Html = style match
-    case Style.select => renderHtmlSelect
-    case Style.radio => renderHtmlRadio
-    case Style.checkbox => renderHtmlCheckbox
-
-  override def renderStaticHtml(answers: Map[ElementName, String]): Html = style match
-    case Style.select => renderHtmlSelectStatic(selected = answers(name))
-    case Style.radio => renderHtmlRadioStatic(selected = answers(name))
+  override def renderHtml(context: RenderContext, files: FileMapBuilder): Html = {
+    if (context(RenderContext.dynamic))
+      style match
+        case Style.select => renderHtmlSelect
+        case Style.radio => renderHtmlRadio
+        case Style.checkbox => renderHtmlCheckbox
+    else {
+      val answers = context(RenderContext.studentAnswers)
+      style match
+        case Style.select => renderHtmlSelectStatic(selected = answers(name))
+        case Style.radio => renderHtmlRadioStatic(selected = answers(name))
+    }
+  }
 
   def renderHtmlRadioStatic(selected: String): Html = {
     val html = StringBuilder()

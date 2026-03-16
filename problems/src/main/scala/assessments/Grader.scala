@@ -3,7 +3,7 @@ package assessments
 import assessments.Comment.Kind
 import assessments.ExceptionContext.initialExceptionContext
 import assessments.Grader.logger
-import assessments.pageelements.{AnswerElement, DynamicElement, ElementAction, InputElement}
+import assessments.pageelements.{AnswerElement, DynamicElement, ElementAction, InputElement, RenderContext}
 import com.typesafe.scalalogging.Logger
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.commons.text.StringEscapeUtils
@@ -11,8 +11,7 @@ import play.api.libs.json.{JsNumber, JsObject, JsString, JsValue}
 import utils.Utils
 
 abstract class Grader(val name: ElementName) extends DynamicElement {
-  override def renderHtml: Html = Html.empty
-  override def renderStaticHtml(answers: Map[ElementName, String]): Html = renderHtml
+  override def renderHtml(context: RenderContext, files: FileMapBuilder): Html = Html.empty
   
   def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit
   lazy val reachablePoints: Points

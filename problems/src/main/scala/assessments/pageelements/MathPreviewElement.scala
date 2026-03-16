@@ -1,6 +1,6 @@
 package assessments.pageelements
 
-import assessments.{Assessment, ElementName, Html, SyntaxError}
+import assessments.{Assessment, ElementName, FileMapBuilder, Html, SyntaxError}
 import me.shadaj.scalapy.py
 import me.shadaj.scalapy.py.PyQuote
 import org.apache.commons.text.StringEscapeUtils
@@ -16,7 +16,9 @@ class MathPreviewElement(val name: ElementName,
                          val observed: ElementName,
                          val latexRenderer: String => String) extends DynamicElement {
   override val tags: Tag.Tags[MathPreviewElement.this.type] = Tags.empty
-  override def renderHtml: Html =
+  override def renderHtml(context: RenderContext, files: FileMapBuilder): Html =
+    if (!context(RenderContext.dynamic))
+      return renderStaticHtml(context, files)
     Html(ind"""<span class="math-preview" id="${name.jsElementId}">Preview...</span><script>
          |  function ${name.jsElementCallbackName}(json) {
          |    let span = document.getElementById("${name.jsElementId}");
@@ -39,7 +41,8 @@ class MathPreviewElement(val name: ElementName,
         """<span style="color:red; font-weight:bold;">Internal error</span>"""
   }
 
-  override def renderStaticHtml(answers: Map[ElementName, String]): Html = {
+  private def renderStaticHtml(context: RenderContext, files: FileMapBuilder): Html = {
+    val answers = context(RenderContext.studentAnswers)
     val rendered = contentToPreview(answers(observed))
     Html(s"""<span class="math-preview">$rendered</span>""")
   }

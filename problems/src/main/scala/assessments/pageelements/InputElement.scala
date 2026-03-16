@@ -1,7 +1,7 @@
 package assessments.pageelements
 
 import assessments.pageelements.InputElement.{inputElementColumns, inputElementRows}
-import assessments.{Assessment, ElementName, Html}
+import assessments.{Assessment, ElementName, FileMapBuilder, Html}
 import org.apache.commons.text.StringEscapeUtils
 import play.api.libs.json.{JsObject, JsString, JsValue}
 import utils.{IndentedInterpolator, Tag, Utils}
@@ -15,7 +15,9 @@ case class InputElement(val name: ElementName,
   assert(tags(inputElementColumns) > 0)
   private val useTextarea = tags(inputElementRows) > 1
 
-  override def renderHtml: Html = {
+  override def renderHtml(context: RenderContext, files: FileMapBuilder): Html = {
+    if (!context(RenderContext.dynamic))
+      return renderStaticHtml(context, files)
     val tag = if (useTextarea) "textarea" else "input"
     val width = if (useTextarea) "cols" else "size"
     Html(ind"""<$tag rows="${tags(inputElementRows)}" $width="${tags(inputElementColumns)}" type="text" id="${name.jsElementId}" onInput='updateState("$name", {content: this.value})'></$tag><script>
@@ -28,7 +30,8 @@ case class InputElement(val name: ElementName,
          |</script>""")
   }
 
-  override def renderStaticHtml(answers: Map[ElementName, String]): Html = {
+  private def renderStaticHtml(context: RenderContext, files: FileMapBuilder): Html = {
+    val answers = context(RenderContext.studentAnswers)
     if (useTextarea)
       Html(s"""<textarea rows="${tags(inputElementRows)}" cols="${tags(inputElementColumns)}" type="text" readonly>${StringEscapeUtils.escapeHtml4(answers(name))}</textarea>""")
     else
