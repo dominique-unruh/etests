@@ -10,41 +10,34 @@ import java.sql.{Connection, DriverManager}
 /** Persistent cache. To clear it, delete the `.cache` file. */
 object Cache {
   private val logger = Logger[this.type]
-  private var _conn: Option[Connection] = None
 
   private def sha256(bytes: Array[Byte]): Array[Byte] =
     MessageDigest.getInstance("SHA-256").digest(bytes)
 
-  private def connection: Connection = synchronized {
+  private lazy val connection: Connection = synchronized {
     val cachePath =
       Utils.getSystemPropertyPath("cache.file", "cache file (e.g., /tmp/etests.cache), doesn't have to exist yet")
-    _conn.filter(!_.isClosed).getOrElse {
-      logger.debug("Opening SQLite cache")
+    logger.debug("Opening SQLite cache")
 
-      val conn = try
-        DriverManager.getConnection(s"jdbc:sqlite:$cachePath")
-        catch {
-          case e: SQLiteException =>
-            e.printStackTrace()
-            throw RuntimeException(s"Error opening cache $cachePath. Maybe corrupted? Delete that file to fix.", e)
-        }
-      conn.setAutoCommit(true)
+    val conn = try
+      DriverManager.getConnection(s"jdbc:sqlite:$cachePath")
+      catch {
+        case e: SQLiteException =>
+          e.printStackTrace()
+          throw RuntimeException(s"Error opening cache $cachePath. Maybe corrupted? Delete that file to fix.", e)
+      }
+    conn.setAutoCommit(true)
 
-      conn.createStatement().execute(
-        """CREATE TABLE IF NOT EXISTS cache (
-          |  key_hash BLOB NOT NULL,
-          |  key      BLOB NOT NULL,
-          |  value    BLOB NOT NULL,
-          |  PRIMARY KEY (key_hash, key)
-          |)""".stripMargin
-      )
+    conn.createStatement().execute(
+      """CREATE TABLE IF NOT EXISTS cache (
+        |  key_hash BLOB NOT NULL,
+        |  key      BLOB NOT NULL,
+        |  value    BLOB NOT NULL,
+        |  PRIMARY KEY (key_hash, key)
+        |)""".stripMargin
+    )
 
-      _conn = Some(conn)
-
-      sys.addShutdownHook(close())
-
-      conn
-    }
+    conn
   }
 
   /** Not required but will make sure DB connection errors are thrown here. */
@@ -101,25 +94,14 @@ object Cache {
     logger.info(s"Removing $fraction of all cache entries")
     val statement = connection.prepareStatement(
       s"""DELETE FROM cache
-        |WHERE rowid IN (
-        |  SELECT rowid FROM cache
+        |WHERE key_hash IN (
+        |  SELECT key_hash FROM cache
         |  ORDER BY random()
-        |  LIMIT (SELECT CAST(ROUND(COUNT(*) * $fraction))))""".stripMargin)
+        |  LIMIT (SELECT CAST(ROUND(COUNT(*) * $fraction)))""".stripMargin)
     try
       statement.executeUpdate()
     finally
       statement.close()
   }
 */
-
-  def close(): Unit = synchronized {
-    _conn match {
-      case Some(c) if !c.isClosed =>
-//        thinOutCache() // Do a bit of tidying up
-        logger.debug("Closing SQLite cache")
-        c.close()
-        _conn = None
-      case _ =>
-    }
-  }
 }
