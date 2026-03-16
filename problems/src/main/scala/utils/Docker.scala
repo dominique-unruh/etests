@@ -1,28 +1,32 @@
 package utils
 
 import com.typesafe.scalalogging.Logger
-import io.circe.generic.auto.*
+import io.circe.generic.semiauto.deriveCodec
+import io.circe.{Codec, Decoder, Encoder}
 import io.circe.parser.decode
 import io.circe.syntax.*
 import utils.Utils
 
 import java.io.IOException
-import java.lang.System.currentTimeMillis
+import java.lang.System.{currentTimeMillis, out}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.charset.{Charset, StandardCharsets}
 import java.nio.file.{Files, Path}
 import java.time.Instant
+import java.util.Base64
 import java.util.concurrent.{Semaphore, TimeUnit}
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.sys.process.*
-import scala.util.Using
+import scala.util.{Try, Using}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object Docker {
   /** Result of a Docker execution. */
   case class DockerResult(/** Exit code of the Docker command. */
                           exitCode: Int,
+                          /** Output of the Docker command. (Mixed stdout, stderr) */
+                          output: String,
                           /** Files produced by the command inside `/workdir`.
                            * Only files requested in `requestedOutputs` in [[runInDocker]] are included. */
                           files: Map[String, Array[Byte]]) {
@@ -34,9 +38,21 @@ object Docker {
     def fileString(name: String, charset: Charset = UTF_8): Option[String] = files.get(name).map(new String(_, charset))
   }
 
+  given dockerResultCodec: Codec[DockerResult] = {
+    import utils.CirceCodecs.byteArrayCodec
+    deriveCodec[DockerResult]
+  }
+
+  private case class DockerKey(imageId: String, command: Seq[String], filesBytes: Map[String, Array[Byte]], requestedOutputs: Seq[String])
+
+  private given dockerKeyCodec: Codec[DockerKey] = {
+    import utils.CirceCodecs.byteArrayCodec
+    deriveCodec[DockerKey]
+  }
+
   val buildBound = 4
   /** Only use via withBuildBound! */
-  val buildBoundSemaphore = Semaphore(buildBound)
+  private val buildBoundSemaphore = Semaphore(buildBound)
 
   /** Limit the number of concurrent builds etc. to [[buildBound]]. */
   private def withBuildBound[A](name: String)(body: => A): A = {
@@ -145,7 +161,7 @@ object Docker {
       case content: Array[Byte] => content
     }).toMap
 
-    val argsJson = (imageId, command, filesBytes, requestedOutputs).asJson.noSpacesSortKeys
+    val argsJson = DockerKey(imageId, command, filesBytes, requestedOutputs).asJson.noSpacesSortKeys
     val argsJsonBytes = argsJson.getBytes
 
     synchronized {
@@ -200,7 +216,10 @@ object Docker {
 
     logger.debug(s"Running Docker command: ${dockerCommand.mkString(" ")}")
 
-    val exitCode = dockerCommand.!
+    val output = StringBuilder()
+    // TODO store the output
+    val exitCode = dockerCommand.!(ProcessLogger(line => output ++= line += '\n'))
+
 
     val resultFiles = Map.from(requestedOutputs.flatMap { name =>
       val file = tempDir.resolve(name)
@@ -210,7 +229,7 @@ object Docker {
         None
     })
 
-    DockerResult(exitCode = exitCode, files = resultFiles)
+    DockerResult(exitCode = exitCode, output = output.result(), files = resultFiles)
   }
 
   private val logger = Logger[Docker.type]
