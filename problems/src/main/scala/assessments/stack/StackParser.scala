@@ -104,8 +104,12 @@ object StackParser {
         throw RuntimeException("Docker failed")
       //    if (result.fileString("status.txt").getOrElse("").contains("parsing"))
       //      throw SyntaxError(s"Could not parse $inputFixed using maxima")
-      for (errors <- result.fileString("errors.txt"))
+      for (errors <- result.fileString("errors.txt")) {
+        if (errors.contains("CAS failed to return any data due to timeout"))
+          // Don't throw SyntaxError in this case, since SyntaxError implies that it's the fault of the `expression`.
+          throw RuntimeException(s"Error parsing $expression: $errors")
         throw SyntaxError(s"Error parsing $expression: $errors")
+      }
       if (!result.files.contains("result.txt"))
         throw RuntimeException("Could not parse with Stack, unknown reason")
       val pseudoLatex = result.fileString("result.txt").get
