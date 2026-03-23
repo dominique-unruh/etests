@@ -32,13 +32,16 @@ implicit class IndentedInterpolator(val sc: StringContext) extends AnyVal {
     }
   }
 
-  def ind(args: Any*): String = {
+  def ind(args: Any*): String = interpolator(true, args)
+  def indraw(args: Any*): String = interpolator(false, args)
+  def interpolator(escape: Boolean, args: Seq[Any]): String = {
+    def processEsc(str: String) = if (escape) StringContext.processEscapes(str) else str
     StringContext.checkLengths(args, sc.parts)
     val result = StringBuilder()
     var indent: Int = 0
     for ((part, arg) <- sc.parts.zipAll(args, "", "")) {
       var first = true
-      for (line <- StringContext.processEscapes(part).linesWithSeparators) {
+      for (line <- processEsc(part).linesWithSeparators) {
         val stripped = stripPipe(line)
         result ++= stripped
         if (first)
