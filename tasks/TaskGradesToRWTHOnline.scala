@@ -1,17 +1,18 @@
 import assessments.Task
 import Data.*
-import exam.y2025.pqc1.Pqc1Students
+import exam.y2025.pqc1.{Pqc1Exam, Pqc1Students}
+import externalsystems.Schein.Semester.Winter
 import externalsystems.Spreadsheet.Index
-import externalsystems.{RWTHOnlineGrades, Sciebo, Spreadsheet}
+import externalsystems.{RWTHOnlineGrades, Schein, Sciebo, Spreadsheet}
 import utils.Utils
 
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
 import scala.language.postfixOps
 
 //noinspection TypeAnnotation
 object Data {
   // This file will be inplace-updated to contain the grades
-  val rwthOnlineExportImportFile = "/home/unruh/cloud/qis/lectures/2025-post-quantum-cryptography/exam1/rwth-online-with-grades.csv"
+  val rwthOnlineExportImportFile = "/home/unruh/cloud/qis/lectures/2025-ws-post-quantum-cryptography/exam1/rwth-online-with-grades.csv"
   lazy val rwthOnlineExport =
     RWTHOnlineGrades.load(rwthOnlineExportImportFile)
       .assertValid()
@@ -44,6 +45,8 @@ object Data {
 //  val nonQualified = allStudents.toSet -- qualifiedStudents
 
   val participatingStudents = allStudents.toSet // intersect qualifiedStudents.toSet
+
+  val scheinDir = Path.of("/home/unruh/cloud/qis/lectures/2025-ws-post-quantum-cryptography/exam1/scheine/")
 }
 
 given Conversion[String, Path] = Path.of(_)
@@ -75,7 +78,7 @@ object GradesToRWTHOnline extends Task {
   // lcd intro-qc-priv && cp -a exam2/reports/ ~/cloud/sciebo/shared/intro-qc-exam2-grading/ && cd ~/cloud/sciebo/shared/intro-qc-exam2-grading/ && git gui
 
   // This file is created by TaskGradeEveryone
-  val gradeSheet = Spreadsheet.load("/home/unruh/cloud/qis/lectures/2025-post-quantum-cryptography/exam1/reports/results.csv", format=Spreadsheet.Format.CSV.default)
+  val gradeSheet = Spreadsheet.load("/home/unruh/cloud/qis/lectures/2025-ws-post-quantum-cryptography/exam1/reports/results.csv", format=Spreadsheet.Format.CSV.default)
 
   val gradeSheetStudents = gradeSheet.rows.map(_("student"))
   assert(Utils.isDistinct(gradeSheetStudents))
@@ -111,14 +114,21 @@ object GradesToRWTHOnline extends Task {
   println("\n\n\n")
   
   println(s"Upload: $rwthOnlineExportImportFile\n")
-  
+
+  val course = Schein.Course(name = "Post-Quantum Cryptography", semester = Winter, year = 2025, ects = 6)
+
   println("Schein:")
   for ((regno, name) <- scheinStudents)
-    if (toPublish.contains(regno))
-      println(s"$name ($regno), ${toPublish(regno)._1}, ${toPublish(regno)._2}")
-    else
+    if (toPublish.contains(regno)) {
+      val grade = toPublish(regno)._1.toDouble
+      if (grade <= 4) {
+        val student = Schein.Student(name = name, registrationNumber = regno, grade = grade)
+        Files.write(scheinDir.resolve(s"Schein $name $regno.pdf"), Schein.pdf(course, student))
+      }
+      println(s"$name ($regno), ${toPublish(regno)._1}, $grade")
+    } else
       println(s"$name ($regno): not participated")
-      
+
   println("Done.")
   sys.exit()
 }
