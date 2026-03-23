@@ -216,9 +216,8 @@ object Docker {
 
     logger.debug(s"Running Docker command: ${dockerCommand.mkString(" ")}")
 
-    val output = StringBuilder()
-    // TODO store the output
-    val exitCode = dockerCommand.!(ProcessLogger(line => output ++= line += '\n'))
+    val output = StringBuffer() // Not using StringBuilder (not thread safe)
+    val exitCode = dockerCommand.!(ProcessLogger(line => output.append(line).append('\n')))
 
 
     val resultFiles = Map.from(requestedOutputs.flatMap { name =>
@@ -229,7 +228,7 @@ object Docker {
         None
     })
 
-    DockerResult(exitCode = exitCode, output = output.result(), files = resultFiles)
+    DockerResult(exitCode = exitCode, output = output.toString, files = resultFiles)
   }
 
   private val logger = Logger[Docker.type]
