@@ -161,4 +161,12 @@ object InterpolatedString extends InterpolatedTextC[String, InterpolatedString] 
   }
 
   def newBuilder[T]: Builder[T] = new Builder
+
+  extension (sc: StringContext) {
+    /** Create interpolated string. No escape processing */
+    // Escape sequences show up as errors in Intelli/J IDEA. Bug report files: https://youtrack.jetbrains.com/issue/SCL-25082/Scala-Editor-shows-errors-in-correct-custom-interpolated-strings
+    inline def iraw[T](args: T*): InterpolatedString[T] = InterpolatedString[T](sc.parts, args)
+    /** Create interpolated string. With escape processing */
+    inline def is[T](args: T*): InterpolatedString[T] = InterpolatedString[T](sc.parts.map(StringContext.processEscapes), args)
+  }
 }
