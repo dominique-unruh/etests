@@ -42,5 +42,5 @@ object Sciebo {
       }
   }
 
-  private val logger = Logger[Sciebo$]
+  private val logger = Logger[Sciebo.type]
 }
