@@ -10,6 +10,7 @@ import java.nio.file.Path
 import scala.annotation.targetName
 import scala.collection.mutable.ArrayBuffer
 
+/** The RWTHonline exam data (registration, grades, etc.) as stored in the import/export CSV file. */
 class RWTHOnlineGrades private (private val spreadsheet: Spreadsheet) {
   def byRegistrationNumber(registrationNumber: String): Entry = spreadsheet.lookup(registrationNumberIndex, registrationNumber)
   def apply(registrationNumber: String): Entry = byRegistrationNumber(registrationNumber)
