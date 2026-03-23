@@ -37,6 +37,8 @@ object Cache {
         |)""".stripMargin
     )
 
+    sys.addShutdownHook(cleanup())
+
     conn
   }
 
@@ -88,20 +90,20 @@ object Cache {
     deleteStatement.executeUpdate()
   }
 
-/*
   def thinOutCache(): Unit = synchronized {
-    val fraction = 0.001
-    logger.info(s"Removing $fraction of all cache entries")
+    val fraction: Int = 1000
+    assert(fraction > 0)
+    logger.info(s"Removing 1/$fraction of all cache entries")
     val statement = connection.prepareStatement(
-      s"""DELETE FROM cache
-        |WHERE key_hash IN (
-        |  SELECT key_hash FROM cache
-        |  ORDER BY random()
-        |  LIMIT (SELECT CAST(ROUND(COUNT(*) * $fraction)))""".stripMargin)
+      s"""DELETE FROM cache WHERE ABS(random()) % 1000 = 0;""")
     try
       statement.executeUpdate()
     finally
       statement.close()
   }
-*/
+
+  private def cleanup(): Unit = {
+    thinOutCache()
+    connection.close()
+  }
 }
