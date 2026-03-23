@@ -23,6 +23,35 @@ object LaTeX {
     val standard = "\\usepackage[T1]{fontenc}\n\\usepackage[utf8]{inputenc}\n\\usepackage{amsmath,amssymb}"
   }
 
+  def latexToPDF(document: String, files: Map[String, Array[Byte]] = Map.empty): Array[Byte] = {
+    val script =
+      """#!/bin/bash
+        |set -ex
+        |
+        |echo "Starting LaTeX compilation..."
+        |pdflatex -halt-on-error -interaction=batchmode latex.tex
+        |echo "Compiled successfully"
+        |""".stripMargin
+
+    val dockerResult = runInDocker(
+      image = "aergus/latex:latest",
+      command = Seq("/bin/bash", "script.sh"),
+      files = Map("script.sh" -> script, "latex.tex" -> document) ++ files,
+      requestedOutputs = Seq("latex.pdf", "latex.log")
+    ).awaitResult()
+
+    if (dockerResult.exitCode != 0) {
+      dockerResult.fileString("latex.log") match {
+        case None =>
+          throw LaTeXException(s"Failed to run LaTeX (no log file produced)", Map ("latex.tex" -> document.getBytes(UTF_8)))
+        case Some(latexLog) =>
+          throw LaTeXException(s"Failed to run latex", Map ("latex.tex" -> document.getBytes(UTF_8), "latex.log" -> latexLog.getBytes(UTF_8)))
+      }
+    }
+
+    dockerResult.files("latex.pdf")
+  }
+
   def latexToPng(latex: String, preamble: String = Preambles.standard): Array[Byte] = {
     val document =
       ind"""\\documentclass[tikz,border=2mm]{standalone}
@@ -63,39 +92,28 @@ object LaTeX {
     dockerResult.files("result.png")
   }
 
-  def showPngImage(bytes: Array[Byte]): Unit = {
-    val inputStream = new ByteArrayInputStream(bytes)
-    val image: BufferedImage = ImageIO.read(inputStream)
-    val icon = new ImageIcon(image)
-    val label = new JLabel(icon)
+  private val escapes = Map(
+    '\\' -> "\\textbackslash{}",
+    '{' -> "\\{",
+    '}' -> "\\}",
+    '$' -> "\\$",
+    '&' -> "\\&",
+    '%' -> "\\%",
+    '#' -> "\\#",
+    '_' -> "\\_",
+    '^' -> "\\textasciicircum{}",
+    '~' -> "\\textasciitilde{}",
+    '<' -> "\\textless{}",
+    '>' -> "\\textgreater{}",
+  )
 
-    JOptionPane.showMessageDialog(null, label, "PNG Image", JOptionPane.PLAIN_MESSAGE)
-  }
-
-  // Example usage
-  def main(args: Array[String]): Unit = {
-    // Ensure Docker image is available
-
-    val tikzCode = """
-                     |\begin{tikzpicture}[scale=2]
-                     |  \draw[thick,->] (0,0) -- (2.2,0) node[anchor=north west] {$x$};
-                     |  \draw[thick,->] (0,0) -- (0,2.2) node[anchor=south east] {$y$};
-                     |
-                     |  \draw[blue,thick,domain=0:2,samples=100] plot (\x,{sin(\x r)});
-                     |  \draw[red,thick,domain=0:2,samples=100] plot (\x,{cos(\x r)});
-                     |
-                     |  \node[blue] at (1.5,1.5) {$\sin(x)$};
-                     |  \node[red] at (0.5,1.5) {$\cos(x)$};
-                     |  \x
-                     |\end{tikzpicture}""".stripMargin
-
-    val result = latexToPng(tikzCode)
-
-    showPngImage(result)
-
-  }
-
+  /** Escapes a plaintext string as LaTeX */
+  def escape(string: String): String =
+    string.flatMap(c => escapes.getOrElse(c, c.toString))
+  
   private val logger = Logger[LaTeX.type]
 }
 
-case class LaTeXException(message: String, files: Map[String, Array[Byte]]) extends IOException(message)
+case class LaTeXException(message: String, files: Map[String, Array[Byte]]) extends IOException(message) {
+  def fileString(name: String): String = String(files(name), UTF_8)
+}
