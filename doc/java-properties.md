@@ -15,3 +15,6 @@ Existing options:
 * `sciebo.password = password` For automated Sciebo uploads.
 * `run.option.for.problem = OPTION` Can be `extractStack` or `runTests`. Decides what to do when an individual problem is executed (Ctrl-Shift-F10 in IDEA).
 * `grading.timeout = 60s` Timeout when grading (grader fails then, better than just waiting forever)
+* `cache.file = path` The tool needs a cache file to avoid rerunning costly operations all the time.
+  Here you can give the path which file to use (e.g. `/tmp/cache.data`). 
+  The file will be created by the tool.
