@@ -24,9 +24,9 @@ abstract class MarkdownAssessment {
   val name: String = getClass.getName
   /** ID of this assessment (guaranteed unique within an [[Exam]]) */
   val id: String = getClass.getName
-  lazy val question: InterpolatedMarkdown[Element]
-  lazy val explanation: InterpolatedMarkdown[Element] = md""
-  lazy val gradingRules: InterpolatedMarkdown[Element] = md""
+  lazy val question: InterpolatedMarkdown[Element | HtmlConvertible]
+  lazy val explanation: InterpolatedMarkdown[Element | HtmlConvertible] = md""
+  lazy val gradingRules: InterpolatedMarkdown[Element | HtmlConvertible] = md""
   
   def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit
   val reachablePoints: Points
@@ -58,11 +58,11 @@ abstract class MarkdownAssessment {
       val clazz = this.getClass.getName.stripSuffix("$")
 //      val comment = InterpolatedHtml(Html(s"<!-- Exported via Dominique Unruh's assessment tool. Source class ${StringEscapeUtils.escapeHtml4(clazz)}. Date: ${StringEscapeUtils.escapeHtml4(date)} -->\n"))
       //comment ++
-      question.toHtml
+      question.toHtml.inlineHtmlConvertible
     }
 
-    val explanationTemplate = explanation.toHtml
-    val gradingRulesTemplate = gradingRules.toHtml
+    val explanationTemplate = explanation.toHtml.inlineHtmlConvertible
+    val gradingRulesTemplate = gradingRules.toHtml.inlineHtmlConvertible
 
     assert(grader.name == ElementName.grader)
     elements.addOne(grader.name, grader)
