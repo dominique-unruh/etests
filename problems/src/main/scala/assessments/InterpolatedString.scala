@@ -110,6 +110,8 @@ object InterpolatedString extends InterpolatedTextC[String, InterpolatedString] 
   }
 
   override def apply[T](string: String) = new InterpolatedString[T](Seq(string), Seq.empty)
+
+  override def fromArg[T](arg: T): InterpolatedString[T] = new InterpolatedString[T](Seq("",""), Seq(arg))
   
   val empty: InterpolatedString[Nothing] = InterpolatedString("")
   

@@ -19,7 +19,11 @@ trait InterpolatedText[+T, Text, Self[+U] <: InterpolatedText[U, Text, Self]] {
 
 trait InterpolatedTextC[Text, Self[+U] <: InterpolatedText[U, Text, Self]] {
   def apply[T](text: Text): Self[T]
+  
+  def fromArg[T](arg: T): Self[T]
 
+  def empty: Self[Nothing]
+  
   extension (it: Self[Text]) {
     def mkText: Text = it.flatMapArgs(identity)
   }

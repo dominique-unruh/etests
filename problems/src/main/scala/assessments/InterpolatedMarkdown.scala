@@ -47,6 +47,12 @@ object InterpolatedMarkdown extends InterpolatedTextC[Markdown, InterpolatedMark
   override def apply[T](text: Markdown): InterpolatedMarkdown[T] =
     new InterpolatedMarkdown(InterpolatedString(text.markdown))
 
+  override def fromArg[T](arg: T): InterpolatedMarkdown[T] =
+    new InterpolatedMarkdown(InterpolatedString.fromArg(arg))
+
+  override def empty: InterpolatedMarkdown[Nothing] =
+    new InterpolatedMarkdown(InterpolatedString.empty)
+  
   given [T]: Conversion[Markdown, InterpolatedMarkdown[T]] = 
     md => InterpolatedMarkdown.apply(md)
 }

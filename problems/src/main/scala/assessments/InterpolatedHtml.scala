@@ -27,6 +27,16 @@ final class InterpolatedHtml[+T](val interpolatedString: InterpolatedString[T])
   override def flatMapArgs[U](f: T => InterpolatedHtml[U]): InterpolatedHtml[U] =
     new InterpolatedHtml(interpolatedString.flatMapArgs(t => f(t).interpolatedString))
 
+  def inlineHtmlConvertible[U](using subtype: T <:< (U | HtmlConvertible)): InterpolatedHtml[U] = {
+    def f(arg: T): InterpolatedHtml[U] = subtype(arg) match {
+      case convertible: HtmlConvertible => InterpolatedHtml(convertible.toHtml)
+      case other: U => InterpolatedHtml.fromArg(other)  
+    }
+    flatMapArgs(f)
+  }
+    
+
+
   override def args: Seq[T] =
     interpolatedString.args
 
@@ -46,6 +56,8 @@ object InterpolatedHtml extends InterpolatedTextC[Html, InterpolatedHtml] {
   override def apply[T](text: Html): InterpolatedHtml[T] =
     new InterpolatedHtml(InterpolatedString(text.html))
 
+  override def fromArg[T](arg: T): InterpolatedHtml[T] = new InterpolatedHtml[T](InterpolatedString.fromArg(arg))
+  
   val empty = new InterpolatedHtml(InterpolatedString.empty)
 }
 
