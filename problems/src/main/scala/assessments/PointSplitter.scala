@@ -44,7 +44,7 @@ class PointSplitter(total: Points, granularity: Points = 1) {
     fields
   }
 
-  class P private [PointSplitter] (private [PointSplitter] val weight: Points) extends PointsWrapper {
+  class P private [PointSplitter] (private [PointSplitter] val weight: Points, val name: String) extends PointsWrapper {
     assert(!frozen)
     assert(weight >= 0)
     private[PointSplitter] var points: Points = uninitialized
@@ -53,7 +53,13 @@ class PointSplitter(total: Points, granularity: Points = 1) {
   }
 
   /** Initialize a points-field with weight `weight` */
-  def w(weight: Points): P = new P(weight)
+  def w(weight: Points)(using name: sourcecode.Name): P = new P(weight=weight, name=name.value)
   /** Initialize a points-field with weight 1 */
-  def p = P(1)
+  def p(using name: sourcecode.Name) = P(weight=1, name=name.value)
+
+  def showPoints(): Unit = {
+    val maxLen = pointFields.map(_.name.length).max
+    for (field <- pointFields)
+      println(s"${field.name}:${" " * (field.name.length-maxLen)} ${field}")
+  }
 }
