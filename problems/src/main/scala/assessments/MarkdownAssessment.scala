@@ -4,7 +4,7 @@ import assessments.ExceptionContext.{addToExceptionContext, initialExceptionCont
 import assessments.GradingContext.comments
 import assessments.InterpolatedMarkdown.md
 import assessments.MarkdownAssessment.MarkdownAssessmentRun
-import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, StaticElement}
+import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, ProblemElement, StaticElement}
 import externalsystems.MoodleStack
 import org.apache.commons.text.StringEscapeUtils
 import org.commonmark.parser.Parser
@@ -121,6 +121,13 @@ abstract class MarkdownAssessment {
             throw ExceptionWithContext("Grader not implemented yet.")
       }
     }
+  }
+
+  def testProblems(): AssessmentTest = new AssessmentTest {
+    override def runTest()(using exceptionContext: ExceptionContext): Unit =
+      for (element <- question.args ++ explanation.args ++ gradingRules.args
+           if element.isInstanceOf[ProblemElement])
+        throw ExceptionWithContext(s"Encountered problem/todo: $element")
   }
 
   def testName(): AssessmentTest = new AssessmentTest {
