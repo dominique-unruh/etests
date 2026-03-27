@@ -1,6 +1,6 @@
 package assessments
 
-import assessments.Points.bigInt1
+import assessments.Points.{PointsWrapper, bigInt1}
 import io.circe.{Json, JsonNumber}
 
 import java.math.MathContext
@@ -11,9 +11,13 @@ import scala.util.FromDigits
 /** Implementation of rational numbers.
  * 
  * Internal invariant: denominator > 0; numberator and denominator are relatively prime; if numerator=0, then denominator=1 */
-class Points private (private val numerator: BigInt, private val denominator: BigInt) {
+class Points private (private val numerator: BigInt, private val denominator: BigInt) extends PointsWrapper {
   assert(denominator > 0)
 
+  override def get: Points = this
+
+  def isInteger = denominator == 1
+  
   def fractionString: String =
     if (denominator == 1)
       numerator.toString
@@ -25,6 +29,13 @@ class Points private (private val numerator: BigInt, private val denominator: Bi
     else
       s"<span><sup>$numerator</sup>&frasl;<sub>$denominator</sub></span>"
 
+  /** Rounds towards 0 */
+  def toBigInt: BigInt = numerator / denominator
+  def toBigIntExact: BigInt = 
+    assert(denominator == 1); numerator
+  def toIntExact: Int =
+    assert(denominator == 1); numerator.underlying().intValueExact()
+  
   def toBigDecimal: BigDecimal = BigDecimal(numerator) / BigDecimal(denominator)
   /** Returns the points as a decimal fraction (e.g. 1.23) with high precision (Java defaults) */
   def decimalFractionString: String = toBigDecimal.toString
@@ -53,6 +64,7 @@ class Points private (private val numerator: BigInt, private val denominator: Bi
   def -(other: Points): Points = Points(
     numerator * other.denominator - other.numerator * denominator,
     denominator * other.denominator)
+  def unary_- = new Points(-numerator, denominator)
   def *(other: Points): Points = Points(numerator * other.numerator, denominator * other.denominator)
   def /(other: Points): Points = {
     assert(other.denominator != 0)
@@ -81,8 +93,15 @@ class Points private (private val numerator: BigInt, private val denominator: Bi
 }
 
 object Points {
-  class Mutable(initialPoints: Points = Points.zero) {
-    override def toString: String = points.toString
+  trait PointsWrapper {
+    override def toString: String = get.toString
+    def get: Points
+    override def equals(obj: Any): Boolean = obj match
+      case points: PointsWrapper => this.get == points.get
+      case _ => false
+  }
+
+  class Mutable(initialPoints: Points = Points.zero) extends PointsWrapper {
     private var points = initialPoints
     def get: Points = points
     def +=(points: Points): Unit = this.points += points
@@ -91,12 +110,9 @@ object Points {
     def /=(points: Points): Unit = this.points /= points
 //    def set(points: Points): Unit = this.points = points
     def :=(points: Points): Unit = this.points = points
-    override def equals(obj: Any): Boolean = obj match
-      case points: Points => this.get == points
-      case _ => super.equals(obj)
   }
 
-  given Conversion[Mutable, Points] = _.get
+  given Conversion[PointsWrapper, Points] = _.get
 
   given circeEncoder: io.circe.Encoder[Points] = io.circe.Encoder.encodeBigDecimal.contramap { points =>
     points.toBigDecimal }
