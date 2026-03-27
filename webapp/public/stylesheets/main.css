@@ -103,3 +103,9 @@ table.grade-scale tr:nth-child(2) th {
 table.grade-scale tr:nth-child(odd) td {
     background-color: #f9f9f9;
 }
+
+.todo {
+    background-color: lightgray;
+    color: blue;
+    font-weight: bold;
+}

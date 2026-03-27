@@ -201,4 +201,6 @@ object DynexiteDefaults {
 
     GradingContext.points += points
   }
+  
+  def todo(message: String | HtmlConvertible): TodoElement = TodoElement(message)
 }
