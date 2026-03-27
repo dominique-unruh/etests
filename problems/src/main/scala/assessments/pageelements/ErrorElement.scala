@@ -19,6 +19,6 @@ case class TodoElement(message: String | HtmlConvertible) extends ProblemElement
     val html = message match
       case html: HtmlConvertible => html.toHtml
       case text: String => escapeHtml4(text)
-    Html(s"""<span class="todo">TODO: $html</div>""")
+    Html(s"""<span class="todo">TODO: $html</span>""")
   }
 }
