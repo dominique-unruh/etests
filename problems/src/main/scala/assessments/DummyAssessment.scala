@@ -16,5 +16,5 @@ class DummyAssessment(override val name: String) extends MarkdownAssessment {
   override def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit =
     throw NoGraderYetException
 
-  override val reachablePoints: Points = 999
+  override lazy val reachablePoints: Points = 999
 }

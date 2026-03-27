@@ -9,7 +9,7 @@ import assessments.{Common, DynexiteDefaults, ExceptionContext, GradingContext, 
 
 object ExampleProblem2 extends MarkdownAssessment {
   override val name = "Example problem 2"
-  override val reachablePoints: Points = 8
+  override lazy val reachablePoints: Points = 8
 
   lazy val someImage: StaticElement = Common.latex("$\\sqrt{123}$")
 

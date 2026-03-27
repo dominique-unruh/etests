@@ -9,7 +9,7 @@ import assessments.{DynexiteDefaults, ExceptionContext, GradingContext, Interpol
 
 object ExampleProblem extends MarkdownAssessment {
   override val name = "Example problem"
-  override val reachablePoints: Points = 8
+  override lazy val reachablePoints: Points = 8
 
   lazy val question = md"""
 Please enter the number 10, without writing 10.

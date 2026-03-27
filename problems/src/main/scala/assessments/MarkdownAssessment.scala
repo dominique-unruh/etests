@@ -29,7 +29,7 @@ abstract class MarkdownAssessment {
   lazy val gradingRules: InterpolatedMarkdown[Element | HtmlConvertible] = md""
   
   def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit
-  val reachablePoints: Points
+  lazy val reachablePoints: Points
   val grader: Grader = new Grader(ElementName.grader) {
     override def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
       val duration = Utils.getSystemProperty("grading.timeout", "timeout for graders, e.g., 10s, 1m")
