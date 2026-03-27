@@ -57,6 +57,7 @@ final class MultipleChoice(override val name: ElementName,
       style match
         case Style.select => renderHtmlSelectStatic(selected = answers(name))
         case Style.radio => renderHtmlRadioStatic(selected = answers(name))
+        case Style.checkbox => renderHtmlCheckboxStatic(selected = answers(name))
     }
   }
 
@@ -134,6 +135,19 @@ final class MultipleChoice(override val name: ElementName,
     Html(html.result())
   }
 
+  def renderHtmlCheckboxStatic(selected: String): Html = {
+    val html = StringBuilder()
+    val Seq(yes, no) = options.keysIterator.map(escapeHtml4).toSeq
+    val label = tags(checkboxLabel).html match {
+      case "" => ""
+      case label => s""" <label for="${name.jsElementId}">$label</label>"""
+    }
+    val checked = if (selected == yes) " checked" else ""
+    html ++= s"""<input disable type="checkbox" id="${name.jsElementId}$checked"></input>$label\n"""
+
+    Html(html.result())
+  }
+
   def renderHtmlCheckbox: Html = {
     val html = StringBuilder()
     val Seq(yes, no) = options.keysIterator.map(escapeHtml4).toSeq
@@ -141,7 +155,7 @@ final class MultipleChoice(override val name: ElementName,
       case "" => ""
       case label => s""" <label for="${name.jsElementId}">$label</label>"""
     }
-    println(s"LABEL ${tags(checkboxLabel)} $label")
+//    println(s"LABEL ${tags(checkboxLabel)} $label")
     html ++= s"""<input type="checkbox" id="${name.jsElementId}" onchange="updateState('$name', {content: this.checked ? '$yes' : '$no'})"></input>$label\n"""
     html ++=
       ind"""<script>
