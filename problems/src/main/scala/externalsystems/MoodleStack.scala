@@ -319,7 +319,11 @@ object MoodleStack {
     )
   }
 
-  val moodleAllowWords = Tag[InputElement, Seq[String]](default=Seq.empty)
+  /** Specify which symbol names are allowed in Stack math input fields.
+   * If not given, the default moodle settings are used (i.e., all 1+2 character symbols are allowed).
+   * If given, only the given symbols are allowed (this differs from Moodle's defaults where 1+2 character symbols are allowed unless explicitly forbidden).
+   **/
+  val moodleAllowWords = Tag[InputElement, Seq[String]]()
   val moodleQuestionVariables = Tag[Assessment, String](default="")
   val moodleExtraOptions = Tag[InputElement, Seq[String]](default=Seq.empty)
   object MoodleExtraOptions {
