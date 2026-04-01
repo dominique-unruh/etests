@@ -42,9 +42,13 @@ class MathPreviewElement(val name: ElementName,
   }
 
   private def renderStaticHtml(context: RenderContext, files: FileMapBuilder): Html = {
-    val answers = context(RenderContext.studentAnswers)
-    val rendered = contentToPreview(answers(observed))
-    Html(s"""<span class="math-preview">$rendered</span>""")
+    context.studentAnswer(observed) match {
+      case Some(answer) =>
+        val rendered = contentToPreview(answer)
+        Html(s"""<span class="math-preview">$rendered</span>""")
+      case None =>
+        Html.empty
+    }
   }
 
   override def updateAction(assessment: Assessment, state: Map[ElementName, JsValue]): IterableOnce[ElementAction] = {

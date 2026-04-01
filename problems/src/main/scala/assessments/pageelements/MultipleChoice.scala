@@ -1,5 +1,6 @@
 package assessments.pageelements
 
+import assessments.GradingContext.answers
 import assessments.pageelements.MultipleChoice.Style.checkbox
 import assessments.pageelements.MultipleChoice.{Style, checkboxLabel, notSelectedString}
 import assessments.{ElementName, FileMapBuilder, Html, Points}
@@ -53,11 +54,11 @@ final class MultipleChoice(override val name: ElementName,
         case Style.radio => renderHtmlRadio
         case Style.checkbox => renderHtmlCheckbox
     else {
-      val answers = context(RenderContext.studentAnswers)
+      val answer = context.studentAnswer(name)
       style match
-        case Style.select => renderHtmlSelectStatic(selected = answers(name))
-        case Style.radio => renderHtmlRadioStatic(selected = answers(name))
-        case Style.checkbox => renderHtmlCheckboxStatic(selected = answers(name))
+        case Style.select => renderHtmlSelectStatic(selected = answer)
+        case Style.radio => renderHtmlRadioStatic(selected = answer.getOrElse(""))
+        case Style.checkbox => renderHtmlCheckboxStatic(selected = answer.getOrElse(""))
     }
   }
 
@@ -105,14 +106,19 @@ final class MultipleChoice(override val name: ElementName,
     Html(html.result())
   }
 
-  def renderHtmlSelectStatic(selected: String): Html = {
-    val html = StringBuilder()
-    html ++= s"""<select readonly>\n"""
-    html ++= s"""<option value=""${if (selected=="") " selected" else ""}>$notSelectedString</option>\n"""
-    for ((optionName, optionText) <- options)
-      html ++= s"""<option value="${escapeHtml4(optionName)}"${if (selected==optionName) " selected" else ""}>$optionText</option>\n"""
-    html ++= "</select>\n"
-    Html(html.result())
+  def renderHtmlSelectStatic(selected: Option[String]): Html = selected match {
+    case Some(selected) =>
+      val html = StringBuilder()
+      html ++= s"""<select readonly>\n"""
+      html ++= s"""<option value=""${if (selected=="") " selected" else ""}>$notSelectedString</option>\n"""
+      for ((optionName, optionText) <- options)
+        html ++= s"""<option value="${escapeHtml4(optionName)}"${if (selected==optionName) " selected" else ""}>$optionText</option>\n"""
+      html ++= "</select>\n"
+      Html(html.result())
+    case None =>
+      Html("""<span class="static-select">""" +
+        options.values.map(text => s"<span>$text</span>").mkString(" | ") +
+        "</span>")
   }
 
   def renderHtmlSelect: Html = {

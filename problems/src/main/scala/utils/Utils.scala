@@ -8,6 +8,7 @@ import sourcecode.{Enclosing, FileName}
 import java.awt.{GridBagConstraints, GridBagLayout, Insets, Toolkit}
 import java.awt.datatransfer.{Clipboard, StringSelection}
 import java.io.{BufferedReader, FileReader, IOException}
+import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 import java.time.{Instant, LocalDate}
 import java.time.format.DateTimeFormatter
@@ -280,18 +281,25 @@ object Utils {
   def htmlToPdf(htmlFile: Path, pdfOutputFile: Path): Unit =
     htmlToPdfAsync(htmlFile, pdfOutputFile).awaitResult()
 
-  def htmlToPdfAsync(htmlFile: Path, pdfOutputFile: Path): Future[Unit] = {
+  def htmlToPdfAsync(html: String, htmlFile: String = "HTML"): Future[Array[Byte]] = {
     Docker.runInDocker(
-//      invalidateCache = true,
+//            invalidateCache = true,
       image = Path.of("docker/html-to-pdf"),
-      files = Map("input.html" -> Files.readAllBytes(htmlFile)),
-//      command = Seq("ls", "-lh", "/workdir"),
+      files = Map("input.html" -> html.getBytes(StandardCharsets.UTF_8)),
+      //      command = Seq("ls", "-lh", "/workdir"),
       requestedOutputs = Seq("output.pdf")
     ) map { result =>
       if (result.exitCode != 0)
         throw new IOException(s"Could not convert $htmlFile to PDF. Conversion script returned ${result.exitCode}")
-      Files.write(pdfOutputFile, result.files("output.pdf"))
+      result.files("output.pdf")
     }
+  }
+
+
+  def htmlToPdfAsync(htmlFile: Path, pdfOutputFile: Path): Future[Unit] = {
+    val html = String(Files.readAllBytes(htmlFile), StandardCharsets.UTF_8)
+    htmlToPdfAsync(html, htmlFile = htmlFile.toString)
+      .map(Files.write(pdfOutputFile, _))
   }
 
   def htmlToPdfOld(htmlFile: Path, pdfOutputFile: Path): Unit = {

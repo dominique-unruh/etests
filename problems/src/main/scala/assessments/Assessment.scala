@@ -54,16 +54,17 @@ class Assessment (val name: String,
     (body, explanation, gradingRules)
   }
 
-  // TODO: Just have a single renderHtml, with a renderContext
-  def renderStaticHtml(solution: Map[ElementName, String]): (Html, Html, Html) = {
-    val renderContext = RenderContext(RenderContext.dynamic := false, RenderContext.studentAnswers := solution)
+  def renderStaticHtml(renderContext: RenderContext): (Html, Html, Html) = {
+//    val renderContext = RenderContext(RenderContext.dynamic := false, RenderContext.studentAnswers := solution)
     val fileMapBuilder = DataUrlFileMapBuilder()
     def render(element: Element) = element.renderHtml(renderContext, fileMapBuilder)
-
+    
     val (body, explanation, gradingRules) = renderHtml(render)
     assert(fileMapBuilder.result().isEmpty)
 
-    val body2 = solution.get(ElementName.extraData) match {
+    val body2 = renderContext
+      .get(RenderContext.studentAnswers)
+      .flatMap(_.get(ElementName.extraData)) match {
       case Some(value) if value.trim.nonEmpty =>
         body + Html(s"""<div class="extra-data"><b>Extra data:</b> ${escapeHtml4(value)}""")
       case _ => body

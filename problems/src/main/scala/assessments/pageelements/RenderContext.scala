@@ -7,6 +7,11 @@ import utils.Tag.Tags
 final case class RenderContext(tags: Tags[RenderContext]) {
   def apply[Value](tag: Tag[RenderContext, Value]): Value = tags(tag)
   def get[Value](tag: Tag[RenderContext, Value]): Option[Value] = tags.get(tag)
+  def getOrElse[Value](tag: Tag[RenderContext, Value], default: => Value): Value = 
+    tags.get(tag).getOrElse(default)
+    
+  def studentAnswer(name: ElementName): Option[String] =
+    get(RenderContext.studentAnswers).flatMap(_.get(name))
 }
 
 object RenderContext {

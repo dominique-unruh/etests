@@ -3,6 +3,7 @@ package assessments.pageelements
 import assessments.pageelements.InputElement.{inputElementColumns, inputElementRows}
 import assessments.{Assessment, ElementName, FileMapBuilder, Html}
 import org.apache.commons.text.StringEscapeUtils
+import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import play.api.libs.json.{JsObject, JsString, JsValue}
 import utils.{IndentedInterpolator, Tag, Utils}
 import utils.Tag.Tags
@@ -31,11 +32,11 @@ case class InputElement(val name: ElementName,
   }
 
   private def renderStaticHtml(context: RenderContext, files: FileMapBuilder): Html = {
-    val answers = context(RenderContext.studentAnswers)
+    val answer = context.studentAnswer(name).getOrElse("")
     if (useTextarea)
-      Html(s"""<textarea rows="${tags(inputElementRows)}" cols="${tags(inputElementColumns)}" type="text" readonly>${StringEscapeUtils.escapeHtml4(answers(name))}</textarea>""")
+      Html(s"""<textarea rows="${tags(inputElementRows)}" cols="${tags(inputElementColumns)}" type="text" readonly>${escapeHtml4(answer)}</textarea>""")
     else
-      Html(s"""<input type="text" size="${tags(inputElementColumns)}" readonly value="${StringEscapeUtils.escapeHtml4(answers(name))}"/>""")
+      Html(s"""<input type="text" size="${tags(inputElementColumns)}" readonly value="${escapeHtml4(answer)}"/>""")
   }
     
   override def setAction(content: String): Seq[ElementAction] =
