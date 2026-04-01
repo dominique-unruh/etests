@@ -1,4 +1,5 @@
 import assessments.Exam.{courseName, examDate}
+import assessments.pageelements.RenderContext
 import assessments.{Assessment, Exam, MarkdownAssessment, Points, Task}
 import com.fasterxml.jackson.annotation.JsonPropertyOrder
 import io.circe.generic.auto.*
@@ -16,10 +17,11 @@ import java.util.Date
 
 object ArchiveExam extends Task {
   exportExam()
-
+  
   def problemHTML(problem: MarkdownAssessment) =
+    val renderContext = RenderContext(RenderContext.dynamic := false, RenderContext.studentAnswers := problem.referenceSolution)
     val (body, explanation, gradingRules) =
-      problem.renderStaticHtml(problem.referenceSolution)
+      problem.renderStaticHtml(renderContext)
     ind"""<h1>${escapeHtml4(problem.name)}</h1>
          |
          |<div style="">

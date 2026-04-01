@@ -2,6 +2,7 @@ import assessments.*
 import assessments.Exam.gradingScale
 import assessments.ExceptionContext.initialExceptionContext
 import assessments.GradingContext.comments
+import assessments.pageelements.RenderContext
 import externalsystems.Dynexite
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
@@ -35,7 +36,8 @@ object TaskGradeEveryone extends Task {
 
     try {
       val answers = Dynexite.getDynexiteAnswers(question, exam, student)
-      val (body, explanation, gradingRules) = question.renderStaticHtml(answers)
+      val renderContext = RenderContext(RenderContext.dynamic := false, RenderContext.studentAnswers := answers)
+      val (body, explanation, gradingRules) = question.renderStaticHtml(renderContext)
 
       output ++= "<div class=\"question-text\">\n"
       output ++= "<h2>Question text</h2>\n"
