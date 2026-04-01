@@ -30,6 +30,13 @@ await page.pdf({
   format: 'A4',
   outline: true,
   printBackground: true,
+  displayHeaderFooter: true,
+  headerTemplate: "<div/>",
+  footerTemplate: `
+    <div style="width:100%; text-align:center; font-size:10px; color:#555; margin-bottom:0.5cm;">
+      <span class="pageNumber"></span> / <span class="totalPages"></span>
+    </div>
+  `,
   margin: {
     top: '1.5cm',
     bottom: '1.5cm',
