@@ -2,12 +2,16 @@ package assessments
 
 import assessments.Exam.logger
 import assessments.ExceptionContext.{addToExceptionContext, initialExceptionContext}
+import assessments.pageelements.RenderContext
 import com.typesafe.scalalogging.Logger
 import io.github.classgraph.ClassGraph
-import utils.{Tag, Utils}
+import org.apache.commons.text.StringEscapeUtils.escapeHtml4
+import utils.{IndentedInterpolator, Tag, Utils}
 import utils.Tag.Tags
+import utils.Utils.awaitResult
 
-import java.nio.file.Path
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.{Files, Path}
 import java.time.LocalDate
 import scala.jdk.CollectionConverters.IterableHasAsScala
 
@@ -61,6 +65,38 @@ case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownA
   
   def main(args: Array[String]): Unit = {
     runTests()
+  }
+
+  def renderExam(outputFile: Path): Unit = {
+    // TODO Make this all configurable
+    val renderContext = RenderContext(RenderContext.dynamic := false)
+
+    def problemHTML(problem: MarkdownAssessment) =
+      val (body, explanation, gradingRules) =
+        problem.renderStaticHtml(renderContext)
+      ind"""<h2>Problem: ${escapeHtml4(problem.name)}</h1>
+           |
+           |<div style="">
+           |  ${body.html}
+           |</div>
+       """
+
+    val html =
+      ind"""<html>
+           |<head>
+           |  <title>${escapeHtml4(name)}</title>
+           |  ${Assessment.htmlHeader.html}
+           |</head>
+           |<body>
+           |<h1>${escapeHtml4(name)}</h1>
+           |${problems.map(problemHTML).mkString("\n<div class=\"problem-separator\"></div>\n")}
+           |</body>
+           |</html>
+           |""".stripMargin
+
+
+    val pdf = Utils.htmlToPdfAsync(html).awaitResult()
+    Files.write(outputFile, pdf)
   }
 }
 
