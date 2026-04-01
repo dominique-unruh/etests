@@ -17,35 +17,39 @@ import java.util.Date
 object ArchiveExam extends Task {
   exportExam()
 
-  def exportProblem(archiveDir: Path, problem: MarkdownAssessment) = {
-    val basename = problem.getClass.getSimpleName.stripSuffix("$")
+  def problemHTML(problem: MarkdownAssessment) =
     val (body, explanation, gradingRules) =
       problem.renderStaticHtml(problem.referenceSolution)
+    ind"""<h1>${escapeHtml4(problem.name)}</h1>
+         |
+         |<div style="">
+         |  ${body.html}
+         |</div>
+         |
+         |<div class="explanation">
+         |  <h2>Explanation</h2>
+         |  ${explanation.html}
+         |</div>
+         |
+         |<div class="grading-rules">
+         |  <h2>Grading rules</h2>
+         |  ${gradingRules.html}
+         |</div>
+     """
+
+  def exportProblem(archiveDir: Path, problem: MarkdownAssessment) = {
+    val basename = problem.getClass.getSimpleName.stripSuffix("$")
 
     val html = ind"""<html>
-       |<head>
-       |  <title>${escapeHtml4(problem.name)}</title>
-       |  ${Assessment.htmlHeader.html}
-       |</head>
-       |<body>
-       |<h1>${escapeHtml4(problem.name)}</h1>
-       |
-       |<div style="">
-       |  ${body.html}
-       |</div>
-       |
-       |<div class="explanation">
-       |  <h2>Explanation</h2>
-       |  ${explanation.html}
-       |</div>
-       |
-       |<div class="grading-rules">
-       |  <h2>Grading rules</h2>
-       |  ${gradingRules.html}
-       |</div>
-       |</body>
-       |</html>
-       """
+                    |<head>
+                    |  <title>${escapeHtml4(problem.name)}</title>
+                    |  ${Assessment.htmlHeader.html}
+                    |</head>
+                    |<body>
+                    |${problemHTML(problem)}
+                    |</body>
+                    |</html>
+           |""".stripMargin
 
     val htmlFile = s"$basename.html"
 
@@ -73,6 +77,17 @@ object ArchiveExam extends Task {
 
     val problems = for (problem <- exam.problems) yield
       exportProblem(archiveDir = archiveDir, problem = problem)
+
+/*    val html = ind"""<html>
+                    |<head>
+                    |  <title>${escapeHtml4(exam.name)}</title>
+                    |  ${Assessment.htmlHeader.html}
+                    |</head>
+                    |<body>
+                    |${exam.problems.map(problemHTML).mkString("\n<hr/>\n")}
+                    |</body>
+                    |</html>
+                    |""".stripMargin*/
 
     val examDescription = ExamDescription(
       exportedOn = LocalDate.now(),
