@@ -122,9 +122,20 @@ table.grade-scale tr:nth-child(odd) td {
 }
 .static-select span {
     font-size: 0.8em;
+}
+.static-select span.static-select-yes,
+.static-select span.static-select-no-selection {
     color: black;
     background-color: #eee;
     border-radius: 1px;
+}
+.static-select span.static-select-no::before {
+    content: " ☐ ";
+    color: #888;
+}
+.static-select span.static-select-yes::before {
+    content: " ☑ ";
+    color: #888;
 }
 
 

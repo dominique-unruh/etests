@@ -12,7 +12,6 @@ import utils.Tag.Tags
 
 import scala.collection.immutable.SeqMap
 import scala.collection.mutable
-import scala.util.Random
 
 final class MultipleChoice(override val name: ElementName,
                            val options: SeqMap[String, String],
@@ -106,19 +105,31 @@ final class MultipleChoice(override val name: ElementName,
     Html(html.result())
   }
 
-  def renderHtmlSelectStatic(selected: Option[String]): Html = selected match {
-    case Some(selected) =>
-      val html = StringBuilder()
+  def renderHtmlSelectStatic(selected: Option[String]): Html = {
+/*      val html = StringBuilder()
       html ++= s"""<select readonly>\n"""
       html ++= s"""<option value=""${if (selected=="") " selected" else ""}>$notSelectedString</option>\n"""
       for ((optionName, optionText) <- options)
         html ++= s"""<option value="${escapeHtml4(optionName)}"${if (selected==optionName) " selected" else ""}>$optionText</option>\n"""
       html ++= "</select>\n"
-      Html(html.result())
-    case None =>
-      Html("""<span class="static-select">""" +
-        options.values.map(text => s"<span>$text</span>").mkString(" | ") +
-        "</span>")
+      Html(html.result())*/
+
+    val html = StringBuilder()
+    html ++= """<span class="static-select">"""
+    for (((optionName, optionText), index) <- options.zipWithIndex) {
+      if (index > 0) html ++= " | "
+      val clazz = selected match {
+        case None => "static-select-no-selection"
+        case Some(`optionName`) => "static-select-yes"
+        case Some(_) => "static-select-no"
+      }
+      html ++= s"""<span class="$clazz">$optionText</span>"""
+    }
+    html ++= "</span>"
+//    Html("""<span class="static-select">""" +
+//      options.values.map(text => s"<span>$text</span>").mkString(" | ") +
+//      "</span>")
+    Html(html.result())
   }
 
   def renderHtmlSelect: Html = {
@@ -149,7 +160,8 @@ final class MultipleChoice(override val name: ElementName,
       case label => s""" <label for="${name.jsElementId}">$label</label>"""
     }
     val checked = if (selected == yes) " checked" else ""
-    html ++= s"""<input disable type="checkbox" id="${name.jsElementId}$checked"></input>$label\n"""
+//    println((selected, yes, no, checked))
+    html ++= s"""<input disable type="checkbox" id="${name.jsElementId}"$checked></input>$label\n"""
 
     Html(html.result())
   }

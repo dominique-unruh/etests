@@ -62,6 +62,7 @@ class Assessment (val name: String,
     val (body, explanation, gradingRules) = renderHtml(render)
     assert(fileMapBuilder.result().isEmpty)
 
+    // Add "extra data" to the rendering if exists
     val body2 = renderContext
       .get(RenderContext.studentAnswers)
       .flatMap(_.get(ElementName.extraData)) match {

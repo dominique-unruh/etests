@@ -1,6 +1,6 @@
 import assessments.Exam.{courseName, examDate}
 import assessments.pageelements.RenderContext
-import assessments.{Assessment, Exam, MarkdownAssessment, Points, Task}
+import assessments.{Assessment, Exam, Html, MarkdownAssessment, Points, Task}
 import com.fasterxml.jackson.annotation.JsonPropertyOrder
 import io.circe.generic.auto.*
 import io.circe.syntax.*
@@ -39,32 +39,34 @@ object ArchiveExam extends Task {
          |</div>
      """
 
+  def storeHtml(archiveDir: Path, html: Html, basename: String): Unit = {
+    val htmlFile = archiveDir.resolve(s"$basename.html")
+    val pdfFile = archiveDir.resolve(s"$basename.pdf")
+    Files.write(htmlFile, html.html.getBytes(UTF_8))
+    Utils.htmlToPdf(htmlFile, pdfFile)
+  }
+
   def exportProblem(archiveDir: Path, problem: MarkdownAssessment) = {
     val basename = problem.getClass.getSimpleName.stripSuffix("$")
 
-    val html = ind"""<html>
-                    |<head>
-                    |  <title>${escapeHtml4(problem.name)}</title>
-                    |  ${Assessment.htmlHeader.html}
-                    |</head>
-                    |<body>
-                    |${problemHTML(problem)}
-                    |</body>
-                    |</html>
-           |""".stripMargin
+    val html = Html(ind"""<html>
+                         |<head>
+                         |  <title>${escapeHtml4(problem.name)}</title>
+                         |  ${Assessment.htmlHeader.html}
+                         |</head>
+                         |<body>
+                         |${problemHTML(problem)}
+                         |</body>
+                         |</html>
+                         |""".stripMargin)
 
-    val htmlFile = s"$basename.html"
-
-    Files.write(archiveDir.resolve(htmlFile), html.getBytes(UTF_8))
-
-    val pdfFile = s"$basename.pdf"
-    Utils.htmlToPdf(archiveDir.resolve(htmlFile), archiveDir.resolve(pdfFile))
+    storeHtml(archiveDir, html, basename)
 
     ProblemDescription(
       name = problem.name,
       `class` = problem.getClass.getName.stripSuffix("$"),
       reachablePoints = problem.reachablePoints.toDouble,
-      rendered = Seq(htmlFile, pdfFile),
+      rendered = Seq(s"$basename.html", s"$basename.pdf"),
     )
   }
 
@@ -80,7 +82,7 @@ object ArchiveExam extends Task {
     val problems = for (problem <- exam.problems) yield
       exportProblem(archiveDir = archiveDir, problem = problem)
 
-/*    val html = ind"""<html>
+    val html = Html(ind"""<html>
                     |<head>
                     |  <title>${escapeHtml4(exam.name)}</title>
                     |  ${Assessment.htmlHeader.html}
@@ -89,7 +91,9 @@ object ArchiveExam extends Task {
                     |${exam.problems.map(problemHTML).mkString("\n<hr/>\n")}
                     |</body>
                     |</html>
-                    |""".stripMargin*/
+                    |""".stripMargin)
+
+    storeHtml(archiveDir, html, "exam")
 
     val examDescription = ExamDescription(
       exportedOn = LocalDate.now(),
@@ -97,7 +101,8 @@ object ArchiveExam extends Task {
       courseName = exam.tags(courseName),
       name = exam.name,
       reachablePoints = exam.reachablePoints,
-      problems = problems)
+      problems = problems,
+      rendered = Seq(s"$exam.html", s"$exam.pdf"))
 
     val printer = io.circe.yaml.Printer(preserveOrder = true)
     val yamlString = printer.pretty(examDescription.asJson)
@@ -106,7 +111,7 @@ object ArchiveExam extends Task {
   }
 
   @JsonPropertyOrder(
-    value = Array("courseName", "name", "examDate", "reachablePoints", "exportedOn", "problems"),
+    value = Array("courseName", "name", "examDate", "reachablePoints", "exportedOn", "rendered", "problems"),
     alphabetic = true)
   case class ExamDescription(
     exportedOn: LocalDate,
@@ -114,7 +119,8 @@ object ArchiveExam extends Task {
     courseName: String,
     name: String,
     reachablePoints: Points,
-    problems: Seq[ProblemDescription])
+    problems: Seq[ProblemDescription],
+    rendered: Seq[String])
 
   @JsonPropertyOrder(
     value = Array("name", "class", "reachablePoints", "rendered"),
