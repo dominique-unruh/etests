@@ -164,7 +164,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     given ExceptionContext = ExceptionContext.initialExceptionContext(s"Responsing to web-request $request")
     val exam = getExam(examName)
     val assessment = getAssessment(exam, assessmentName)
-    val result = StringBuilder()
+    val result = new StringBuilder()
     try {
       result ++= Dynexite.getDynexiteAnswersRaw(assessment, exam, regno).mkString("\n")
     } catch

@@ -3,6 +3,7 @@ package externalsystems
 import scala.language.implicitConversions
 import assessments.pageelements.{AnswerElement, InputElement, MultipleChoice}
 import assessments.{Assessment, ElementName, Exam, ExceptionContext, ExceptionWithContext, MarkdownAssessment, Points}
+import com.typesafe.scalalogging.Logger
 import externalsystems.Dynexite.ResultInputFieldKey
 import upickle.core.AbortException
 
@@ -219,29 +220,19 @@ object Dynexite {
   @upickle.implicits.allowUnknownKeys(false)
   final case class BluePrint(blueprintId: String, name: String) derives up.ReadWriter
 
-  def getDynexiteAnswersRaw(assessment: Assessment,
-                         exam: Exam,
-                         registrationNumber: String)
-                           (implicit exceptionContext: ExceptionContext) = {
-    resultsByLearner(exam).get(registrationNumber) match {
-      case None => throw ExceptionWithContext(s"No student with registration number $registrationNumber known.")
-      case Some(None) => throw ExceptionWithContext(s"Student with registration number $registrationNumber made no attempt.")
-      case Some(Some(attempt)) =>
-        val assessmentIndex = exam.assessmentIndex(assessment)
-        if (assessmentIndex >= attempt.items.length)
-          throw ExceptionWithContext("Dynexite has less items than there are problems?!")
-        val item = attempt.items(assessmentIndex)
-        item.blocks.map(_.answers)
-    }
+  def getDynexiteAnswersRaw(problem: Assessment,
+                            exam: Exam,
+                            registrationNumber: String)
+                           (implicit exceptionContext: ExceptionContext): Seq[Any] = {
+    val item = getDynexiteItem(problem, exam, registrationNumber)
+    item.blocks.map(_.answers)
   }
 
-  def getDynexiteAnswers(problem: Assessment,
-                         exam: Exam,
-                         registrationNumber: String)
-                        (implicit exceptionContext: ExceptionContext):
-  Map[ElementName, String] = {
-    given ExceptionContext = ExceptionContext.addToExceptionContext(s"Matching Dynexite answers up with our exam implementation for $registrationNumber, ${problem.name}", registrationNumber, problem)
-    val (answers, points, reachable) = resultsByLearner(exam).get(registrationNumber) match {
+  def getDynexiteItem(problem: Assessment,
+                      exam: Exam,
+                      registrationNumber: String)
+                     (implicit exceptionContext: ExceptionContext): Item = {
+    resultsByLearner(exam).get(registrationNumber) match {
       case None => throw ExceptionWithContext(s"No student with registration number $registrationNumber known.")
       case Some(None) => throw ExceptionWithContext(s"Student with registration number $registrationNumber made no attempt.")
       case Some(Some(attempt)) =>
@@ -254,9 +245,18 @@ object Dynexite {
           throw ExceptionWithContext(s"The following problems exist in Dynexite but not in our exam (fix name or use tag dynexiteQuestionName?): ${(dynexiteProblems.keySet -- examProblems.keySet).mkString(", ")}")
         if ((examProblems.keySet -- dynexiteProblems.keySet).nonEmpty)
           throw ExceptionWithContext(s"The following problems exist in our exam but not in Dynexite: ${(examProblems.keySet -- dynexiteProblems.keySet).mkString(", ")}")
-
-        getDynexiteAnswers(item = dynexiteProblems(problem.tags.getOrElse(dynexiteQuestionName, problem.name)), assessment = problem)
+        dynexiteProblems(problem.tags.getOrElse(dynexiteQuestionName, problem.name))
     }
+  }
+
+  def getDynexiteAnswers(problem: Assessment,
+                         exam: Exam,
+                         registrationNumber: String)
+                        (implicit exceptionContext: ExceptionContext):
+  Map[ElementName, String] = {
+    given ExceptionContext = ExceptionContext.addToExceptionContext(s"Matching Dynexite answers up with our exam implementation for $registrationNumber, ${problem.name}", registrationNumber, problem)
+    val item = getDynexiteItem(problem, exam, registrationNumber)
+    val (answers, points, reachable) = getDynexiteAnswers(item = item, assessment = problem)
     if (reachable != problem.reachablePoints)
       throw ExceptionWithContext(s"Dynexite says there are $reachable reachable points, we say ${problem.reachablePoints}")
     answers
@@ -351,40 +351,59 @@ object Dynexite {
     var points: Points = 0
     var reachable: Points = 0
 
-    val expectedNames = {
-      val builder = mutable.Map[String, ElementName]()
-      for (element <- elements) {
-        val lastName = element.name.name
-        assert(!builder.contains(lastName), (builder, lastName, elements))
-        builder.update(lastName, element.name)
-      }
-      builder.toMap
+    val answers = Map.newBuilder[ElementName, String]
+    val processed = mutable.Map[String, ElementName]()
+    def markProcessed(answerName: String, processingElement: ElementName) = {
+      if (processed.contains(answerName))
+        throw ExceptionWithContext(s"Answer ${answerName} processed by both ${processed(answerName).name} and ${processingElement.name}")
+      processed.put(answerName, processingElement)
     }
 
-    val answerElements = Map.from(elements.map(e => e.name -> e))
+    for (element <- elements) {
+      val answer = element match {
+        case input: InputElement =>
+          // TODO: For certain matrices, this will not work properly, see commented code below instead
+//          logger.warn(block.answers.toString())
+          markProcessed(element.name.name, element.name)
+          answers += element.name -> block.answers.getOrElse(element.name.name, "")
+        case choice: MultipleChoice => choice.style match {
+          case MultipleChoice.Style.select | MultipleChoice.Style.radio =>
+            markProcessed(element.name.name, element.name)
+            val optionNumber = block.answers.get(element.name.name).map(_.toInt)
+            assert(optionNumber.forall(_ > 0))
+            val optionName = optionNumber.map(i => choice.options.keySet.toSeq(i-1)).getOrElse("")
+            answers += element.name -> optionName
+          case MultipleChoice.Style.checkbox =>
+//            logger.warn(s"Answers: ${block.answers}")
+            val extendedName = element.name.name ++ "_1"
+            markProcessed(extendedName, element.name)
+            val answer = block.answers.get(extendedName) match {
+              case Some("1") => choice.yesAnswer
+              case None => choice.noAnswer
+              case Some(_) => ??? // Unexpected
+            }
+            answers += element.name -> answer
+        }
+      }
+    }
 
-    val answers = mutable.Map[ElementName, String]()
+    block.answers.get("COMMENT_FIELD") match {
+      case None | Some("") =>
+        answers += ElementName.extraData -> ""
+      case Some(value) =>
+        answers += ElementName.extraData -> ("Comment field: " + value)
+    }
+    markProcessed("COMMENT_FIELD", ElementName.extraData)
 
+    val unprocessed = block.answers.keys.toSet -- processed.keys
+    if (unprocessed.nonEmpty)
+      throw ExceptionWithContext(s"Unprocessed answers in Dynexite data: ${unprocessed.map(n => s"$n=${block.answers(n)}").mkString(", ")}")
+
+    answers.result()
+/*
     val subRegex = "(.*)_sub_([0-9]+)_([0-9]+)".r
 
     var comment = ""
-
-    for ((name, value) <- block.answers;
-         if !subRegex.matches(name)
-         if name != "COMMENT_FIELD") {
-      val elementName = expectedNames.getOrElse(name,
-          throw ExceptionWithContext(
-            s"$name (answer name from Dynexite/Stack) not in the list of input fields of ${assessment.name} (${expectedNames.keys.mkString(", ")})",
-            name, assessment, expectedNames))
-      assert(!answers.contains(elementName))
-      val processedValue = answerElements(elementName) match {
-        case _: InputElement => value
-        case choice: MultipleChoice =>
-          choice.options.keys.toSeq(Integer.parseInt(value) - 1)
-      }
-
-      answers.update(elementName, processedValue)
-    }
 
     val matrices: mutable.Map[String, mutable.Map[(Int, Int), String]] = mutable.Map()
     for (case (`subRegex`(name, row, col), value) <- block.answers) {
@@ -413,18 +432,7 @@ object Dynexite {
       answers(ElementName(matrixName)) = string.result()
     }
     
-    for (expected <- expectedNames.values
-         if !answers.contains(expected))
-      answers.put(expected, "")
-
-    block.answers.get("COMMENT_FIELD") match {
-      case None | Some("") =>
-        answers.put(ElementName.extraData, "")
-      case Some(value) =>
-        answers.put(ElementName.extraData, "Comment field: "+value)
-    }
-
-    answers.toMap
+ */
   }
 
   private def getDynexiteAnswersClassification(block: Dynexite.ClassificationBlock, elements: Seq[AnswerElement])
@@ -497,4 +505,6 @@ object Dynexite {
     val index = Random.nextInt(learners.length)
     learners(index)
   }
+
+  private val logger = Logger[Dynexite.type]
 }

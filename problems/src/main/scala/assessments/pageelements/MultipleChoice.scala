@@ -22,6 +22,14 @@ final class MultipleChoice(override val name: ElementName,
 
   checkArguments()
 
+  lazy val yesNoAnswers: (String, String) = {
+    assert(style == checkbox)
+    val Seq(yes,no) = options.keysIterator.toSeq
+    (yes, no)
+  }
+  lazy val yesAnswer: String = yesNoAnswers._1
+  lazy val noAnswer: String = yesNoAnswers._2
+
   private def checkArguments(): Unit = {
     // Reference solution is one of the options
     if (!options.contains(reference))
@@ -37,11 +45,10 @@ final class MultipleChoice(override val name: ElementName,
       val noOptions = Seq("no", "false", "0")
       if (options.size != 2)
         throw IllegalArgumentException(s"Multiple choice element $name has ${options.size} options, but is to be rendered as a checkbox.")
-      val Seq(yes, no) = options.keysIterator.toSeq
-      if (!yesOptions.contains(yes.toLowerCase))
-        throw IllegalArgumentException(s"Multiple choice element $name has style checkbox and first option $yes, but should be one of ${yesOptions.mkString(", ")} (case-insensitive)")
-      if (!noOptions.contains(no.toLowerCase))
-        throw IllegalArgumentException(s"Multiple choice element $name has style checkbox and second option $no, but should be one of ${noOptions.mkString(", ")} (case-insensitive)")
+      if (!yesOptions.contains(yesAnswer.toLowerCase))
+        throw IllegalArgumentException(s"Multiple choice element $name has style checkbox and first option $yesAnswer, but should be one of ${yesOptions.mkString(", ")} (case-insensitive)")
+      if (!noOptions.contains(noAnswer.toLowerCase))
+        throw IllegalArgumentException(s"Multiple choice element $name has style checkbox and second option $noAnswer, but should be one of ${noOptions.mkString(", ")} (case-insensitive)")
     }
   }
 
