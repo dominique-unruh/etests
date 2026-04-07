@@ -18,16 +18,14 @@ import scala.jdk.CollectionConverters.given
 import scala.util.Random
 
 object Dynexite {
-  private val resultJsonPaths = mutable.Map[String, Path]()
-  def resultJsonPath(exam: Exam): Path = resultJsonPaths.getOrElseUpdate(exam.getClass.getName, {
-    val property = s"dynexite.results.json.${exam.getClass.getSimpleName.stripSuffix("$")}"
-    Utils.getSystemPropertyPath(property, s"JSON file with Dynexite results for exam ${exam.name}")
-  })
-
   private val examResultsMap = mutable.Map[String, ExamResults]()
-  def examResults(exam: Exam): ExamResults = examResultsMap.getOrElseUpdate(exam.getClass.getName, {
-    parseExamResults(resultJsonPath(exam))
-  })
+  def examResults(exam: Exam): ExamResults = synchronized {
+    examResultsMap.getOrElseUpdate(exam.getClass.getName, {
+      val results = exam.tags.getOrElse(dynexiteJSONResults,
+        throw RuntimeException(s"Exam ${exam.name} doesn't have tag ${dynexiteJSONResults}"))
+      parseExamResults(results)
+    })
+  }
   private val resultsByLearnerMap = mutable.Map[String, Map[String, Option[Attempt]]]()
   def resultsByLearner(exam: Exam): Map[String, Option[Attempt]] = resultsByLearnerMap.getOrElseUpdate(exam.getClass.getName, {
     examResults(exam).learners.map(learner => learner.identifier -> learner.attempts.lastOption).toMap
@@ -375,7 +373,8 @@ object Dynexite {
          if !subRegex.matches(name)
          if name != "COMMENT_FIELD") {
       val elementName = expectedNames.getOrElse(name,
-          throw ExceptionWithContext(s"$name (answer name from Dynexite/Stack) not in the list of input fields of ${assessment.name} (${expectedNames.keys.mkString(", ")})",
+          throw ExceptionWithContext(
+            s"$name (answer name from Dynexite/Stack) not in the list of input fields of ${assessment.name} (${expectedNames.keys.mkString(", ")})",
             name, assessment, expectedNames))
       assert(!answers.contains(elementName))
       val processedValue = answerElements(elementName) match {
@@ -470,12 +469,16 @@ object Dynexite {
    * */
   val dynexiteBlockAssignment = Tag[Assessment, Seq[Seq[AnswerElement]]](default = Seq.empty)
   /** From links like https://dynexite.rwth-aachen.de/t/companies/cpsippjadbec73a3unm0/courses/XXX/exams/ (the XXX part) */
-  val dynexiteCourseId = Tag[Exam, String](default = null)
+  val dynexiteCourseId = Tag[Exam, String]()
+  /** ZIP file with all student answers as PDFs, as downloaded from Dynexite */
+  val dynexitePDFArchive = Tag[Exam, Path]()
+  /** JSON file with the exam answers as downloaded from Dynexite */
+  val dynexiteJSONResults = Tag[Exam, Path]()
 
   def getAnswerPDF(exam: Exam,
                    registrationNumber: String): Array[Byte] = {
-    val archive: Path = Utils.getSystemPropertyPath(
-      s"dynexite.results.pdfs.${exam.getClass.getSimpleName.stripSuffix("$")}", "the Dynexite PDF zip")
+    val archive: Path = exam.tags.getOrElse(dynexitePDFArchive,
+      throw RuntimeException(s"Exam ${exam.name} does not have the tag ${dynexitePDFArchive}"))
     val zip = new ZipFile(archive.toFile)
 
     var pdf: Array[Byte] = null

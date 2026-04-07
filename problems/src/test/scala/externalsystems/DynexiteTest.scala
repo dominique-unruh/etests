@@ -9,16 +9,15 @@ import scala.util.control.Breaks.{break, breakable}
 
 class DynexiteTest extends AnyFunSuiteLike {
   Utils.loadSystemProperties()
+  // This doesn't work anymore! Because the exam is in a different subproject
   val exam: Exam = Utils.getSystemPropertyObject[Exam]("current.exam", "the current exam")
 
   private def resultsAvailable: Boolean = {
-    try
-      Dynexite.resultJsonPath(exam)
+    if (exam.tags.get(Dynexite.dynexiteJSONResults).nonEmpty)
       true
-    catch
-      case _ =>
-        println("No exam result file configured. Skipping test.")
-        false
+    else
+      println("No exam result file configured. Skipping test.")
+      false
   }
 
   test("load results") {

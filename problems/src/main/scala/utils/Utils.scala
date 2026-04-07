@@ -165,7 +165,7 @@ object Utils {
       getClass.getClassLoader.loadClass(objectName + "$")
     catch
       case e: ClassNotFoundException =>
-        throw new RuntimeException(s"$property in java.properties must refer to an existing object (full object name like package.subpackage.MyObject)")
+        throw new RuntimeException(s"$property in java.properties must refer to an existing object (full object name like package.subpackage.MyObject), not $objectName")
 
     val moduleField = try
       clazz.getField("MODULE$")
@@ -382,4 +382,30 @@ object Utils {
       Thread.sleep(remaining)
       remaining = Instant.now().until(target, ChronoUnit.MILLIS)
     }
-  }}
+  }
+
+  /** Utility function to refer to a shared file (e.g. in NextCloud) that can have different locations on different computers.
+   * Several relative paths can be given. The first one that actually exists in one of the `sharedLocations` is returned.
+   * `sharedLocations` are hardcoded inside this function.
+   *
+   * @param path Path relative to the NextCloud directory or similar.
+   * @param paths More paths to try
+   * @return Existing path specified by `path` inside a shared locations
+   *         Or if non-existing, some dummy path.
+   * */
+  def sharedFile(path: String, paths: String*): Path = {
+    // Add your own
+    val sharedLocations = Seq(
+      Path.of("/home/unruh/cloud/qis/lectures/"),
+    )
+    boundary[Path] {
+      for (subdir <- paths.prepended(path))
+        for (location <- sharedLocations) {
+          val resultingPath = location.resolve(subdir)
+          if (Files.exists(resultingPath))
+            break(resultingPath)
+        }
+      Path.of("/file-not-found").resolve(path)
+    }
+  }
+}
