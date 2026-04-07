@@ -82,3 +82,15 @@ object Html {
 trait HtmlConvertible {
   def toHtml: Html
 }
+
+object HtmlConvertible {
+  object toStringConversion extends Conversion[Any, HtmlConvertible] {
+    def apply(x: Any) = Plaintext(x.toString)
+  }
+  /** We don't import these by default to be safe from unexpected conversions. */
+  object extraConversions {
+    given int2html: Conversion[Int, HtmlConvertible] = toStringConversion
+    given points2html: Conversion[Points, HtmlConvertible] = toStringConversion
+    given double2html: Conversion[Double, HtmlConvertible] = toStringConversion
+  }
+}
