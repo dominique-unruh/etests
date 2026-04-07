@@ -57,10 +57,15 @@ class PointSplitter(total: Points, granularity: Points = 1) {
   /** Initialize a points-field with weight 1 */
   def p(using name: sourcecode.Name) = P(weight=1, name=name.value)
 
-  def showPoints(): Unit = {
+  def showPointsAsString: String = {
+    val result = new StringBuilder()
     val maxLen = pointFields.map(_.name.length).max
-    println(s"Total points = $total, total weights = ${pointFields.map(_.weight).sum}")
+    result ++= s"Total points = $total, total weights = ${pointFields.map(_.weight).sum}\n"
     for (field <- pointFields)
-      println(s"${field.name}:${"_" * (maxLen - field.name.length)} ${field}")
+      result ++= s"${field.name}:${"_" * (maxLen - field.name.length)} ${field}\n"
+    result.result()
   }
+
+
+  def showPoints(): Unit = print(showPointsAsString)
 }
