@@ -1,5 +1,6 @@
 package assessments
 
+import assessments.Points.PointsWrapper
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 
@@ -90,7 +91,7 @@ object HtmlConvertible {
   /** We don't import these by default to be safe from unexpected conversions. */
   object extraConversions {
     given int2html: Conversion[Int, HtmlConvertible] = toStringConversion
-    given points2html: Conversion[Points, HtmlConvertible] = toStringConversion
+    given points2html: Conversion[PointsWrapper, HtmlConvertible] = toStringConversion
     given double2html: Conversion[Double, HtmlConvertible] = toStringConversion
   }
 }
