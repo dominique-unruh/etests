@@ -95,6 +95,12 @@ class Points private (private val numerator: BigInt, private val denominator: Bi
 object Points {
   trait PointsWrapper {
     override def toString: String = get.toString
+    def prose: Plaintext = {
+      val p = get
+      // TODO: Allow this comparison without Points(...)
+      val singular = (p == Points(1)) || (p == Points(-1))
+      Plaintext(s"$p point${if (singular) "" else "s"}")
+    }
     def get: Points
     override def equals(obj: Any): Boolean = obj match
       case points: PointsWrapper => this.get == points.get
