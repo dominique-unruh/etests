@@ -4,6 +4,14 @@ import assessments.Points.PointsWrapper
 
 import scala.compiletime.uninitialized
 
+/* TODO Idea for better point splitter
+
+Allow to define a bunch of point fields, and arbitrary affine relations between them
+(E.g., a+b+c = reachablePoints, 2*aPartial = a)
+And all of these get optimized subject to the granularity
+
+ */
+
 class PointSplitter(total: Points, granularity: Points = 1) {
   if (!(total / granularity).isInteger)
     throw ArithmeticException("Total must be a multiple of granularity")
@@ -45,6 +53,8 @@ class PointSplitter(total: Points, granularity: Points = 1) {
   }
 
   class P private [PointSplitter] (private [PointSplitter] val weight: Points, val name: String) extends PointsWrapper {
+    if (frozen)
+      throw RuntimeException(s"You created a point splitter where point-field ${name} was accessed before all were initialized.\nTry removing `lazy` from automatic point fields, and adding `lazy` to derived points\n(e.g., `val ${name} = p; lazy val ${name}Half = ${name}/2`)")
     assert(!frozen)
     assert(weight >= 0)
     private[PointSplitter] var points: Points = uninitialized
