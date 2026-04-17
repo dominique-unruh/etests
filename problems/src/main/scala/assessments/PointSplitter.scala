@@ -10,6 +10,12 @@ Allow to define a bunch of point fields, and arbitrary affine relations between 
 (E.g., a+b+c = reachablePoints, 2*aPartial = a)
 And all of these get optimized subject to the granularity
 
+Some thoughts:
+https://www.perplexity.ai/search/i-m-given-a-number-of-variable-XGTPLtCFROGwkgSyKbMy_A
+
+Alternative: hierarchical dependencies, where granularities "bubble up".
+E.g., if `partial` is half of `full`, then `full` gets granularity 2.
+
  */
 
 class PointSplitter(total: Points, granularity: Points = 1) {
