@@ -68,9 +68,11 @@ object Comment {
 //  def warning(markdown: String): Comment = Comment(markdown, kind = Kind.warning, format = Format.markdown)
   def debug(markdown: String): Comment = Comment(markdown, kind = Kind.debug, format = Format.markdown)
   def feedback(markdown: String): Comment = Comment(markdown, kind = Kind.feedback, format = Format.markdown)
+  def feedback(html: Html): Comment = Comment(html.html, kind = Kind.feedback, format = Format.html)
 
   given Conversion[String, Comment] = feedback
-  
+  given Conversion[Html, Comment] = feedback
+
   def seqToHtml(comments: Seq[Comment]): Html = {
     val result = new StringBuilder
     result ++= "<ul>\n"

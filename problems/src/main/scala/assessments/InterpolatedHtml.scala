@@ -73,6 +73,13 @@ object InterpolatedHtml extends InterpolatedTextC[Html, InterpolatedHtml] {
 final case class Html(html: String) extends HtmlConvertible {
   override def toHtml: Html = this
   def +(other: HtmlConvertible) = Html(html + other.toHtml.html)
+  def toPlaintext: Plaintext = {
+    // These are not implemented
+    assert(!html.contains("<"))
+    assert(!html.contains(">"))
+    assert(!html.contains("&"))
+    Plaintext(html)
+  }
 }
 
 object Html {
