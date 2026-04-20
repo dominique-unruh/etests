@@ -144,4 +144,8 @@ object Exam {
   val gradingScale: Tag[Exam, GradingScale] = Tag()
   /** Directory where grading reports should be written to */
   val gradingReportDir: Tag[Exam, Path] = Tag()
+  /** Relative to Sciebo root */
+  val scieboReportDir: Tag[Exam, Path] = Tag()
+  val rwthOnlineExportImportFile: Tag[Exam, Path] = Tag()
+  val scheinStudents: Tag[Exam, Map[String, String]] = Tag()
 }

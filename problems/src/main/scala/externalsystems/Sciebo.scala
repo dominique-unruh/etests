@@ -11,7 +11,7 @@ import java.time.temporal.ChronoUnit
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 object Sciebo {
-  val secondsBetweenRequests = 7
+  val secondsBetweenRequests = 20
 
   private lazy val username: String = Utils.getSystemProperty("sciebo.username", "your Sciebo username")
   private def password: String = Utils.getSystemProperty("sciebo.password", "your Sciebo app password")
@@ -30,13 +30,16 @@ object Sciebo {
     Cache.getOrCompute[String](s"SCIEBO-PUBLIC-LINK2:$path".getBytes, _.getBytes, new String(_)) {
     synchronized {
       Utils.waitUntil(lastRequest.plus(secondsBetweenRequests, ChronoUnit.SECONDS))
+      logger.info(s"Requesting Sciebo link for $path")
       val permissions = SharePermissions(SharePermissions.SingleRight.READ, SharePermissions.SingleRight.SHARE)
       val existing = client.getShares(path, false, false).asScala.find(share =>
         share.getSharePermissions.getCurrentPermission == permissions.getCurrentPermission &&
           share.getShareType == ShareType.PUBLIC_LINK)
+      logger.debug(s"Existing link: $existing")
       val share = existing.getOrElse(
-        client.doShare(path, ShareType.PUBLIC_LINK, null, false, null, permissions))
-      logger.debug(s"Link to $path: ${share.getUrl}${if (existing.nonEmpty) " (already existed)" else ""}")
+        // TODO Currently passwords are enforced. Replace password by null later.
+        client.doShare(path, ShareType.PUBLIC_LINK, null, false, "password", permissions))
+      logger.info(s"Link to $path: ${share.getUrl}${if (existing.nonEmpty) " (already existed)" else ""}")
       lastRequest = Instant.now()
       share.getUrl
       }

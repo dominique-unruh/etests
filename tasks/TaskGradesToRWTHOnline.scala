@@ -1,6 +1,6 @@
-import assessments.Task
+import assessments.{Exam, Task}
 import Data.*
-import exam.y2025.pqc1.{Pqc1Exam, Pqc1Students}
+import assessments.Exam.{gradingReportDir, scieboReportDir}
 import externalsystems.Schein.Semester.Winter
 import externalsystems.Spreadsheet.Index
 import externalsystems.{RWTHOnlineGrades, Schein, Sciebo, Spreadsheet}
@@ -11,8 +11,10 @@ import scala.language.postfixOps
 
 //noinspection TypeAnnotation
 object Data {
+  val exam = Utils.getSystemPropertyObject[assessments.Exam]("current.exam", "the current exam")
+
   // This file will be inplace-updated to contain the grades
-  val rwthOnlineExportImportFile = "/home/unruh/cloud/qis/lectures/2025-ws-post-quantum-cryptography/exam1/rwth-online-with-grades.csv"
+  val rwthOnlineExportImportFile = exam.tags(Exam.rwthOnlineExportImportFile)
   lazy val rwthOnlineExport =
     RWTHOnlineGrades.load(rwthOnlineExportImportFile)
       .assertValid()
@@ -38,7 +40,7 @@ object Data {
 //          if row("Schein").trim.nonEmpty)
 //    yield row("Regno") -> row("Name")).toMap
 
-  val scheinStudents = Pqc1Students.scheinStudents
+  val scheinStudents = exam.tags(Exam.scheinStudents)
 
   lazy val allStudents = rwthOnlineStudents ++ scheinStudents.keys
 
@@ -46,7 +48,7 @@ object Data {
 
   val participatingStudents = allStudents.toSet // intersect qualifiedStudents.toSet
 
-  val scheinDir = Path.of("/home/unruh/cloud/qis/lectures/2025-ws-post-quantum-cryptography/exam1/scheine/")
+  lazy val scheinDir: Path = ???
 }
 
 given Conversion[String, Path] = Path.of(_)
@@ -78,7 +80,7 @@ object GradesToRWTHOnline extends Task {
   // lcd intro-qc-priv && cp -a exam2/reports/ ~/cloud/sciebo/shared/intro-qc-exam2-grading/ && cd ~/cloud/sciebo/shared/intro-qc-exam2-grading/ && git gui
 
   // This file is created by TaskGradeEveryone
-  val gradeSheet = Spreadsheet.load("/home/unruh/cloud/qis/lectures/2025-ws-post-quantum-cryptography/exam1/reports/results.csv", format=Spreadsheet.Format.CSV.default)
+  val gradeSheet = Spreadsheet.load(exam.tags(gradingReportDir).resolve("results.csv"), format=Spreadsheet.Format.CSV.default)
 
   val gradeSheetStudents = gradeSheet.rows.map(_("student"))
   assert(Utils.isDistinct(gradeSheetStudents))
@@ -94,14 +96,15 @@ object GradesToRWTHOnline extends Task {
     val student = row("student")
     assert(raw"[0-9]+".r.matches(student))
     val grade = row("grade")
-    val link = Sciebo.getPublicReadLink(s"/shared/pqc-exam1-grading/reports/$student")
+    val link = Sciebo.getPublicReadLink(exam.tags(scieboReportDir).resolve(student).toString)
     student -> (grade, link)
   })*)
 
   val rwthOnlineImport = rwthOnlineExport
     .map { entry =>
       toPublish.get(entry.registrationNumber) match
-        case Some((grade, link)) => entry.setGrade(grade).setRemark(s"Details (available temporarily): $link")
+        // TODO: remove password-info
+        case Some((grade, link)) => entry.setGrade(grade).setRemark(s"Details (available temporarily): $link (password is \"password\")")
         case None => entry.setGrade("X")
     }
 
