@@ -3,12 +3,13 @@ package assessments.math
 import assessments.MathContext.FunctionResult
 import assessments.math.Math.{Bool, Foreign, Funcall, Integer, Operation, Ops, Sympy, Variable, addToStringBuilderCommaSep}
 import assessments.stack.SympyExpr.sympy
-import assessments.stack.SympyExpr
+import assessments.stack.{StackUtils, SympyExpr}
 import assessments.{ExceptionContext, ExceptionWithContext, MathContext, UserError}
 import me.shadaj.scalapy.py
 import utils.TypeChecker
 import utils.Utils.toUpperCaseFirst
 
+import scala.collection.Iterable
 import scala.util.boundary
 import scala.util.boundary.break
 
@@ -191,6 +192,13 @@ sealed trait Math {
 
   def eval[A](using exceptionContext: ExceptionContext, mathContext: MathContext, typeChecker: TypeChecker[A])
              (debug: Boolean = false): A = {
+    evalMany(debug = debug, singleTestValue = true).toSeq match {
+      case Seq(result) => result
+    }
+  }
+
+  def evalMany[A](using exceptionContext: ExceptionContext, mathContext: MathContext, typeChecker: TypeChecker[A])
+                 (debug: Boolean = false, singleTestValue: Boolean = false): Iterable[A] = {
     given ExceptionContext = ExceptionContext.addToExceptionContext(s"Evaluating formula $this", this)
 
     def applyFunction(name: String | Math.Ops, arguments: Seq[Math]): Any = {
@@ -235,12 +243,18 @@ sealed trait Math {
       result
     }
 
+    val testCases: Iterable[Math] =
+      if (singleTestValue)
+        Iterable(someTestValues)
+      else
+        StackUtils.enumerateMappedLazy(this)(_ => identity)
 
-    e(fixValues) match {
-      case typeChecker(result) => result
-      case value =>
-        throw EvalWrongResultType(this, typeChecker, value)
-    }
+    for (testCase <- testCases)
+      yield e(testCase) match {
+        case typeChecker(result) => result
+        case value =>
+          throw EvalWrongResultType(this, typeChecker, value)
+      }
   }
 
   def hasSubterm(predicate: Math): Boolean =
@@ -286,6 +300,8 @@ object Math {
     case list, matrix
     /** Special symbol to denote a missing answer */
     case noAnswer
+
+    def apply(args: Math*) = Operation(this, args*)
   }
   object Ops {
     def functionOperatorString(name: Ops | String): String = name match {

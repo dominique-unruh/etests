@@ -39,6 +39,7 @@ object StackUtils {
   // TODO: Use enumerateLazy instead?
   /** For every assignment of test values to the variables, call f.
    * @return Sequences of all the return values of f */
+  @deprecated("Use enumerateLazy")
   def enumerate[A](variables: Set[String])(f: Map[String, Math] => A)(using mathContext: MathContext): Seq[A] = {
     val loops = mathContext.variables.toList map { (varName, options) =>
       if (options.fixedValue.nonEmpty)
@@ -61,24 +62,38 @@ object StackUtils {
   /** For every assignment of test values to the variables, call f.
    * @return True if all calls to f returned true */
   def forall(variables: Set[String])(f: Map[String, Math] => Boolean)(using mathContext: MathContext): Boolean =
-    // TODO: Use enumerateLazy instead?
-    enumerate(variables)(f).forall(identity)
+    enumerateLazy(variables)(f).forall(identity)
   /** For every assignment of test values to all variables occurring in terms, call f.
    * f is called with the assignment and with the terms after substituting the assignment.
    * @return Sequences of all the return values of f
    * */
+  def enumerateMappedLazy[A](terms: Seq[Math])(f: (Map[String, Math], Seq[Math]) => A)(using mathContext: MathContext): Iterable[A] =
+    enumerateLazy(terms.flatMap(_.variables).toSet) { map =>
+      val termsMapped = terms.map(_.mapVariables(map))
+      f(map, termsMapped)
+    }
+  /** For every assignment of test values to all variables occurring in terms, call f.
+   * f is called with the assignment and with the terms after substituting the assignment.
+   * @return Sequences of all the return values of f
+   * */
+  @deprecated("Use enumerateMappedLazy")
   def enumerateMapped[A](terms: Seq[Math])(f: (Map[String, Math], Seq[Math]) => A)(using mathContext: MathContext): Seq[A] =
     // TODO: Use enumerateLazy instead and return an Iterable?
     enumerate(terms.flatMap(_.variables).toSet) { map =>
       val termsMapped = terms.map(_.mapVariables(map))
       f(map, termsMapped)
     }
+  @deprecated("Use enumerateMappedLazy")
   def enumerateMapped[A](x: Math, y: Math)(f: Map[String, Math] => (Math, Math) => A)(using mathContext: MathContext): Seq[A] =
     enumerateMapped(Seq(x,y)) { case (map, Seq(x,y)) => f(map)(x,y) }
+  def enumerateMappedLazy[A](x: Math, y: Math)(f: Map[String, Math] => (Math, Math) => A)(using mathContext: MathContext): Iterable[A] =
+    enumerateMappedLazy(Seq(x,y)) { case (map, Seq(x,y)) => f(map)(x,y) }
+  def enumerateMappedLazy[A](x: Math)(f: Map[String, Math] => Math => A)(using mathContext: MathContext): Iterable[A] =
+    enumerateMappedLazy(Seq(x)) { case (map, Seq(x)) => f(map)(x) }
 
   /** Like [[enumerateMapped]] but returns whether all f-calls return true. */
   def forallMapped(terms: Seq[Math])(f: (Map[String, Math], Seq[Math]) => Boolean)(using mathContext: MathContext): Boolean =
-    enumerateMapped(terms)(f).forall(identity)
+    enumerateMappedLazy(terms)(f).forall(identity)
   /** Like the other `forallMapped` but specifically for two terms */
   def forallMapped(x: Math, y: Math)(f: Map[String, Math] => (Math, Math) => Boolean)(using mathContext: MathContext): Boolean =
     forallMapped(Seq(x,y)){ case (map, Seq(x,y)) => f(map)(x,y) }
