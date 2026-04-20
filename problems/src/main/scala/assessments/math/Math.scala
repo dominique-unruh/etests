@@ -359,7 +359,7 @@ object Math {
  * (i.e., wrong arity, wrong types, or rejected for whichever other reasons)
  **/
 case class EvalInapplicableFunction(name: String | Ops, arguments: Seq[Math], argumentsEvaluated: Seq[Any])(using exceptionContext: ExceptionContext)
-  extends ExceptionWithContext(s"Operator/function $name applied to wrong number of arguments or wrong types. \n Arguments: ${arguments.mkString(", ")},\n Arguments evaluated: ${argumentsEvaluated.map(a => s"$a : ${a.getClass.getSimpleName}").mkString(", ")}",
+  extends ExceptionWithContext(s"Operator/function '$name' applied to wrong number of arguments or wrong types. \n Arguments: ${arguments.mkString(", ")},\n Arguments evaluated: ${argumentsEvaluated.map(a => s"$a : ${a.getClass.getSimpleName}").mkString(", ")}",
     name, arguments, argumentsEvaluated)
 
 /** In `eval`, an existing function-symbol `f` was encountered
