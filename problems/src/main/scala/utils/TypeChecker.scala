@@ -106,6 +106,9 @@ object TypeChecker {
 
   def union[A, B](aChecker: TypeChecker[A], bChecker: TypeChecker[B]): TypeChecker[A | B] =
     UnionTypeChecker(aChecker, bChecker)
+  def union2[A: TypeChecker, B: TypeChecker]: TypeChecker[A | B] =
+    union(summon[TypeChecker[A]], summon[TypeChecker[B]])
+
 
   def intersection[A, B](aChecker: TypeChecker[A], bChecker: TypeChecker[B]): TypeChecker[A & B] =
     IntersectionTypeChecker(aChecker, bChecker)
