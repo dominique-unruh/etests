@@ -1,5 +1,6 @@
 package assessments
 
+import assessments.Comment.Format.html
 import assessments.Comment.{Kind, seqToHtml, seqToPlaintext, wrapLi}
 import assessments.Comment.Kind.feedback
 import org.apache.commons.text.StringEscapeUtils
@@ -64,6 +65,12 @@ object Comment {
       case Format.html => HtmlComment(Html(text), kind)
       case Format.markdown => MarkdownComment(assessments.Markdown(text), kind)
       case Format.plain => PlaintextComment(text, kind)
+  def apply(text: HtmlConvertible): Comment =
+    apply(text.toHtml.html, kind = Kind.feedback, format = html)
+  def apply(text: InterpolatedHtml[HtmlConvertible]): Comment =
+    apply(text.flatMapArgs(_.toHtml))
+  def apply(text: InterpolatedMarkdown[HtmlConvertible]): Comment =
+    apply(text.toHtml)
 
 //  def warning(markdown: String): Comment = Comment(markdown, kind = Kind.warning, format = Format.markdown)
   def debug(markdown: String): Comment = Comment(markdown, kind = Kind.debug, format = Format.markdown)

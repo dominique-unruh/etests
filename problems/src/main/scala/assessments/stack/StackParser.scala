@@ -58,8 +58,10 @@ object StackParser {
           case ("xor", n) if n > 1 => (Ops.xor, true)
           case ("and", n) if n > 1 => (Ops.and, true)
           case ("nounand", n) if n > 1 => (Ops.and, true)
-          case ("not", 1) => (Ops.not, true)
+          case ("not", 1) => (Ops.not, false)
+          case ("nounnot", 1) => (Ops.not, false)
           case ("or", n) if n > 1 => (Ops.or, true)
+          case ("nounor", n) if n > 1 => (Ops.or, true)
           case (".", 2) => (Ops.times, false)
           case ("[", n) => (Ops.list, false)
           case ("=", 2) => (Ops.equal, false)
@@ -121,7 +123,6 @@ object StackParser {
       val array = ujson.read(json)
 
       val maximaTerm = parseArray(array)
-
       maximaToStackMath(maximaTerm)
     }
   }
