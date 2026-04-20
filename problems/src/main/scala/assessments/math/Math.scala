@@ -118,8 +118,8 @@ sealed trait Math {
         mathContext.sympyFunctions.get(operator) match
           case Some(function) => function.lift(arguments.map(to)) match
             case Some(value) => value
-            case None => throw UndefinedVariableException(s"Operator $operator (for these arguments) in term $this", operator.toString)
-          case None => throw UndefinedVariableException(s"Undefined operator $operator in term $this", operator.toString)
+            case None => throw UndefinedVariableException(s"Operator '$operator' (for these arguments) in term $this", operator.toString)
+          case None => throw UndefinedVariableException(s"Undefined operator '$operator' in term $this", operator.toString)
       case Funcall(name, arguments*) =>
         def verbatim = SympyExpr(sympy.Function(name).apply(arguments.map(x => to(x).python) *).as[py.Dynamic])
         mathContext.sympyFunctions.get(name) match

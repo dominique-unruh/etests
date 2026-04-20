@@ -2,6 +2,7 @@ package assessments
 
 import assessments.GradingContext.comments
 import assessments.math.Math
+import assessments.math.Math.Ops
 
 import scala.language.implicitConversions
 import assessments.pageelements.*
@@ -119,7 +120,10 @@ object DynexiteDefaults {
     .fixVar("e", Math.eulerConstant)
     .fixVar("pi", Math.pi)
     .sympyFunction("root", { case Seq(x) => x.sqrt })
-  
+    .sympyFunction(Ops.and, { case Seq(x,y) => x.logicalAnd(y)})
+    .sympyFunction(Ops.or, { case Seq(x,y) => x.logicalOr(y)})
+    .sympyFunction(Ops.not, { case Seq(x) => x.logicalNot})
+
   private def stackMathRender(pageElement: InputElement)(string: String): String = {
     given MathContext = renderMathContext
     if (string == "")

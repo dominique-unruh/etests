@@ -44,7 +44,7 @@
   <logger name="controllers" level="DEBUG"/>
   <logger name="views" level="DEBUG"/>
 
-  <root level="WARN">
+  <root level="DEBUG">
     <appender-ref ref="ASYNCFILE"/>
     <appender-ref ref="ASYNCSTDOUT"/>
   </root>

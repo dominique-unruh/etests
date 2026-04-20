@@ -77,6 +77,10 @@ final class SympyExpr(val python: py.Dynamic) extends AnyVal {
   /** See [[xorBit]] */
   def orBit(other: SympyExpr) = SympyExpr(SympyExpr.orBit(python, other.python))
 
+  def logicalAnd(other: SympyExpr) = SympyExpr(sympy.And(python, other.python))
+  def logicalOr(other: SympyExpr) = SympyExpr(sympy.Or(python, other.python))
+  def logicalNot = SympyExpr(sympy.Not(python))
+
   /** Invokes `this[index]` in Python (e.g., get entry of a vector) */
   def arrayIndex(index: Int) = SympyExpr(SympyExpr.arrayIndex(python, index))
 
