@@ -131,7 +131,7 @@ object DynexiteDefaults {
       catch
         case e: Throwable => 
           logger.info(s"Failed to translate $string -> $math -> sympy: $e", e)
-          throw SyntaxError(s"Parsed to $math but didn't manage to interpret it in Python (Sympy)")
+          throw SyntaxError(s"Parsed to $math but didn't manage to interpret it in Python (Sympy) for rendering")
       val latex = try 
         sympy.latex
       catch
