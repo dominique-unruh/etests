@@ -142,4 +142,6 @@ object Exam {
    * matches the total of the reachable points of the problems. */
   val reachablePoints: Tag[Exam, Points] = Tag[Exam, Points]()
   val gradingScale: Tag[Exam, GradingScale] = Tag()
+  /** Directory where grading reports should be written to */
+  val gradingReportDir: Tag[Exam, Path] = Tag()
 }

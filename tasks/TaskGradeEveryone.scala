@@ -1,5 +1,5 @@
 import assessments.*
-import assessments.Exam.gradingScale
+import assessments.Exam.{gradingReportDir, gradingScale}
 import assessments.ExceptionContext.initialExceptionContext
 import assessments.GradingContext.comments
 import assessments.pageelements.RenderContext
@@ -20,7 +20,7 @@ object TaskGradeEveryone extends Task {
   val includeDynexitePDFs = true
   val stopAfterFirst = false
   val generatePDFs = true
-  val generateHTMLs = false
+  val generateHTMLs = true
 
   val exam = Utils.getSystemPropertyObject[assessments.Exam]("current.exam", "the current exam")
 
@@ -186,7 +186,8 @@ object TaskGradeEveryone extends Task {
   }
   
   private def makeReports(): Unit = {
-    val targetDir = Utils.getSystemPropertyPath("student.report.dir", "the directory where to write the student reports")
+    val targetDir = exam.tags.getOrElse(gradingReportDir, throw RuntimeException(s"Specify gradingReportDir-tag in exam ${exam.name}"))
+//    val targetDir = Utils.getSystemPropertyPath("student.report.dir", "the directory where to write the student reports")
     val errors = mutable.Queue[(String, Assessment, String)]()
     tryWithError[Unit](errors, label = "Exam tests failed") {
       exam.runTests() }
