@@ -1,0 +1,32 @@
+.static-select {
+  border: 1pt solid gray;
+  color: lightgray;
+  padding: 1px 5px 1px 1px;
+  border-radius: 4px;
+}
+
+.static-select::before {
+  content: "\00A0▾\00A0";
+  color: #666;
+}
+
+.static-select span {
+  font-size: 0.8em;
+}
+
+.static-select span.static-select-yes,
+.static-select span.static-select-no-selection {
+  color: black;
+  background-color: #eee;
+  border-radius: 1px;
+}
+
+.static-select span.static-select-no::before {
+  content: " ☐ ";
+  color: #888;
+}
+
+.static-select span.static-select-yes::before {
+  content: " ☑ ";
+  color: #888;
+}

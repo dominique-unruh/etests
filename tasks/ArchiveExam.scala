@@ -52,7 +52,7 @@ object ArchiveExam extends Task {
     val html = Html(ind"""<html>
                          |<head>
                          |  <title>${escapeHtml4(problem.name)}</title>
-                         |  ${Assessment.htmlHeader.html}
+                         |  ${Assessment.htmlHeaderStatic.html}
                          |</head>
                          |<body>
                          |${problemHTML(problem)}
@@ -85,7 +85,7 @@ object ArchiveExam extends Task {
     val html = Html(ind"""<html>
                     |<head>
                     |  <title>${escapeHtml4(exam.name)}</title>
-                    |  ${Assessment.htmlHeader.html}
+                    |  ${Assessment.htmlHeaderStatic.html}
                     |</head>
                     |<body>
                     |${exam.problems.map(problemHTML).mkString("\n<hr/>\n")}

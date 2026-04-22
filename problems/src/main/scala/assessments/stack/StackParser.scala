@@ -73,6 +73,8 @@ object StackParser {
           Math.Operation(op, args.map(to) *)
       case MaximaOperation(MaximaSymbol(name), args*) =>
         Math.Funcall(name, args.map(to) *)
+      case MaximaOperation(head, _*) =>
+        throw RuntimeException(s"Maxima operation with unexpected head ${head}")
 
     to(maximaTerm)
   }

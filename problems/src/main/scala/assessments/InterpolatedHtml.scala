@@ -31,7 +31,7 @@ final class InterpolatedHtml[+T](val interpolatedString: InterpolatedString[T])
   def inlineHtmlConvertible[U](using subtype: T <:< (U | HtmlConvertible)): InterpolatedHtml[U] = {
     def f(arg: T): InterpolatedHtml[U] = subtype(arg) match {
       case convertible: HtmlConvertible => InterpolatedHtml(convertible.toHtml)
-      case other: U => InterpolatedHtml.fromArg(other)  
+      case other: U @unchecked => InterpolatedHtml.fromArg(other)
     }
     flatMapArgs(f)
   }

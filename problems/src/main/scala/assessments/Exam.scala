@@ -85,7 +85,7 @@ case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownA
       ind"""<html>
            |<head>
            |  <title>${escapeHtml4(name)}</title>
-           |  ${Assessment.htmlHeader.html}
+           |  ${Assessment.htmlHeaderStatic.html}
            |</head>
            |<body>
            |<h1>${escapeHtml4(name)}</h1>

@@ -93,7 +93,7 @@ object TaskGradeEveryone extends Task {
              |<html>
              |<head>
              |  <title>${escapeHtml4(title)}</title>
-             |  ${Assessment.htmlHeader.html}
+             |  ${Assessment.htmlHeaderStatic.html}
              |</head>
              |<body>
              |<h1>Summary</h1>

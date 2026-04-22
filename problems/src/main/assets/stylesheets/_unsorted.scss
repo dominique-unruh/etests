@@ -1,0 +1,86 @@
+/* Some of these might belong into webapp */
+
+
+
+/* Style for the separator line */
+.content-separator {
+  grid-column: 1 / -1;
+  margin: 20px 0;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+.internal-error {
+  color:red;
+  font-weight: bold;
+  /* Preserve indentation, but wrap long lines */
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.extra-data-text {
+  color: green;
+  font-weight: bold;
+}
+
+.math-preview {
+  font-weight: bold;
+  background-color: lightgray;
+  display: inline-block;
+}
+
+.explanation {
+  background-color: lightgray;
+}
+
+.grading-rules {
+  background-color: lightblue;
+}
+
+.question-test {
+
+}
+
+table.grade-scale {
+  border-collapse: collapse;
+  font-family: sans-serif;
+  font-size: 0.9em;
+  align-self: center;
+}
+
+table.grade-scale th,
+table.grade-scale td {
+  border: 1px solid #ccc;
+  padding: 4px 12px;
+  text-align: center;
+}
+
+table.grade-scale tr:first-child th {
+  background-color: #4a6fa5;
+  color: white;
+  font-size: 1em;
+  letter-spacing: 0.05em;
+}
+
+table.grade-scale tr:nth-child(2) th {
+  background-color: #e8edf4;
+  color: #333;
+  font-weight: bold;
+}
+
+table.grade-scale tr:nth-child(odd) td {
+  background-color: #f9f9f9;
+}
+
+.todo {
+  background-color: lightgray;
+  color: blue;
+  font-weight: bold;
+}
+
+.problem-separator {
+  break-after: page;
+}

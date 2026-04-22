@@ -2,6 +2,7 @@ package assessments
 
 import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, ErrorElement, ImageElement, RenderContext, StaticElement}
 import com.eed3si9n.eval.Eval
+import io.github.classgraph.ClassGraph
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import org.commonmark.parser.Parser
@@ -12,7 +13,10 @@ import play.api.libs.json.{JsObject, JsValue}
 import utils.Tag.Tags
 import utils.{IndentedInterpolator, Utils}
 
+import java.io.{BufferedReader, InputStreamReader}
+import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
+import scala.collection.JavaConverters.mapAsScalaMapConverter
 import scala.collection.mutable.ListBuffer
 import scala.util.boundary.break
 import scala.util.{Random, Using, boundary}
@@ -99,12 +103,11 @@ class Assessment (val name: String,
 }
 
 object Assessment {
-  lazy val mainCSS: Path = {
-    val path = Path.of("webapp/public/stylesheets/main.css").toAbsolutePath
-    assert(Files.exists(path))
-    path
+  lazy val staticCSS: String = {
+    val path = Path.of("problems/target/web/sass/main/stylesheets/static.css").toAbsolutePath
+    Files.readString(path)
   }
-  lazy val htmlHeader: Html = Html(
+  lazy val htmlHeaderStatic: Html = Html(
     ind"""<meta charset="UTF-8">
          |<script>
          |  window.MathJax = {
@@ -115,7 +118,7 @@ object Assessment {
          |  };
          |</script>
          |<style>
-         |  ${Files.readString(mainCSS)}
+         |  $staticCSS
          |</style>
          |<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>""")
 }

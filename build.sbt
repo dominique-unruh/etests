@@ -1,6 +1,5 @@
+import org.irundaia.sass.Maxified
 import sbt.librarymanagement.CrossVersion.for3Use2_13
-
-import java.nio.file.{Path, Paths}
 
 name := """etests"""
 
@@ -14,19 +13,22 @@ ThisBuild / scalacOptions += "-language:implicitConversions"
 //lazy val root = project in file(".")
 
 lazy val webapp = (project in file("webapp"))
+  .enablePlugins(PlayScala, SbtWeb)
+  .dependsOn(problems)
+  .dependsOn(exams)
   .settings(
     libraryDependencies += guice,
-    //    libraryDependencies += "io.github.classgraph" % "classgraph" % "4.8.181",
+    SassKeys.cssStyle := Maxified,
     libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test,
     libraryDependencies += "org.webjars" % "jquery" % "4.0.0",
     libraryDependencies += "org.webjars.npm" % "mathjax" % "3.2.2",
   )
-  .enablePlugins(PlayScala)
-  .dependsOn(problems)
-  .dependsOn(exams)
 
 lazy val problems = (project in file("problems"))
+  .enablePlugins(SbtWeb, SbtSassify)
   .settings(
+      Assets / sourceDirectories += baseDirectory.value / "src/main/assets",
+      SassKeys.cssStyle := Maxified,
     libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "2.4.0",
     libraryDependencies += "org.scala-lang" %% "scala3-compiler" % scalaVersion.value,
     libraryDependencies += "com.lihaoyi" %% "sourcecode" % "0.4.2",
