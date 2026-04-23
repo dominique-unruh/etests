@@ -1,0 +1,11 @@
+// tsconfig.json
+{
+  "compilerOptions": {
+    "target": "es5",
+    "module": "none",
+    "sourceMap": true,
+    "mapRoot": "/assets",
+    "sourceRoot": "/assets"
+  },
+  "include": ["js/**/*.ts"]
+}

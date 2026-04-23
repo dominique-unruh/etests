@@ -13,7 +13,7 @@ ThisBuild / scalacOptions += "-language:implicitConversions"
 //lazy val root = project in file(".")
 
 lazy val webapp = (project in file("webapp"))
-  .enablePlugins(PlayScala, SbtWeb)
+  .enablePlugins(PlayScala, SbtWeb, SbtTypescript)
   .dependsOn(problems)
   .dependsOn(exams)
   .settings(
@@ -26,6 +26,7 @@ lazy val webapp = (project in file("webapp"))
 
 lazy val problems = (project in file("problems"))
   .enablePlugins(SbtWeb, SbtSassify)
+//  .disablePlugins(SbtTypescript)
   .settings(
       Assets / sourceDirectories += baseDirectory.value / "src/main/assets",
       SassKeys.cssStyle := Maxified,

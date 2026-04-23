@@ -1,3 +1,11 @@
+let errorTextarea = null;
+declare const state: any;
+declare const jsRoutes: any;
+declare const examName: string;
+declare const assessmentName: string;
+declare const csrfToken: string;
+
+
 function log_error(...data) {
     console.error(...data)
     errorTextarea = document.getElementById("errors")
@@ -28,6 +36,7 @@ function loadAnswers() {
         log_error("Failed to load student answers")
         console.log("Failed AJAX call: ", state, obj, statusMessage)
     }
+    // @ts-ignore
     let regno = document.getElementById("registration").value
     if (regno == null || regno === "") {
         log_error("Not student registration number specified.")
@@ -51,6 +60,7 @@ function doActions(json) {
         if (window[action.callback] == null)
             log_error("Server invoked nonexisting callback " + action.callback)
         else
+            // @ts-ignore
             window[action.callback](action.data)
     }
 }
@@ -118,6 +128,7 @@ function randomStudent() {
         console.log("Failed AJAX call: ", state, obj, statusMessage)
     }
     function successCallback(json) {
+        // @ts-ignore
         document.getElementById("registration").value = json['registration']
         loadAnswers()
     }
@@ -134,12 +145,14 @@ function clearErrors() {
 }
 
 function showDynexitePdf() {
+    // @ts-ignore
     let regno = document.getElementById("registration").value
     let url = jsRoutes.controllers.AssessmentController.dynexitePdf(examName, regno).url
     window.open(url, "_blank")
 }
 
 function showDynexiteLink() {
+    // @ts-ignore
     let regno = document.getElementById("registration").value
     let url = jsRoutes.controllers.AssessmentController.dynexiteLink(examName, regno).url
     window.open(url, "_blank")
@@ -154,6 +167,7 @@ function dynexiteAnswers() {
     function successCallback(text) {
         log_error(text)
     }
+    // @ts-ignore
     let regno = document.getElementById("registration").value
     if (regno == null || regno === "") {
         log_error("Not student registration number specified.")
@@ -187,5 +201,6 @@ function getCookie(name) {
 }
 
 function onLoad() {
+    // @ts-ignore
     document.getElementById("registration").value = getCookie("registrationNumber");
 }
