@@ -8,6 +8,7 @@ import sourcecode.{Enclosing, FileName}
 import java.awt.{GridBagConstraints, GridBagLayout, Insets, Toolkit}
 import java.awt.datatransfer.{Clipboard, StringSelection}
 import java.io.{BufferedReader, FileReader, IOException}
+import java.lang.System.currentTimeMillis
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 import java.time.{Instant, LocalDate}
@@ -18,11 +19,11 @@ import java.util.{Base64, Properties}
 import javax.swing.{JLabel, JOptionPane, JPanel, JPasswordField, SwingUtilities}
 import scala.jdk.CollectionConverters.given
 import scala.collection.mutable
-import scala.concurrent.{Await, Awaitable, ExecutionContext, Future, Promise}
-import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Awaitable, ExecutionContext, Future, Promise, TimeoutException}
+import scala.concurrent.duration.{Duration, DurationLong}
 import scala.quoted.{Expr, Quotes, Type}
 import scala.reflect.ClassTag
-import scala.util.{Using, boundary}
+import scala.util.{Try, Using, boundary}
 import scala.util.boundary.break
 import scala.reflect.runtime.universe.{TypeTag, typeOf}
 import scala.sys.process.stringSeqToProcess
@@ -284,6 +285,7 @@ object Utils {
   def htmlToPdfAsync(html: String, htmlFile: String = "HTML"): Future[Array[Byte]] = {
     Docker.runInDocker(
 //            invalidateCache = true,
+      shortDescription = s"HTML to PDF, $htmlFile",
       image = Path.of("docker/html-to-pdf"),
       files = Map("input.html" -> html.getBytes(StandardCharsets.UTF_8)),
       //      command = Seq("ls", "-lh", "/workdir"),
@@ -407,6 +409,20 @@ object Utils {
             break(resultingPath)
         }
       Path.of("/file-not-found").resolve(path)
+    }
+  }
+
+  def awaitSeq[A](futures: Iterable[Future[A]], timeout: Duration): Iterable[Option[Try[A]]] = {
+    val endTime = currentTimeMillis() + timeout.toMillis
+    for (future <- futures) yield {
+      val now = currentTimeMillis()
+      val remaining = endTime - now
+      if (remaining > 0)
+        try Await.ready(future, remaining.millis)
+        catch {
+          case _: TimeoutException =>
+        }
+      future.value
     }
   }
 }

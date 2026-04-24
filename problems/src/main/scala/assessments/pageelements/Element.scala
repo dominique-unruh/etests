@@ -8,6 +8,7 @@ import play.api.libs.json.{JsObject, JsString, JsValue}
 import utils.Tag
 import utils.Tag.Tags
 
+import scala.concurrent.Future
 import scala.util.Using
 
 sealed trait Element {
@@ -22,7 +23,8 @@ trait DynamicElement extends Element { self =>
   /** Human readable name.
    * @return the value of the tag [[DynamicElement.humanName]] or else the name of this element. */
   def humanName: String = tags.getOrElse(DynamicElement.humanName, name.toString)
-  def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue
+  def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsValue]
+  def timeoutFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue
   val tags: Tag.Tags[self.type]
 //  val initialState: JsValue = JsObject(collection.Seq("content" -> JsString("")))
 }

@@ -12,6 +12,7 @@ import utils.Tag.Tags
 
 import scala.collection.immutable.SeqMap
 import scala.collection.mutable
+import scala.concurrent.Future
 
 final class MultipleChoice(override val name: ElementName,
                            val options: SeqMap[String, String],
@@ -217,8 +218,8 @@ final class MultipleChoice(override val name: ElementName,
   }
 */
 
-  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue = JsNull
-
+  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsValue] = Future.successful(JsNull)
+  override def timeoutFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue = JsNull
 }
 
 object MultipleChoice {

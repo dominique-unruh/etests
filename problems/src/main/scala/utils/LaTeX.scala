@@ -34,6 +34,7 @@ object LaTeX {
         |""".stripMargin
 
     val dockerResult = runInDocker(
+      shortDescription = "Latex to PDF",
       image = "aergus/latex:latest",
       command = Seq("/bin/bash", "script.sh"),
       files = Map("script.sh" -> script, "latex.tex" -> document) ++ files,
@@ -72,6 +73,7 @@ object LaTeX {
         |""".stripMargin
 
     val dockerResult = runInDocker(
+      shortDescription = "Latex to PNG",
       image = "aergus/latex:latest",
       command = Seq("/bin/bash", "script.sh"),
       files = Map("script.sh" -> script, "latex.tex" -> document),

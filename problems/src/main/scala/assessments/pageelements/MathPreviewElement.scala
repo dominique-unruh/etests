@@ -9,7 +9,9 @@ import play.api.libs.json.{JsObject, JsString, JsValue}
 import utils.Tag.Tags
 import utils.{IndentedInterpolator, Tag}
 
+import scala.concurrent.Future
 import scala.util.Random
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /** Example of a preview that interprets the input as LaTeX math */
 class MathPreviewElement(val name: ElementName,
@@ -43,10 +45,12 @@ class MathPreviewElement(val name: ElementName,
     }
   }
 
-  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsString = {
-//    println((state, observed))
+  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsString] = Future {
     val content = state(observed).asInstanceOf[JsString].value
     val text = contentToPreview(content)
     JsString(text)
   }
+
+  override def timeoutFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue =
+    JsString(s"""<span style="color:gray; font-weight:bold;">⌛</span>""")
 }

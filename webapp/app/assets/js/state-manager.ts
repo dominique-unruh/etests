@@ -12,6 +12,7 @@ export class StateManager {
     private examName: string;
     private assessmentName: string;
     private csrfToken: string;
+    private needFeedbackUpdate: boolean = false;
 
     constructor(csrfToken: string, examName: string, assessmentName: string) {
         this.csrfToken = csrfToken
@@ -33,7 +34,7 @@ export class StateManager {
                 this.content.set(element.id, content);
             element.addEventListener(contentChangeEventName, event => this.elementContentChanged(event as ContentChangeEvent<JsonValue>))
         }
-        this.dump();
+        window.setInterval(() => { this.askForFeedbackIfNeeded() }, 1000);
     }
 
     private elementContentChanged(event: ContentChangeEvent<JsonValue>) {
@@ -43,8 +44,8 @@ export class StateManager {
         // TODO check whether this is actually a change
         console.log(this, this.content);
         this.content.set(id, newElementContent);
-        this.dump();
-        this.askForFeedback();
+        this.needFeedbackUpdate = true;
+        console.log("Content changed from interactive element", this.content, id);
     }
 
     setContent(newContent: Record<string, Readonly<JsonValue>>) {
@@ -58,10 +59,11 @@ export class StateManager {
             else
                 element.content = state;
         }
-        this.dump();
+        console.log("Content changed by setting it", this.content);
     }
 
-    setFeedback(newFeedback: Record<string, Readonly<JsonValue>>) {
+    private setFeedback(newFeedback: Record<string, Readonly<JsonValue>>) {
+        console.log("Got feedback", newFeedback);
         for (const elementId in newFeedback) {
             const feedback = newFeedback[elementId];
             // We don't check whether feedback even changed because `element.feedback = ...` checks it anyway.
@@ -71,12 +73,18 @@ export class StateManager {
             else
                 element.feedback = feedback;
         }
-        this.dump();
+    }
+
+
+    private askForFeedbackIfNeeded() {
+        if (this.needFeedbackUpdate) {
+            this.needFeedbackUpdate = false;
+            this.askForFeedback()
+        }
     }
 
     private ajaxCounter = 0
     private currentFeedbackCounter = -1;
-
     private async askForFeedback() {
         // @ts-ignore
         const url: string = jsRoutes.controllers.AssessmentController.getFeedback(this.examName, this.assessmentName).url
@@ -98,17 +106,12 @@ export class StateManager {
             throw new Error(`HTTP error: ${response.status}`);
         const parsed = await response.json()
         const feedback = parsed.feedback
+        const timedout: boolean = parsed.timedout
         if (myCounter != this.currentFeedbackCounter)
             return;
-        this.setFeedback(feedback)
-    }
-
-    dump() {
-        console.log(this.interactiveElements, this.content);
+        this.setFeedback(feedback);
+        if (timedout)
+            this.needFeedbackUpdate = true;
     }
 }
 
-/*
-const stateManager = new StateManager();
-// @ts-ignore
-window.sm = stateManager;*/

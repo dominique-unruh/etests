@@ -99,8 +99,10 @@ object StackParser {
     ))
     val xml = quiz.prettyXml
 
-    Docker.runInDocker(Path.of("docker/stack-parser"),
-      Seq("bash", "/parse.sh"),
+    Docker.runInDocker(
+      shortDescription = s"Parse $expression",
+      image = Path.of("docker/stack-parser"),
+      command = Seq("bash", "/parse.sh"),
       files = Map("expression.txt" -> expression, "question.xml" -> xml),
       requestedOutputs = Seq("result.txt", "errors.txt")).map { result =>
 

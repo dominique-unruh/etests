@@ -4,42 +4,33 @@
 @import assessments.ElementName
 @import scala.jdk.CollectionConverters.given
 @(
-        examName: String,
-        assessmentName: String,
-        title: String,
-//        initialState: JsObject,
-        reachablePoints: String,
-        body: Html,
-        explanation: Html,
-        gradingRules: Html)(implicit requestHeader: RequestHeader)
+    examName: String,
+    assessmentName: String,
+    title: String,
+    reachablePoints: String,
+    body: Html,
+    explanation: Html,
+    gradingRules: Html)(implicit requestHeader: RequestHeader)
 
 <!DOCTYPE html>
 <html lang="en">
     <head>
         <title>@title</title>
         <link rel="stylesheet" href="@routes.Assets.versioned("stylesheets/main.css")">
-@*        <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/favicon.png")">*@
         <script type="text/javascript" src="@routes.MiscController.javascriptRoutes"></script>
-        <!--suppress JSUnresolvedLibraryURL -->
         <script id="MathJax-script" async src="@routes.Assets.versioned("lib/mathjax/es5/tex-mml-chtml.js")"></script>
         <script src="@routes.Assets.versioned("lib/jquery/jquery.min.js")"></script>
-        <script> @* misc configuration *@
+        <script>
             window.MathJax = {
                 tex: {
                     inlineMath: [['$', '$'], ['\\(', '\\)']]
                 }
             };
-            let csrfToken = "@(CSRF.getToken.value)";
-            @*let examName = "@(examName)";*@
-            @*let assessmentName = "@(assessmentName)";*@
-
-            @*let state = @Html(initialState.toString);*@
+            window.csrfToken = "@(CSRF.getToken.value)";
         </script>
-@*        <script language="JavaScript" type="module" src="@routes.Assets.versioned("js/webapp.js")"></script>*@
         <script language="JavaScript" type="module">
             import {StateManager} from "@routes.Assets.versioned("js/webapp.js")";
-            console.log(StateManager)
-            let stateManager = new StateManager("@(CSRF.getToken.value)", "@(examName)", "@(assessmentName)");
+            window.stateManager = new StateManager("@(CSRF.getToken.value)", "@(examName)", "@(assessmentName)");
         </script>
     </head>
     <body>
@@ -63,36 +54,22 @@
                 <label for="registration">Registration number</label>
                 <input id="registration" oninput="this.value = this.value.trim(); setCookie('registrationNumber', this.value); updateState('@(ElementName.registrationNumber)', this.value)"/>
                 <br>
-                <a href="javascript:randomStudent()">Random student...</a> |
-                <a href="javascript:showDynexitePdf()">Show Dynexite PDF...</a> |
-                <a href="javascript:showDynexiteLink()">Show Dynexite preview...</a>
+                <a href="javascript:randomStudent()">FIX! Random student...</a> |
+                <a href="javascript:showDynexitePdf()">FIX! Show Dynexite PDF...</a> |
+                <a href="javascript:showDynexiteLink()">FIX! Show Dynexite preview...</a>
                 <br>
-                <a href="javascript:loadAnswers()">Load answers...</a> |
-                <a href="javascript:loadReference()">Load reference...</a> |
-                <a href="javascript:dynexiteAnswers()">Raw Dynexite answers...</a>
-                <h3><a href="javascript:sendState()">Grading (<span id="grading-points"></span>/@reachablePoints points)</a></h3>
-
-                <div id="grading-report"></div>
-                <script>
-                    function @(ElementName.grader.jsElementCallbackName)(json) {
-                        document.getElementById("grading-points").textContent = json['points']
-                        document.getElementById("grading-report").innerHTML = json['report']
-                        MathJax.typesetPromise()
-                    }
-                </script>
+                <a href="javascript:loadAnswers()">FIX! Load answers...</a> |
+                <a href="javascript:loadReference()">FIX! Load reference...</a> |
+                <a href="javascript:dynexiteAnswers()">FIX! Raw Dynexite answers...</a>
+                <h3>FIX! Grading (<span id="grading-points"></span>/@reachablePoints points)</h3>
 
                 <div>
-                    <h3>Extra data</h3>
+                    <h3>FIX! Extra data</h3>
                     <span id="extra-data" class="extra-data-text"></span>
                 </div>
-                <script>
-                    function @(ElementName.extraData.jsElementCallbackName)(json) {
-                        document.getElementById('extra-data').textContent = json['data']
-                    }
-                </script>
 
                 <div id="errors-section" style="display: none">
-                    <h3>Internal errors</h3>
+                    <h3>FIX! Internal errors</h3>
                     <button onclick="clearErrors()">Clear</button>
                     <pre id="errors" class="internal-error"></pre>
                     <script>

@@ -10,13 +10,19 @@ import org.apache.commons.text.StringEscapeUtils
 import play.api.libs.json.{JsNumber, JsObject, JsString, JsValue}
 import utils.Utils
 
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+
 abstract class Grader(val name: ElementName) extends DynamicElement {
   override def renderHtml(context: RenderContext, files: FileMapBuilder): Html = Html.empty
   
   def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit
   lazy val reachablePoints: Points
 
-  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsObject = {
+  override def timeoutFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue =
+    JsObject(Map("error" -> JsString("Timeout")))
+
+  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsObject] = Future {
     given ExceptionContext = initialExceptionContext(s"Recomputing grading based on change of inputs in webapp")
     val registrationNumber = state.get(ElementName.registrationNumber) match
       case Some(regno) => regno.asInstanceOf[JsString].value match

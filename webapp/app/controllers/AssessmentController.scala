@@ -155,8 +155,8 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     // TODO do some caching?
     val assessment = getAssessment(exam, assessmentName)
     val payload = request.body.asJson.get.asInstanceOf[JsObject]
-    val feedback = assessment.getFeedback(payload)
-    val response = JsObject(Map("feedback" -> feedback))
+    val (feedback, timedOut) = assessment.getFeedback(payload)
+    val response = JsObject(Map("feedback" -> feedback, "timedout" -> JsBoolean(timedOut)))
     Ok(response)
   }
 

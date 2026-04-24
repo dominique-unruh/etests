@@ -8,10 +8,12 @@ import play.api.libs.json.{JsNull, JsObject, JsString, JsValue}
 import utils.{IndentedInterpolator, Tag, Utils}
 import utils.Tag.Tags
 
+import scala.concurrent.Future
+
 /** Simple text input element. */
-case class InputElement(val name: ElementName,
-                        val reference: String,
-                        val tags: Tags[InputElement]) extends AnswerElement {
+case class InputElement(name: ElementName,
+                        reference: String,
+                        tags: Tags[InputElement]) extends AnswerElement {
   assert(tags(inputElementRows) > 0)
   assert(tags(inputElementColumns) > 0)
   private val useTextarea = tags(inputElementRows) > 1
@@ -30,7 +32,8 @@ case class InputElement(val name: ElementName,
       Html(s"""<input type="text" size="${tags(inputElementColumns)}" readonly value="${escapeHtml4(answer)}"/>""")
   }
 
-  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue = JsNull
+  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsValue] = Future.successful(JsNull)
+  override def timeoutFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue = JsNull
 }
 
 object InputElement {

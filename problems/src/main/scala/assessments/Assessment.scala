@@ -1,5 +1,6 @@
 package assessments
 
+import assessments.Assessment.feedbackTimeout
 import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, ErrorElement, ImageElement, RenderContext, StaticElement}
 import com.eed3si9n.eval.Eval
 import io.github.classgraph.ClassGraph
@@ -18,9 +19,12 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 import scala.collection.JavaConverters.mapAsScalaMapConverter
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
 import scala.util.boundary.break
 import scala.util.{Random, Using, boundary}
 import scala.xml.*
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class Assessment (val name: String,
                   val questionTemplate: InterpolatedHtml[Element],
@@ -87,13 +91,20 @@ class Assessment (val name: String,
     (body, explanation, gradingRules, fileMapBuilder.result())
   }
 
-  def getFeedback(answer: JsObject): JsObject = {
+  def getFeedback(answer: JsObject): (JsObject, Boolean) = {
     // TODO should only recalculate changed things
     val answerMap = answer.value.map { (name, content) => (ElementName.fromHtmlComponentName(name), content) }.toMap
-    val feedback =
-      for (case element: DynamicElement <- pageElements.values)
-      yield (element.name.htmlComponentName -> element.getFeedback(this, answerMap))
-    JsObject(feedback.toSeq)
+    val elements = pageElements.values.collect { case element: DynamicElement => element }.toSeq
+    val feedbackFutures = elements.map(_.getFeedback(this, answerMap))
+    val feedbackOptions = Utils.awaitSeq(feedbackFutures, feedbackTimeout)
+      .map(_.map(_.get))
+    var timedOut = false
+    val feedbacks = for ((element, feedback) <- elements.zip(feedbackOptions))
+      yield element.name.htmlComponentName -> (feedback match {
+        case Some(value) => value
+        case None => timedOut = true; element.timeoutFeedback(this, answerMap)
+      })
+    (JsObject(feedbacks.toSeq), timedOut)
   }
   
   def referenceSolution: Map[ElementName, String] =
@@ -102,6 +113,8 @@ class Assessment (val name: String,
 }
 
 object Assessment {
+  val feedbackTimeout = Duration("1 second")
+
   lazy val staticCSS: String = {
     val path = Path.of("problems/target/web/sass/main/stylesheets/static.css").toAbsolutePath
     Files.readString(path)
