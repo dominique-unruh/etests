@@ -19,15 +19,7 @@ class MathPreviewElement(val name: ElementName,
   override def renderHtml(context: RenderContext, files: FileMapBuilder): Html =
     if (!context(RenderContext.dynamic))
       return renderStaticHtml(context, files)
-    Html(ind"""<span class="math-preview" id="${name.jsElementId}">Preview...</span><script>
-         |  function ${name.jsElementCallbackName}(json) {
-         |    let span = document.getElementById("${name.jsElementId}");
-         |    console.log(span);
-         |    MathJax.typesetClear([span]);
-         |    span.innerHTML = json.preview;
-         |    MathJax.typesetPromise([span]);
-         |  }
-         |</script>""")
+    Html(ind"""<etest-math-preview id="${name.htmlComponentNameEscaped}"></etest-math-preview>""")
 
   private def contentToPreview(content: String) = {
     try {
@@ -51,9 +43,10 @@ class MathPreviewElement(val name: ElementName,
     }
   }
 
-  override def updateAction(assessment: Assessment, state: Map[ElementName, JsValue]): IterableOnce[ElementAction] = {
-    val content = state(observed).asInstanceOf[JsObject].value("content").asInstanceOf[JsString].value
+  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsString = {
+//    println((state, observed))
+    val content = state(observed).asInstanceOf[JsString].value
     val text = contentToPreview(content)
-    Seq(ElementAction(name, JsObject(Seq("preview" -> JsString(text)))))
+    JsString(text)
   }
 }

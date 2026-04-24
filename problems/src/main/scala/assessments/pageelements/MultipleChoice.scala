@@ -3,10 +3,10 @@ package assessments.pageelements
 import assessments.GradingContext.answers
 import assessments.pageelements.MultipleChoice.Style.checkbox
 import assessments.pageelements.MultipleChoice.{Style, checkboxLabel, notSelectedString}
-import assessments.{ElementName, FileMapBuilder, Html, Points}
+import assessments.{Assessment, ElementName, FileMapBuilder, Html, Points}
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
-import play.api.libs.json.{JsNumber, JsObject, JsString}
+import play.api.libs.json.{JsNull, JsNumber, JsObject, JsString, JsValue}
 import utils.{IndentedInterpolator, Tag, Utils}
 import utils.Tag.Tags
 
@@ -194,6 +194,7 @@ final class MultipleChoice(override val name: ElementName,
     Html(html.result())
   }
 
+/*
   override def setAction(content: String): Seq[ElementAction] = {
     assert(content != null)
     style match {
@@ -214,6 +215,9 @@ final class MultipleChoice(override val name: ElementName,
         Seq(ElementAction(this.name, JsObject(Seq("content" -> JsString(content)))))
     }
   }
+*/
+
+  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue = JsNull
 
 }
 

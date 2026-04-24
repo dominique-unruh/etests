@@ -7,7 +7,7 @@
         examName: String,
         assessmentName: String,
         title: String,
-        initialState: JsObject,
+//        initialState: JsObject,
         reachablePoints: String,
         body: Html,
         explanation: Html,
@@ -30,13 +30,19 @@
                 }
             };
             let csrfToken = "@(CSRF.getToken.value)";
-            let examName = "@(examName)";
-            let assessmentName = "@(assessmentName)";
-            let state = @Html(initialState.toString);
+            @*let examName = "@(examName)";*@
+            @*let assessmentName = "@(assessmentName)";*@
+
+            @*let state = @Html(initialState.toString);*@
         </script>
-        <script language="JavaScript" src="@routes.Assets.versioned("js/assessment.js")"></script>
+@*        <script language="JavaScript" type="module" src="@routes.Assets.versioned("js/webapp.js")"></script>*@
+        <script language="JavaScript" type="module">
+            import {StateManager} from "@routes.Assets.versioned("js/webapp.js")";
+            console.log(StateManager)
+            let stateManager = new StateManager("@(CSRF.getToken.value)", "@(examName)", "@(assessmentName)");
+        </script>
     </head>
-    <body onload="onLoad()">
+    <body>
         <div class="two-column-container">
             <div class="left-column">
                 <h1>@(title) <span id="working" style="color:blue"></span></h1>

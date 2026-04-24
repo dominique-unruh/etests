@@ -15,7 +15,7 @@ export class MathPreview extends InteractiveElement<null, string> {
         if (newValue == '') newValue = '???';
         // @ts-ignore
         MathJax.typesetClear([this.math]);
-        this.math.textContent = "\\(" + newValue + "\\)";
+        this.math.textContent = newValue;
         // @ts-ignore
         MathJax.typesetPromise([this.math]);
     }

@@ -4,7 +4,7 @@ import assessments.pageelements.InputElement.{inputElementColumns, inputElementR
 import assessments.{Assessment, ElementName, FileMapBuilder, Html}
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
-import play.api.libs.json.{JsObject, JsString, JsValue}
+import play.api.libs.json.{JsNull, JsObject, JsString, JsValue}
 import utils.{IndentedInterpolator, Tag, Utils}
 import utils.Tag.Tags
 
@@ -19,16 +19,7 @@ case class InputElement(val name: ElementName,
   override def renderHtml(context: RenderContext, files: FileMapBuilder): Html = {
     if (!context(RenderContext.dynamic))
       return renderStaticHtml(context, files)
-    val tag = if (useTextarea) "textarea" else "input"
-    val width = if (useTextarea) "cols" else "size"
-    Html(ind"""<$tag rows="${tags(inputElementRows)}" $width="${tags(inputElementColumns)}" type="text" id="${name.jsElementId}" onInput='updateState("$name", {content: this.value})'></$tag><script>
-         |  function ${name.jsElementCallbackName}(json) {
-         |    let input = document.getElementById("${name.jsElementId}");
-         |    console.log(input.value);
-         |    input.value = json.content;
-         |    updateState("$name", {content: json.content});
-         |  }
-         |</script>""")
+    Html(s"""<etest-text-input rows="${tags(inputElementRows)}" columns="${tags(inputElementRows)}" id="${name.htmlComponentNameEscaped}"></etest-text-input>""")
   }
 
   private def renderStaticHtml(context: RenderContext, files: FileMapBuilder): Html = {
@@ -38,9 +29,8 @@ case class InputElement(val name: ElementName,
     else
       Html(s"""<input type="text" size="${tags(inputElementColumns)}" readonly value="${escapeHtml4(answer)}"/>""")
   }
-    
-  override def setAction(content: String): Seq[ElementAction] =
-    Seq(ElementAction(this.name, JsObject(Seq("content" -> JsString(content)))))
+
+  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue = JsNull
 }
 
 object InputElement {

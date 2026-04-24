@@ -22,9 +22,9 @@ trait DynamicElement extends Element { self =>
   /** Human readable name.
    * @return the value of the tag [[DynamicElement.humanName]] or else the name of this element. */
   def humanName: String = tags.getOrElse(DynamicElement.humanName, name.toString)
-  def updateAction(assessment: Assessment, state: Map[ElementName, JsValue]): IterableOnce[ElementAction] = Seq.empty
+  def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue
   val tags: Tag.Tags[self.type]
-  val initialState: JsValue = JsObject(collection.Seq("content" -> JsString("")))
+//  val initialState: JsValue = JsObject(collection.Seq("content" -> JsString("")))
 }
 
 object DynamicElement {

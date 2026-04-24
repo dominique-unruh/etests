@@ -9,7 +9,7 @@ import org.commonmark.parser.Parser
 
 import scala.collection.{SeqMap, mutable}
 import scala.util.matching.Regex
-import play.api.libs.json.{JsObject, JsValue}
+import play.api.libs.json.{JsObject, JsString, JsValue}
 import utils.Tag.Tags
 import utils.{IndentedInterpolator, Utils}
 
@@ -87,14 +87,13 @@ class Assessment (val name: String,
     (body, explanation, gradingRules, fileMapBuilder.result())
   }
 
-  def updateAction(state: JsObject): Seq[ElementAction] = {
+  def getFeedback(answer: JsObject): JsObject = {
     // TODO should only recalculate changed things
-    val stateMap = state.value.map { (name, content) => (ElementName(name), content) }.toMap
-    val actions =
-      for (case element: DynamicElement <- pageElements.values;
-           action <- element.updateAction(this, stateMap))
-      yield action
-    actions.toSeq
+    val answerMap = answer.value.map { (name, content) => (ElementName.fromHtmlComponentName(name), content) }.toMap
+    val feedback =
+      for (case element: DynamicElement <- pageElements.values)
+      yield (element.name.htmlComponentName -> element.getFeedback(this, answerMap))
+    JsObject(feedback.toSeq)
   }
   
   def referenceSolution: Map[ElementName, String] =

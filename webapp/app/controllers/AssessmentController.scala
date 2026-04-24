@@ -11,7 +11,7 @@ import java.nio.file.{Files, Path}
 import javax.script.{ScriptEngine, ScriptEngineManager}
 import scala.util.matching.Regex
 import assessments.{Assessment, ElementName, Exam, ExceptionContext, MarkdownAssessment}
-import play.api.libs.json.{JsArray, JsBoolean, JsObject, JsString, JsValue}
+import play.api.libs.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, JsValue}
 import play.mvc.BodyParser.Json
 import play.twirl.api.{Html, HtmlFormat}
 import com.typesafe.scalalogging.Logger
@@ -84,7 +84,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
       examName = examName,
       assessmentName = assessmentName,
       title = assessment.name,
-      initialState = JsObject(assessment.pageElements.map{ (name, element) => (name.toString, element.initialState) }),
+//      initialState = JsObject(assessment.pageElements.map{ (name, element) => (name.toString, element.initialState) }),
       reachablePoints = assessment.reachablePoints.decimalFractionString,
       body = Html(body.html),
       explanation = Html(explanation.html),
@@ -112,6 +112,8 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
   }
 
   private def answersToActions(assessment: Assessment, answers: Map[ElementName, String]): JsArray = {
+    ???
+/*
     val actions = Seq.newBuilder[ElementAction]
     for ((element, content) <- answers.toSeq) {
       if (element == ElementName.extraData)
@@ -121,6 +123,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     }
 
     JsArray(actions.result().map(elementActionAsJson))
+*/
   }
 
   def loadAnswers(examName: String, assessmentName: String, registrationNumber: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
@@ -146,14 +149,14 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     Ok(content).as(mime)
   }
 
-  def updateAction(examName: String, assessmentName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
-    given ExceptionContext = initialExceptionContext(s"Responsing to web-request $request")
+  def getFeedback(examName: String, assessmentName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    given ExceptionContext = initialExceptionContext(s"Responding to web-request $request")
     val exam = getExam(examName)
-    // TODO do some caching
+    // TODO do some caching?
     val assessment = getAssessment(exam, assessmentName)
     val payload = request.body.asJson.get.asInstanceOf[JsObject]
-    val actions = assessment.updateAction(payload)
-    val response: JsValue = JsArray(actions.map(elementActionAsJson))
+    val feedback = assessment.getFeedback(payload)
+    val response = JsObject(Map("feedback" -> feedback))
     Ok(response)
   }
 

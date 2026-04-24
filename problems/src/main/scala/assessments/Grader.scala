@@ -16,7 +16,7 @@ abstract class Grader(val name: ElementName) extends DynamicElement {
   def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit
   lazy val reachablePoints: Points
 
-  override def updateAction(assessment: Assessment, state: Map[ElementName, JsValue]): IterableOnce[ElementAction] = {
+  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsObject = {
     given ExceptionContext = initialExceptionContext(s"Recomputing grading based on change of inputs in webapp")
     val registrationNumber = state.get(ElementName.registrationNumber) match
       case Some(regno) => regno.asInstanceOf[JsString].value match
@@ -26,7 +26,7 @@ abstract class Grader(val name: ElementName) extends DynamicElement {
     val answers = for (case element : AnswerElement <- assessment.pageElements.values) yield {
       state.get(element.name) match
         case Some(elementState) => 
-          element.name -> elementState("content").asInstanceOf[JsString].as[String]
+          element.name -> elementState.asInstanceOf[JsString].as[String]
         case None => element.name -> ""
     }
     val context = GradingContext(answers.toMap, registrationNumber, reachablePoints)
@@ -40,9 +40,12 @@ abstract class Grader(val name: ElementName) extends DynamicElement {
       else
         report ++= s"<p>Points: $pointsString / ${assessment.reachablePoints.decimalFractionString}  (precise number: ${context.points.fractionHtml})</p>\n"
       report ++= Comment.seqToHtml(GradingContext.comments(using context).toSeq).html
-      Seq(ElementAction(name, JsObject(Map("points" -> JsString(context.points.decimalFractionString(2)), "report" -> JsString(report.result())))))
+      JsObject(Map(
+        "points" -> JsString(context.points.decimalFractionString(2)),
+        "report" -> JsString(report.result())))
     } catch {
-      case e: Throwable => Seq(ElementAction.error(Utils.exceptionMessage(e)))
+      case e: Throwable =>
+        JsObject(Map("error" -> JsString(Utils.exceptionMessage(e))))
     }
   }
 }

@@ -9,14 +9,17 @@ import {
 export class StateManager {
     private interactiveElements: Map<string, InteractiveElement<JsonValue, JsonValue>> = new Map();
     private content: Map<string, Readonly<JsonValue>> = new Map();
+    private examName: string;
+    private assessmentName: string;
+    private csrfToken: string;
 
-    constructor() {
-        // TODO: fix
-        document.body.onload = (event => this.init())
-        // document.body.addEventListener("load", event => this.init());
-    }
+    constructor(csrfToken: string, examName: string, assessmentName: string) {
+        this.csrfToken = csrfToken
+        this.examName = examName;
+        this.assessmentName = assessmentName;
+        if ((typeof examName !== "string") || (typeof assessmentName !== "string") || (typeof csrfToken !== "string"))
+            throw Error("Invalid arguments")
 
-    init() {
         console.log("init")
         for (const element of document.getElementsByClassName(interactiveElementClass)) {
             if (!(element instanceof InteractiveElement))
@@ -41,6 +44,7 @@ export class StateManager {
         console.log(this, this.content);
         this.content.set(id, newElementContent);
         this.dump();
+        this.askForFeedback();
     }
 
     setContent(newContent: Record<string, Readonly<JsonValue>>) {
@@ -54,6 +58,7 @@ export class StateManager {
             else
                 element.content = state;
         }
+        this.dump();
     }
 
     setFeedback(newFeedback: Record<string, Readonly<JsonValue>>) {
@@ -66,6 +71,36 @@ export class StateManager {
             else
                 element.feedback = feedback;
         }
+        this.dump();
+    }
+
+    private ajaxCounter = 0
+    private currentFeedbackCounter = -1;
+
+    private async askForFeedback() {
+        // @ts-ignore
+        const url: string = jsRoutes.controllers.AssessmentController.getFeedback(this.examName, this.assessmentName).url
+        // console.log(url);
+        const myCounter = this.ajaxCounter;
+        this.currentFeedbackCounter = myCounter;
+        this.ajaxCounter += 1;
+        const content = {};
+        this.content.forEach((value, key) => { content[key] = value; });
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                'CSRF-Token': this.csrfToken,
+            },
+            body: JSON.stringify(content),
+            })
+        if (!response.ok)
+            throw new Error(`HTTP error: ${response.status}`);
+        const parsed = await response.json()
+        const feedback = parsed.feedback
+        if (myCounter != this.currentFeedbackCounter)
+            return;
+        this.setFeedback(feedback)
     }
 
     dump() {
@@ -73,6 +108,7 @@ export class StateManager {
     }
 }
 
+/*
 const stateManager = new StateManager();
 // @ts-ignore
-window.sm = stateManager;
+window.sm = stateManager;*/

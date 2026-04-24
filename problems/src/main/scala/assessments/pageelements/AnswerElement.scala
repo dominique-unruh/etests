@@ -7,7 +7,6 @@ import utils.{Tag, Utils}
 trait AnswerElement extends DynamicElement {
   /** Reference solution */
   val reference: String
-  def setAction(content: String): Seq[ElementAction]
 
   /**
    * Performs simple grading of this answer element against its reference value.
