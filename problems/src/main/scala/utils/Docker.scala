@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.charset.{Charset, StandardCharsets}
 import java.nio.file.{Files, Path}
 import java.time.Instant
+import java.util
 import java.util.Base64
 import java.util.concurrent.{Semaphore, TimeUnit}
 import scala.collection.mutable
@@ -67,17 +68,11 @@ object Docker {
     Using.resource(autoCloseable)(_ => body)
   }
 
-/*  def rebuildImage(image: Path | String): Unit = synchronized {
-    val cacheKey = s"CACHED-DOCKER-IMAGE-ID:${image.getClass}:${image.toString}".getBytes(UTF_8)
-    Cache.delete(cacheKey)
-    pulledInThisSession.remove(image)
-  }*/
-
   /** Returns the ID (hash) of an image that is described by an image name (will be pulled) or a path (will be built from Dockerfile) */
   private def getImageId(image: Path | String, invalidateCache: Boolean = false): String = {
     if (!invalidateCache && pulledInThisSession.contains(image))
       return pulledInThisSession(image)
-    synchronized {
+    pulledInThisSession.synchronized {
       if (pulledInThisSession.contains(image))
         return pulledInThisSession(image)
 
@@ -118,7 +113,7 @@ object Docker {
     }
   }
 
-  private val currentlyRunning = mutable.HashMap[Array[Byte], (java.time.Instant, Future[DockerResult])]()
+  private val currentlyRunning = mutable.HashMap[ByteKey, (java.time.Instant, Future[DockerResult], String)]()
 
   private val garbageCollectionDelay = 60
   private val garbageCollectionFrequency = 10
@@ -127,7 +122,7 @@ object Docker {
     if (lastGarbageCollection.isBefore(Instant.now().minusSeconds(garbageCollectionFrequency)))
       return
     currentlyRunning.filterInPlace {
-      case (_, (time, _)) => time.isAfter(Instant.now().minusSeconds(garbageCollectionDelay))
+      case (_, (time, _, _)) => time.isAfter(Instant.now().minusSeconds(garbageCollectionDelay))
     }
     lastGarbageCollection = Instant.now()
   }
@@ -145,12 +140,14 @@ object Docker {
    *              A map from filename to content. If the content is a string, it is UTF-8 encoded.
    * @param requestedOutputs A list of files to return after execution of the Docker image.
    *                         They are expected to be in `/workdir`. It is not an error if those files do not exist.
+   * @param shortDescription Short description for debug outputs
    * @return Result of the execution. (Exit code and the files from `requestedOutputs`.)
    * */
   def runInDocker(image: String | Path,
                   command: Seq[String] = Seq.empty,
                   files: Map[String, Array[Byte] | String],
                   requestedOutputs: Seq[String],
+                  shortDescription: String,
                   invalidateCache: Boolean = false): Future[DockerResult] = {
     val imageId = getImageId(image, invalidateCache = invalidateCache)
 
@@ -162,41 +159,58 @@ object Docker {
     }).toMap
 
     val argsJson = DockerKey(imageId, command, filesBytes, requestedOutputs).asJson.noSpacesSortKeys
-    val argsJsonBytes = argsJson.getBytes
+    val argsJsonBytes = ByteKey(argsJson.getBytes)
 
     synchronized {
+      logCurrentlyRunningDockers()
+      logger.debug(s"Need docker for: ${shortDescription}")
+
       currentlyRunning.get(argsJsonBytes) match {
-        case Some((time, oldFuture)) if !invalidateCache =>
+        case Some((time, oldFuture, oldDescription)) if !invalidateCache =>
           if (oldFuture.isCompleted && oldFuture.value.get.isFailure)
             currentlyRunning.remove(argsJsonBytes)
           else
-            currentlyRunning.update(argsJsonBytes, (Instant.now(), oldFuture))
+            logger.debug(s"Reusing docker from ${java.time.Duration.between(time, Instant.now()).getSeconds}s ago")
+            currentlyRunning.update(argsJsonBytes, (Instant.now(), oldFuture, oldDescription))
             return oldFuture
         case _ =>
       }
 
       val newFuture = Future[DockerResult] {
-        Cache.get(argsJsonBytes) match
+        Cache.get(argsJsonBytes.bytes) match
           case Some(cached) if !invalidateCache =>
             decode[DockerResult](new String(cached)).getOrElse(throw IOException("Unparsable cache content"))
           case _ =>
-            val result = withBuildBound(s"Running docker image: $image") {
+            val result = withBuildBound(s"Running docker image: $image (for $shortDescription)") {
               runInDockerNoCache(imageId = imageId, command = command, files = filesBytes,
+                shortDescription = shortDescription,
                 requestedOutputs = requestedOutputs, hashKey = argsJson) }
-            Cache.put(argsJsonBytes, result.asJson.noSpaces.getBytes)
+            Cache.put(argsJsonBytes.bytes, result.asJson.noSpaces.getBytes)
             result
       }
-      currentlyRunning.update(argsJsonBytes, (Instant.now(), newFuture))
+      currentlyRunning.update(argsJsonBytes, (Instant.now(), newFuture, shortDescription))
       garbageCollection()
       newFuture
     }
   }
 
+  private def logCurrentlyRunningDockers(): Unit = {
+    val running = currentlyRunning.toSeq
+      .filter { case (_, (_, future, _)) => !future.isCompleted }
+    if (running.nonEmpty)
+      logger.debug(s"Currently running ${running.size} dockers: ${running
+          .map { case (_, (_, _, name)) => name }
+          .mkString("; ")
+      }")
+    else
+      logger.debug("Currently no running dockers.")
+  }
 
   private val pulledInThisSession = mutable.Map[String | Path, String]()
   private def runInDockerNoCache(imageId: String,
                                  command: Seq[String],
                                  files: Map[String, Array[Byte]],
+                                 shortDescription: String,
                                  requestedOutputs: Seq[String],
                                  hashKey: String): DockerResult = {
     val tempDir = Utils.getTempDir
@@ -205,7 +219,7 @@ object Docker {
       Files.write(tempDir.resolve(file), content)
     }
 
-    logger.debug(s"Docker inputs: ${files.map((k,v) => k+String(v)).mkString(";")}")
+//    logger.debug(s"Docker inputs: ${files.map((k,v) => k+String(v)).mkString(";")}")
 
     val dockerCommand = Seq(
       "docker", "run", "--rm",
@@ -214,7 +228,7 @@ object Docker {
       "--platform=linux/amd64",
       imageId) ++ command
 
-    logger.debug(s"Running Docker command: ${dockerCommand.mkString(" ")}")
+    logger.debug(s"Running Docker command (for $shortDescription): ${dockerCommand.mkString(" ")}")
 
     val output = StringBuffer() // Not using StringBuilder (not thread safe)
     val exitCode = dockerCommand.!(ProcessLogger(line => output.append(line).append('\n')))
@@ -229,6 +243,19 @@ object Docker {
     })
 
     DockerResult(exitCode = exitCode, output = output.toString, files = resultFiles)
+  }
+
+  private final class ByteKey(val bytes: Array[Byte]) {
+    private val cachedHash = util.Arrays.hashCode(bytes)
+
+    override def hashCode(): Int = cachedHash
+
+    override def equals(obj: Any): Boolean = obj match {
+      case that: ByteKey =>
+        this.cachedHash == that.cachedHash && util.Arrays.equals(this.bytes, that.bytes)
+      case _ =>
+        false
+    }
   }
 
   private val logger = Logger[Docker.type]
