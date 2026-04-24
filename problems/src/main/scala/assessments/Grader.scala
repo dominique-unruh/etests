@@ -7,7 +7,7 @@ import assessments.pageelements.{AnswerElement, DynamicElement, ElementAction, I
 import com.typesafe.scalalogging.Logger
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.commons.text.StringEscapeUtils
-import play.api.libs.json.{JsNumber, JsObject, JsString, JsValue}
+import play.api.libs.json.{JsBoolean, JsNumber, JsObject, JsString, JsValue}
 import utils.Utils
 
 import scala.concurrent.Future
@@ -20,7 +20,7 @@ abstract class Grader(val name: ElementName) extends DynamicElement {
   lazy val reachablePoints: Points
 
   override def timeoutFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue =
-    JsObject(Map("error" -> JsString("Timeout")))
+    JsObject(Map("processing" -> JsBoolean(true)))
 
   override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsObject] = Future {
     given ExceptionContext = initialExceptionContext(s"Recomputing grading based on change of inputs in webapp")

@@ -12,7 +12,6 @@ export class MathPreview extends InteractiveElement<null, string> {
     }
 
     protected feedbackExternallyChanged(oldValue: string, newValue: string) {
-        console.log("UPDATE", newValue);
         if (newValue == '') newValue = '???';
         // @ts-ignore
         MathJax.typesetClear([this.math]);
