@@ -93,6 +93,15 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
 
   }
 
+  def test(): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    Cache.forceInitialization()
+    val examName = "xxx"
+    val assessmentName = "yyy"
+    given ExceptionContext = ExceptionContext.initialExceptionContext(s"Web query for exam $examName, problem $assessmentName")
+    val html = views.html.test()
+    Ok(html)
+  }
+
   def loadReference(examName: String, assessmentName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     given ExceptionContext = ExceptionContext.initialExceptionContext("Responding to web-query for reference solution from Dynexite exam",
       assessmentName)

@@ -1,0 +1,46 @@
+@import views.html.helper.CSRF
+@import play.api.libs.json.Json
+@import play.api.libs.json.JsObject
+@import assessments.ElementName
+@import scala.jdk.CollectionConverters.given
+@()(implicit requestHeader: RequestHeader)
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Test</title>
+        <link rel="stylesheet" href="@routes.Assets.versioned("stylesheets/main.css")">
+        @*        <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/favicon.png")">*@
+        <script type="text/javascript" src="@routes.MiscController.javascriptRoutes"></script>
+            <!--suppress JSUnresolvedLibraryURL -->
+        <script id="MathJax-script" async src="@routes.Assets.versioned("lib/mathjax/es5/tex-mml-chtml.js")"></script>
+        <script src="@routes.Assets.versioned("lib/jquery/jquery.min.js")"></script>
+        <script> @* misc configuration *@
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']]
+            }
+        };
+        let csrfToken = "@(CSRF.getToken.value)";
+        </script>
+@*        <script language="JavaScript" src="@routes.Assets.versioned("js/assessment.js")"></script>*@
+        <script language="JavaScript" type="module" src="@routes.Assets.versioned("js/text-input.js")"></script>
+        <script language="JavaScript" type="module" src="@routes.Assets.versioned("js/math-preview.js")"></script>
+        <script language="JavaScript" id="state-manager-js" type="module" src="@routes.Assets.versioned("js/state-manager.js")"></script>
+    </head>
+    <body>
+
+        <etest-text-input id="txt"></etest-text-input>
+
+        <etest-math-preview id="math"></etest-math-preview>
+
+    <script>
+
+            // document.body.onload = (event => alert(2));
+            //     document.body.addEventListener("load", event => alert(1));
+
+            // new StateManager();
+
+        </script>
+    </body>
+</html>

@@ -1,5 +1,6 @@
 {
   "devDependencies": {
-    "@types/jquery": "^4.0.0"
+    "@types/jquery": "^4.0.0",
+    "mathjax-full": "^3.2.2"
   }
 }

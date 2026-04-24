@@ -1,8 +1,8 @@
 // tsconfig.json
 {
   "compilerOptions": {
-    "target": "es5",
-    "module": "none",
+    "target": "es2015",
+    "module": "ES2015",
     "sourceMap": true,
     "mapRoot": "/assets",
     "sourceRoot": "/assets"
