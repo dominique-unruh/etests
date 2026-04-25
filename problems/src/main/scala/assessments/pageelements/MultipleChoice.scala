@@ -90,43 +90,7 @@ final class MultipleChoice(override val name: ElementName,
     Html(html.result())
   }
 
-/*
-  def renderHtmlRadio: Html = {
-    val html = StringBuilder()
-    html ++= s"""<fieldset id="${name.jsElementId}">\n"""
-    html ++= s"""<label><input type="radio" name="${name.jsElementId}" value="" onchange="updateState('$name', {content: this.value})"/>\n"""
-    html ++= notSelectedString += '\n'
-    html ++= "</label>\n"
-    for ((optionName, optionText) <- options) {
-      html ++= s"""<label><input type="radio" name="${name.jsElementId}" value="${escapeHtml4(optionName)}" onchange="updateState('$name', {content: this.value})"/>\n"""
-      html ++= optionText += '\n'
-      html ++= "</label>\n"
-    }
-    html ++= "</fieldset>\n"
-
-    html ++=
-      ind"""<script>
-           |  function ${name.jsElementCallbackName}(json) {
-           |    let radios = document.querySelectorAll('input[name="${name.jsElementId}"]');
-           |    let radio = radios[json.index]
-           |    radio.checked = true;
-           |    updateState("$name", {content: radio.value});
-           |  }
-           |</script>""".stripMargin
-
-    Html(html.result())
-  }
-*/
-
   def renderHtmlSelectStatic(selected: Option[String]): Html = {
-/*      val html = StringBuilder()
-      html ++= s"""<select readonly>\n"""
-      html ++= s"""<option value=""${if (selected=="") " selected" else ""}>$notSelectedString</option>\n"""
-      for ((optionName, optionText) <- options)
-        html ++= s"""<option value="${escapeHtml4(optionName)}"${if (selected==optionName) " selected" else ""}>$optionText</option>\n"""
-      html ++= "</select>\n"
-      Html(html.result())*/
-
     val html = StringBuilder()
     html ++= """<span class="static-select">"""
     for (((optionName, optionText), index) <- options.zipWithIndex) {
@@ -139,33 +103,9 @@ final class MultipleChoice(override val name: ElementName,
       html ++= s"""<span class="$clazz">$optionText</span>"""
     }
     html ++= "</span>"
-//    Html("""<span class="static-select">""" +
-//      options.values.map(text => s"<span>$text</span>").mkString(" | ") +
-//      "</span>")
     Html(html.result())
   }
 
-/*
-  def renderHtmlSelect: Html = {
-    val html = StringBuilder()
-    html ++= s"""<select id="${name.jsElementId}" onchange="updateState('$name', {content: this.value})">\n"""
-    html ++= s"""<option value="">$notSelectedString</option>\n"""
-    for ((optionName, optionText) <- options)
-      html ++= s"""<option value="${escapeHtml4(optionName)}">$optionText</option>\n"""
-    html ++= "</select>\n"
-    html ++=
-      ind"""<script>
-           |  function ${name.jsElementCallbackName}(json) {
-           |    let input = document.getElementById("${name.jsElementId}");
-           |    console.log(input.value);
-           |    input.value = json.content;
-           |    updateState("$name", {content: json.content});
-           |  }
-           |</script>""".stripMargin
-
-    Html(html.result())
-  }
-*/
 
   def renderHtmlCheckboxStatic(selected: String): Html = {
     val html = StringBuilder()
@@ -181,51 +121,6 @@ final class MultipleChoice(override val name: ElementName,
     Html(html.result())
   }
 
-/*
-  def renderHtmlCheckbox: Html = {
-    val html = StringBuilder()
-    val Seq(yes, no) = options.keysIterator.map(escapeHtml4).toSeq
-    val label = tags(checkboxLabel).html match {
-      case "" => ""
-      case label => s""" <label for="${name.jsElementId}">$label</label>"""
-    }
-//    println(s"LABEL ${tags(checkboxLabel)} $label")
-    html ++= s"""<input type="checkbox" id="${name.jsElementId}" onchange="updateState('$name', {content: this.checked ? '$yes' : '$no'})"></input>$label\n"""
-    html ++=
-      ind"""<script>
-           |  function ${name.jsElementCallbackName}(json) {
-           |    let input = document.getElementById("${name.jsElementId}");
-           |    input.checked = json.content == '$yes';
-           |    updateState("$name", {content: json.content});
-           |  }
-           |</script>""".stripMargin
-
-    Html(html.result())
-  }
-*/
-
-/*
-  override def setAction(content: String): Seq[ElementAction] = {
-    assert(content != null)
-    style match {
-      case Style.select =>
-        Seq(ElementAction(this.name, JsObject(Seq("content" -> JsString(content)))))
-      case Style.radio =>
-        if (content == "")
-          Seq(ElementAction(this.name, JsObject(Seq("index" -> JsNumber(0)))))
-        else {
-          val index = options.keys.toSeq.indexOf(content)
-          val hd = options.keys.toSeq.head
-          if (index < 0)
-            throw RuntimeException(s"setAction(\"$content\") called, but options are ${options.keys.map(s => s"\"$s\"").mkString(", ")}")
-          // index+1 because the webapp has "not selected" first
-          Seq(ElementAction(this.name, JsObject(Seq("index" -> JsNumber(index + 1)))))
-        }
-      case Style.checkbox =>
-        Seq(ElementAction(this.name, JsObject(Seq("content" -> JsString(content)))))
-    }
-  }
-*/
 
   override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsValue] = Future.successful(JsNull)
   override def timeoutFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue = JsNull
