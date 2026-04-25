@@ -47,8 +47,11 @@ class MathPreviewElement(val name: ElementName,
 
   override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsString] = Future {
     val content = state(observed).asInstanceOf[JsString].value
-    val text = contentToPreview(content)
-    JsString(text)
+    if (content.isBlank)
+      JsString(s"""<span style="color:gray">(preview)</span>""")
+    else
+      val text = contentToPreview(content)
+      JsString(text)
   }
 
   override def timeoutFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue =

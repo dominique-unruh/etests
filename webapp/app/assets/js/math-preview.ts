@@ -6,7 +6,6 @@ export class MathPreview extends InteractiveElement<null, string> {
     constructor() {
         super(null);
         this.math = document.createElement("span")
-        this.math.textContent = "[Preview]"
         this.appendChild(this.math);
         this.classList.add("math-preview");
     }
