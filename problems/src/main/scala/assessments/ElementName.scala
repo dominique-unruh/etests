@@ -16,7 +16,7 @@ object ElementName {
     assert(validElementNameRegex.matches(name))
   }
 
-  private val validElementNameRegex = "(__)?[a-zA-Z][a-zA-Z0-9_]*".r.anchored
+  private val validElementNameRegex = "(__)?[a-zA-Z][a-zA-Z0-9_-]*".r.anchored
   def apply(name: String): ElementName = {
     assertValidElementName(name)
     new ElementName(name)
@@ -29,7 +29,7 @@ object ElementName {
   
   val grader: ElementName = ElementName("grader")
   val errordisplay: ElementName = ElementName("errorDisplay")
-  val registrationNumber: ElementName = ElementName("registrationNumber")
+  val registrationNumber: ElementName = ElementName("registration-number")
   /** For any extra data that should be displayed */
   val extraData: ElementName = ElementName("__extraData")
 }

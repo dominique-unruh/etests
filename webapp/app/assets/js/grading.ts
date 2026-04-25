@@ -12,7 +12,7 @@ export class Grading extends InteractiveElement<null, GradingResult> {
     private reportSpan: HTMLDivElement;
 
     constructor() {
-        super();
+        super(null);
         const reachable = this.getAttribute('reachable');
         this.innerHTML = `<h3>Grading (<span id="grading-points"></span>/${reachable} points)</h3><div id="grading-report"></div>`
         this.pointsSpan = this.getElementsByTagName("span")[0]
@@ -38,7 +38,7 @@ export class Grading extends InteractiveElement<null, GradingResult> {
             console.error("Grader returned result without report or error", result);
         }
         // @ts-ignore
-        MathJax.typesetPromise([this.math]);
+        MathJax.typesetPromise([this.reportSpan]);
     }
 }
 

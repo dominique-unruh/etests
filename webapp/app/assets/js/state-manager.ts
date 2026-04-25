@@ -30,11 +30,11 @@ export class StateManager {
                 console.error("No ID", element)
             this.interactiveElements.set(element.id, elementAs)
             const content = elementAs.content;
-            if (content != null)
-                this.content.set(element.id, content);
+            this.content.set(element.id, content);
             element.addEventListener(contentChangeEventName, event => this.elementContentChanged(event as ContentChangeEvent<JsonValue>))
         }
         window.setInterval(() => { this.askForFeedbackIfNeeded() }, 1000);
+        this.needFeedbackUpdate = true;
     }
 
     private elementContentChanged(event: ContentChangeEvent<JsonValue>) {

@@ -4,7 +4,7 @@ export class MathPreview extends InteractiveElement<null, string> {
     private math: HTMLSpanElement;
 
     constructor() {
-        super();
+        super(null);
         this.math = document.createElement("span")
         this.math.textContent = "[Preview]"
         this.appendChild(this.math);

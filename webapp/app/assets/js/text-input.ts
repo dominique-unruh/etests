@@ -4,7 +4,7 @@ export class TextInput extends InteractiveElement<string, null> {
     private inputField: HTMLInputElement;
 
     constructor() {
-        super();
+        super("");
         this.inputField = document.createElement("input")
         this.appendChild(this.inputField);
         this.inputField.addEventListener("input", _event => {

@@ -18,8 +18,9 @@ export abstract class InteractiveElement<C extends JsonValue, F extends JsonValu
     private _content: Readonly<C> = null;
     private _feedback: Readonly<F> = null;
 
-    constructor() {
+    constructor(initialContent: C) {
         super();
+        this._content = initialContent
         console.log("Initializing", this);
         this.classList.add(interactiveElementClass);
     }
