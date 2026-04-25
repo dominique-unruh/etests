@@ -18,6 +18,8 @@ export class RegistrationNumber extends InteractiveElement<string, null> {
             const regno = this.inputField.value.trim()
             setCookie('registrationNumber', regno);
             this.updateContent(regno)
+            // @ts-ignore
+            window.stateManager.askForAnswers('student')
         })
     }
 

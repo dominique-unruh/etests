@@ -102,6 +102,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     Ok(html)
   }
 
+/*
   def loadReference(examName: String, assessmentName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     given ExceptionContext = ExceptionContext.initialExceptionContext("Responding to web-query for reference solution from Dynexite exam",
       assessmentName)
@@ -110,6 +111,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     val answers = assessment.assessment.referenceSolution
     Ok(answersToActions(assessment, answers))
   }
+*/
 
   private def answersToActions(assessment: Assessment, answers: Map[ElementName, String]): JsArray = {
     ???
@@ -126,17 +128,23 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
 */
   }
 
-  def loadAnswers(examName: String, assessmentName: String, registrationNumber: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
-    given ExceptionContext = ExceptionContext.initialExceptionContext("Responding to web-query for student answers from Dynexite exam", assessmentName, registrationNumber)
+  def loadAnswers(examName: String, assessmentName: String, kind: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    given ExceptionContext = ExceptionContext.initialExceptionContext("Responding to web-query for student answers from Dynexite exam", assessmentName, kind)
     try {
       val exam = getExam(examName)
       val assessment = getAssessment(exam, assessmentName)
-      val answers = Dynexite.getDynexiteAnswers(problem = assessment, exam = exam, registrationNumber = registrationNumber)
+      val answers = kind match {
+        case "reference" =>
+          assessment.assessment.referenceSolution
+        case "student" =>
+          val registrationNumber = request.body.asJson.get.asInstanceOf[JsObject].apply(ElementName.registrationNumber.htmlComponentName).asInstanceOf[JsString].value
+          Dynexite.getDynexiteAnswers(problem = assessment, exam = exam, registrationNumber = registrationNumber)
+      }
       assert(answers.forall(_._2 != null))
-      Ok(answersToActions(assessment, answers))
+      Ok(JsObject(answers.map((e,t) => (e.htmlComponentName, JsString(t)))))
     } catch {
       case e: Throwable =>
-        Ok(JsArray(Seq(elementActionAsJson(ElementAction.error(Utils.exceptionMessage(e))))))
+        Ok(JsString(Utils.exceptionMessage(e)))
     }
   }
 
@@ -169,7 +177,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
   def randomStudent(examName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     val exam = getExam(examName)
     val regno = Dynexite.randomLearner(exam)
-    Ok(JsObject(Map("registration" -> JsString(regno))))
+    Ok(regno)
   }
 
   def dynexiteAnswers(examName: String, assessmentName: String, regno: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>

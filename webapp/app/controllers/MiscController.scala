@@ -13,7 +13,6 @@ class MiscController @Inject()(val controllerComponents: ControllerComponents) e
       JavaScriptReverseRouter("jsRoutes")(
         routes.javascript.AssessmentController.getFeedback,
         routes.javascript.AssessmentController.loadAnswers,
-        routes.javascript.AssessmentController.loadReference,
         routes.javascript.AssessmentController.randomStudent,
         routes.javascript.AssessmentController.dynexitePdf,
         routes.javascript.AssessmentController.dynexiteLink,

@@ -24,10 +24,10 @@ export class StateManager {
         console.log("init")
         for (const element of document.getElementsByClassName(interactiveElementClass)) {
             if (!(element instanceof InteractiveElement))
-                console.error("Not an InteractiveElement", element)
+                this.showError("Internal error: Not an InteractiveElement", element)
             const elementAs = element as InteractiveElement<JsonValue, JsonValue>;
             if (element.id == "")
-                console.error("No ID", element)
+                this.showError("Internal error: No HTML element ID", element)
             this.interactiveElements.set(element.id, elementAs)
             const content = elementAs.content;
             this.content.set(element.id, content);
@@ -38,6 +38,7 @@ export class StateManager {
     }
 
     private elementContentChanged(event: ContentChangeEvent<JsonValue>) {
+        this.clearErrors()
         const element = event.target as InteractiveElement<JsonValue, JsonValue>;
         const id = element.id;
         const newElementContent = event.detail.newValue;
@@ -49,6 +50,7 @@ export class StateManager {
     }
 
     setContent(newContent: Record<string, Readonly<JsonValue>>) {
+        console.log("setContent", newContent)
         for (const elementId in newContent) {
             const state = newContent[elementId];
             // We don't check whether content even changed because `element.content = ...` checks it anyway.
@@ -102,8 +104,10 @@ export class StateManager {
             },
             body: JSON.stringify(content),
             })
-        if (!response.ok)
-            throw new Error(`HTTP error: ${response.status}`);
+        if (!response.ok) {
+            this.showError(`HTTP error: ${response.status}`);
+            return;
+        }
         const parsed = await response.json()
         const feedback = parsed.feedback
         const timedout: boolean = parsed.timedout
@@ -112,6 +116,59 @@ export class StateManager {
         this.setFeedback(feedback);
         if (timedout)
             this.needFeedbackUpdate = true;
+    }
+
+    async askForAnswers(kind: string) {
+        this.clearErrors()
+        // @ts-ignore
+        const url: string = jsRoutes.controllers.AssessmentController.loadAnswers(this.examName, this.assessmentName, kind).url
+        const content = {};
+        this.content.forEach((value, key) => { content[key] = value; });
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                'CSRF-Token': this.csrfToken,
+            },
+            body: JSON.stringify(content),
+        })
+        if (!response.ok) {
+            this.showError(`HTTP error: ${response.status}`);
+            return;
+        }
+        const parsed = await response.json()
+        if (typeof parsed === 'string') {
+            this.showError("Ask for answers: Error: " + parsed)
+            return;
+        }
+        this.setContent(parsed)
+    }
+
+    clearErrors() {
+        document.getElementById("error").innerHTML = '';
+    }
+
+    showError(error: string, ...additional) {
+        document.getElementById("error").innerText = error;
+        console.log(error, ...additional)
+    }
+
+    async randomStudent() {
+        this.clearErrors()
+        // @ts-ignore
+        const url: string = jsRoutes.controllers.AssessmentController.randomStudent(this.examName).url
+        const response = await fetch(url, {
+            method: "GET",
+            headers: {
+                'CSRF-Token': this.csrfToken,
+            },
+        })
+        if (!response.ok)
+            throw new Error(`HTTP error: ${response.status}`);
+        const regno = await response.text()
+        // @ts-ignore
+        document.getElementById("etest-registration-number").content = regno;
+        await this.askForAnswers('reference')
     }
 }
 

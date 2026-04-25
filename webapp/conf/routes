@@ -8,8 +8,8 @@ GET     /preview/                            controllers.AssessmentController.al
 GET     /preview/:exam/                      controllers.AssessmentController.exam(exam)
 GET     /preview/:exam/:assessment/          controllers.AssessmentController.assessment(exam, assessment)
 GET     /preview/:exam/:assessment/:file     controllers.AssessmentController.assessmentFile(exam, assessment, file)
-GET     /answers/:exam/:assessment/:regno    controllers.AssessmentController.loadAnswers(exam, assessment, regno)
-GET     /reference/:exam/:assessment         controllers.AssessmentController.loadReference(exam, assessment)
+POST    /answers/:exam/:assessment/:kind    controllers.AssessmentController.loadAnswers(exam, assessment, kind)
+#GET     /reference/:exam/:assessment         controllers.AssessmentController.loadReference(exam, assessment)
 POST    /feedback/:exam/:assessment controllers.AssessmentController.getFeedback(exam, assessment)
 GET     /routes.js                           controllers.MiscController.javascriptRoutes
 GET     /randomstudent/:exam                      controllers.AssessmentController.randomStudent(exam)

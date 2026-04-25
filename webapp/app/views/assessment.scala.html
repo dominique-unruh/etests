@@ -34,6 +34,8 @@
         </script>
     </head>
     <body>
+        <div id="error" style="color: red;"></div>
+
         <div class="two-column-container">
             <div class="left-column">
                 <h1>@(title) <span id="working" style="color:blue"></span></h1>
@@ -54,12 +56,12 @@
                 <label for="registration">Registration number</label>
                 <etest-registration-number id="etest-registration-number"></etest-registration-number>
                 <br>
-                <a href="javascript:randomStudent()">FIX! Random student...</a> |
+                <a href="javascript:window.stateManager.randomStudent()">Random student...</a> |
                 <a href="javascript:showDynexitePdf()">FIX! Show Dynexite PDF...</a> |
                 <a href="javascript:showDynexiteLink()">FIX! Show Dynexite preview...</a>
                 <br>
-                <a href="javascript:loadAnswers()">FIX! Load answers...</a> |
-                <a href="javascript:loadReference()">FIX! Load reference...</a> |
+                <a href="javascript:window.stateManager.askForAnswers('student') ">Load answers...</a> |
+                <a href="javascript:window.stateManager.askForAnswers('reference') ">Load reference...</a> |
                 <a href="javascript:dynexiteAnswers()">FIX! Raw Dynexite answers...</a>
 
                 <etest-grading id="etest-grader" reachable="@(reachablePoints)"></etest-grading>
