@@ -21,7 +21,7 @@ case class InputElement(name: ElementName,
   override def renderHtml(context: RenderContext, files: FileMapBuilder): Html = {
     if (!context(RenderContext.dynamic))
       return renderStaticHtml(context, files)
-    Html(s"""<etest-text-input rows="${tags(inputElementRows)}" columns="${tags(inputElementRows)}" id="${name.htmlComponentNameEscaped}"></etest-text-input>""")
+    Html(s"""<etest-text-input rows="${tags(inputElementRows)}" columns="${tags(inputElementColumns)}" id="${name.htmlComponentNameEscaped}"></etest-text-input>""")
   }
 
   private def renderStaticHtml(context: RenderContext, files: FileMapBuilder): Html = {
