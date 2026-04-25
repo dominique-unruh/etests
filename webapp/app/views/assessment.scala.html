@@ -67,8 +67,9 @@
                 <etest-grading id="etest-grader" reachable="@(reachablePoints)"></etest-grading>
 
                 <div>
-                    <h3>FIX! Extra data</h3>
-                    <span id="extra-data" class="extra-data-text"></span>
+                    <h3>Extra data</h3>
+                    <etest-text-input id="@(ElementName.extraData.htmlComponentName)"></etest-text-input>
+@*                    <span id="extra-data" class="extra-data-text"></span>*@
                 </div>
 
                 <div id="errors-section" style="display: none">
