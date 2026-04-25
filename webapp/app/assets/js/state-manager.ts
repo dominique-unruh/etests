@@ -168,7 +168,7 @@ export class StateManager {
         const regno = await response.text()
         // @ts-ignore
         document.getElementById("etest-registration-number").content = regno;
-        await this.askForAnswers('reference')
+        await this.askForAnswers('student')
     }
 }
 
