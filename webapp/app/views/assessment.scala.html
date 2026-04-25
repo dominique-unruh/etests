@@ -34,7 +34,7 @@
         </script>
     </head>
     <body>
-        <div id="error" style="color: red;"></div>
+        <pre id="error" class="internal-error"></pre>
 
         <div class="two-column-container">
             <div class="left-column">
@@ -70,18 +70,6 @@
                     <h3>Extra data</h3>
                     <etest-text-input columns="25" rows="4" id="@(ElementName.extraData.htmlComponentName)"></etest-text-input>
 @*                    <span id="extra-data" class="extra-data-text"></span>*@
-                </div>
-
-                <div id="errors-section" style="display: none">
-                    <h3>FIX! Internal errors</h3>
-                    <button onclick="clearErrors()">Clear</button>
-                    <pre id="errors" class="internal-error"></pre>
-                    <script>
-                        function @(ElementName.errordisplay.jsElementCallbackName)(json) {
-                            document.getElementById('errors-section').style.display = 'block';
-                            document.getElementById('errors').textContent = json['message']
-                        }
-                    </script>
                 </div>
             </div>
         </div>
