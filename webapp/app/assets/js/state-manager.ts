@@ -12,7 +12,8 @@ export class StateManager {
     private examName: string;
     private assessmentName: string;
     private csrfToken: string;
-    private needFeedbackUpdate: boolean = false;
+    private needFeedbackUpdate: number = 0;
+    private lastFeedbackUpdateRequest: number = 0;
 
     constructor(csrfToken: string, examName: string, assessmentName: string) {
         this.csrfToken = csrfToken
@@ -34,7 +35,8 @@ export class StateManager {
             element.addEventListener(contentChangeEventName, event => this.elementContentChanged(event as ContentChangeEvent<JsonValue>))
         }
         window.setInterval(() => { this.askForFeedbackIfNeeded() }, 1000);
-        this.needFeedbackUpdate = true;
+        this.needFeedbackUpdate = 1;
+        this.lastFeedbackUpdateRequest = 0
     }
 
     private elementContentChanged(event: ContentChangeEvent<JsonValue>) {
@@ -45,7 +47,7 @@ export class StateManager {
         // TODO check whether this is actually a change
         console.log(this, this.content);
         this.content.set(id, newElementContent);
-        this.needFeedbackUpdate = true;
+        this.needFeedbackUpdate = .2;
         console.log("Content changed from interactive element", this.content, id);
     }
 
@@ -79,9 +81,11 @@ export class StateManager {
 
 
     private askForFeedbackIfNeeded() {
-        if (this.needFeedbackUpdate) {
-            this.needFeedbackUpdate = false;
-            this.askForFeedback()
+        if (this.needFeedbackUpdate > 0) {
+            if (Date.now() - this.lastFeedbackUpdateRequest >= this.needFeedbackUpdate * 1000)
+                this.askForFeedback()
+            else
+                console.log("Feedback request: delayed", this.needFeedbackUpdate)
         }
     }
 
@@ -96,6 +100,9 @@ export class StateManager {
         this.ajaxCounter += 1;
         const content = {};
         this.content.forEach((value, key) => { content[key] = value; });
+        const prevNeedFeedbackUpdate = this.needFeedbackUpdate
+        this.needFeedbackUpdate = 0;
+        this.lastFeedbackUpdateRequest = Date.now()
         const response = await fetch(url, {
             method: "POST",
             headers: {
@@ -114,8 +121,10 @@ export class StateManager {
         if (myCounter != this.currentFeedbackCounter)
             return;
         this.setFeedback(feedback);
-        if (timedout)
-            this.needFeedbackUpdate = true;
+        if (timedout) {
+            console.log("(Feedback had timeout)")
+            this.needFeedbackUpdate = prevNeedFeedbackUpdate * 2;
+        }
     }
 
     async askForAnswers(kind: string) {
