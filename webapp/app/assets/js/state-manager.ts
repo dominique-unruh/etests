@@ -164,11 +164,47 @@ export class StateManager {
             },
         })
         if (!response.ok)
-            throw new Error(`HTTP error: ${response.status}`);
+            this.showError(`HTTP error: ${response.status}`);
         const regno = await response.text()
         // @ts-ignore
         document.getElementById("etest-registration-number").content = regno;
         await this.askForAnswers('student')
     }
+
+    showDynexitePdf() {
+        // @ts-ignore
+        let regno: string = document.getElementById("etest-registration-number").content
+        // @ts-ignore
+        let url = jsRoutes.controllers.AssessmentController.dynexitePdf(this.examName, regno).url
+        window.open(url, "_blank")
+    }
+
+    showDynexiteLink() {
+        // @ts-ignore
+        let regno = document.getElementById("etest-registration-number").content
+        // @ts-ignore
+        let url = jsRoutes.controllers.AssessmentController.dynexiteLink(this.examName, regno).url
+        window.open(url, "_blank")
+    }
+
+    async showDynexiteAnswers() {
+        this.clearErrors()
+        // @ts-ignore
+        let regno: string = document.getElementById("etest-registration-number").content
+        // @ts-ignore
+        const url: string = jsRoutes.controllers.AssessmentController.dynexiteAnswers(this.examName, this.assessmentName, regno).url
+
+        const response = await fetch(url, {
+            method: "GET",
+            headers: {
+                'CSRF-Token': this.csrfToken,
+            },
+        })
+        if (!response.ok)
+            this.showError(`HTTP error: ${response.status}`);
+        this.showError(await response.text())
+    }
+
+
 }
 
