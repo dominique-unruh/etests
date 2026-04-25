@@ -144,13 +144,18 @@ export class StateManager {
         this.setContent(parsed)
     }
 
+    private errorTime = 0;
+
     clearErrors() {
-        document.getElementById("error").innerHTML = '';
+        if (Date.now() - this.errorTime > 3000)
+            document.getElementById("error").innerHTML = '';
     }
 
+
     showError(error: string, ...additional) {
-        document.getElementById("error").innerText = error;
-        console.log(error, ...additional)
+        this.errorTime = Date.now();
+        document.getElementById("error").innerText += error + "\n";
+        console.error(error, ...additional)
     }
 
     async randomStudent() {

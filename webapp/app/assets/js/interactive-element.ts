@@ -79,4 +79,9 @@ export abstract class InteractiveElement<C extends JsonValue, F extends JsonValu
     protected feedbackExternallyChanged(oldValue: F, newValue: F): void {
         // Optional hook for subclasses
     }
+
+    protected showError(error: string, ...additional) {
+        // @ts-ignore
+        window.stateManager.showError(error, ...additional)
+    }
 }

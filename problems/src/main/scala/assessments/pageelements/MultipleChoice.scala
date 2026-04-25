@@ -6,7 +6,7 @@ import assessments.pageelements.MultipleChoice.{Style, checkboxLabel, notSelecte
 import assessments.{Assessment, ElementName, FileMapBuilder, Html, Points}
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
-import play.api.libs.json.{JsNull, JsNumber, JsObject, JsString, JsValue}
+import play.api.libs.json.{JsArray, JsNull, JsNumber, JsObject, JsString, JsValue, Json}
 import utils.{IndentedInterpolator, Tag, Utils}
 import utils.Tag.Tags
 
@@ -55,12 +55,15 @@ final class MultipleChoice(override val name: ElementName,
 
 
   override def renderHtml(context: RenderContext, files: FileMapBuilder): Html = {
-    if (context(RenderContext.dynamic))
-      style match
-        case Style.select => renderHtmlSelect
-        case Style.radio => renderHtmlRadio
-        case Style.checkbox => renderHtmlCheckbox
-    else {
+    if (context(RenderContext.dynamic)) {
+      val optionsJson = Json.stringify(JsArray(options.toSeq.map((k,v) => JsArray(Seq(JsString(k), JsString(v))))))
+//      val optionsJson = ujson.write(options.map(_.productIterator.toSeq))
+      Html(
+        ind"""<etest-multiple-choice id="${name.htmlComponentNameEscaped}" choicestyle="${escapeHtml4(style.toString)}"
+             |    label="${tags(checkboxLabel).html}"
+             |    options="${escapeHtml4(optionsJson)}">
+             |</etest-multiple-choice>""")
+    } else {
       val answer = context.studentAnswer(name)
       style match
         case Style.select => renderHtmlSelectStatic(selected = answer)
@@ -87,6 +90,7 @@ final class MultipleChoice(override val name: ElementName,
     Html(html.result())
   }
 
+/*
   def renderHtmlRadio: Html = {
     val html = StringBuilder()
     html ++= s"""<fieldset id="${name.jsElementId}">\n"""
@@ -112,6 +116,7 @@ final class MultipleChoice(override val name: ElementName,
 
     Html(html.result())
   }
+*/
 
   def renderHtmlSelectStatic(selected: Option[String]): Html = {
 /*      val html = StringBuilder()
@@ -140,6 +145,7 @@ final class MultipleChoice(override val name: ElementName,
     Html(html.result())
   }
 
+/*
   def renderHtmlSelect: Html = {
     val html = StringBuilder()
     html ++= s"""<select id="${name.jsElementId}" onchange="updateState('$name', {content: this.value})">\n"""
@@ -159,6 +165,7 @@ final class MultipleChoice(override val name: ElementName,
 
     Html(html.result())
   }
+*/
 
   def renderHtmlCheckboxStatic(selected: String): Html = {
     val html = StringBuilder()
@@ -174,6 +181,7 @@ final class MultipleChoice(override val name: ElementName,
     Html(html.result())
   }
 
+/*
   def renderHtmlCheckbox: Html = {
     val html = StringBuilder()
     val Seq(yes, no) = options.keysIterator.map(escapeHtml4).toSeq
@@ -194,6 +202,7 @@ final class MultipleChoice(override val name: ElementName,
 
     Html(html.result())
   }
+*/
 
 /*
   override def setAction(content: String): Seq[ElementAction] = {
