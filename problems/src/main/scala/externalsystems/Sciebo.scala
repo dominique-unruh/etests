@@ -3,7 +3,7 @@ package externalsystems
 import com.typesafe.scalalogging.Logger
 import org.aarboard.nextcloud.api.{AuthenticationConfig, NextcloudConnector}
 import org.aarboard.nextcloud.api.filesharing.{Share, SharePermissions, ShareType}
-import utils.{Cache, Utils}
+import utils.{PersistentCache, Utils}
 
 import java.nio.file.Path
 import java.time.Instant
@@ -27,7 +27,7 @@ object Sciebo {
 
   private var lastRequest = Instant.MIN
   def getPublicReadLink(path: String): String =
-    Cache.getOrCompute[String](s"SCIEBO-PUBLIC-LINK2:$path".getBytes, _.getBytes, new String(_)) {
+    PersistentCache.getOrCompute[String](s"SCIEBO-PUBLIC-LINK2:$path".getBytes, _.getBytes, new String(_)) {
     synchronized {
       Utils.waitUntil(lastRequest.plus(secondsBetweenRequests, ChronoUnit.SECONDS))
       logger.info(s"Requesting Sciebo link for $path")

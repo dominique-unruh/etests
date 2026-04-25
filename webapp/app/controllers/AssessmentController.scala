@@ -19,7 +19,7 @@ import externalsystems.Dynexite
 import io.github.classgraph.{ClassGraph, ClassInfoList}
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.commons.text.StringEscapeUtils
-import utils.{Cache, IndentedInterpolator, Utils}
+import utils.{PersistentCache, IndentedInterpolator, Utils}
 
 import scala.annotation.experimental
 import scala.jdk.CollectionConverters.CollectionHasAsScala
@@ -75,7 +75,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
   }
 
   def assessment(examName: String, assessmentName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
-    Cache.forceInitialization()
+    PersistentCache.forceInitialization()
     given ExceptionContext = ExceptionContext.initialExceptionContext(s"Web query for exam $examName, problem $assessmentName")
     val exam = getExam(examName)
     val assessment = getAssessment(exam, assessmentName)
@@ -94,7 +94,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
   }
 
   def test(): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
-    Cache.forceInitialization()
+    PersistentCache.forceInitialization()
     val examName = "xxx"
     val assessmentName = "yyy"
     given ExceptionContext = ExceptionContext.initialExceptionContext(s"Web query for exam $examName, problem $assessmentName")

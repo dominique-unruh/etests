@@ -77,7 +77,7 @@ object Docker {
         return pulledInThisSession(image)
 
       val cacheKey = s"CACHED-DOCKER-IMAGE-ID:${image.getClass}:${image.toString}".getBytes(UTF_8)
-      Cache.get(cacheKey) match {
+      PersistentCache.get(cacheKey) match {
         case Some(cached) if !invalidateCache =>
           val (time, id) = decode[(Long, String)](String(cached, UTF_8)).toOption.get
           if (time >= currentTimeMillis() - 10 * 60 * 1000) // Rebuild/pull if at least 10 minutes have passed
@@ -106,7 +106,7 @@ object Docker {
           }
       }
       pulledInThisSession += (image -> imageId)
-      Cache.put(cacheKey, (currentTimeMillis(), imageId).asJson.noSpaces.getBytes(UTF_8))
+      PersistentCache.put(cacheKey, (currentTimeMillis(), imageId).asJson.noSpaces.getBytes(UTF_8))
 
       imageId
       //    logger.debug(s"Using image $imageId")
@@ -131,7 +131,7 @@ object Docker {
    *
    * The result is persistently cached.
    * Repeated invocations with the same parameters will use cached results.
-   * See [[Cache]] for how to clear the cache.
+   * See [[PersistentCache]] for how to clear the cache.
    *
    * @param image Name of the Docker image, or path to a directory with a Dockerfile
    * @param command Command to execute inside the Docker image.
@@ -177,7 +177,7 @@ object Docker {
       }
 
       val newFuture = Future[DockerResult] {
-        Cache.get(argsJsonBytes.bytes) match
+        PersistentCache.get(argsJsonBytes.bytes) match
           case Some(cached) if !invalidateCache =>
             decode[DockerResult](new String(cached)).getOrElse(throw IOException("Unparsable cache content"))
           case _ =>
@@ -185,7 +185,7 @@ object Docker {
               runInDockerNoCache(imageId = imageId, command = command, files = filesBytes,
                 shortDescription = shortDescription,
                 requestedOutputs = requestedOutputs, hashKey = argsJson) }
-            Cache.put(argsJsonBytes.bytes, result.asJson.noSpaces.getBytes)
+            PersistentCache.put(argsJsonBytes.bytes, result.asJson.noSpaces.getBytes)
             result
       }
       currentlyRunning.update(argsJsonBytes, (Instant.now(), newFuture, shortDescription))

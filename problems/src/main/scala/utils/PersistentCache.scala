@@ -8,7 +8,7 @@ import java.security.MessageDigest
 import java.sql.{Connection, DriverManager}
 
 /** Persistent cache. To clear it, delete the `.cache` file. */
-object Cache {
+object PersistentCache {
   private val logger = Logger[this.type]
 
   private def sha256(bytes: Array[Byte]): Array[Byte] =
