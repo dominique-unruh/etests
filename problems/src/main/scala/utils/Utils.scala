@@ -1,13 +1,12 @@
 package utils
 
 import assessments.{ExceptionContext, ExceptionWithContext}
-import com.microsoft.playwright.{Page, Playwright}
 import com.typesafe.scalalogging.Logger
-import sourcecode.{Enclosing, FileName}
+import sourcecode.FileName
 
-import java.awt.{GridBagConstraints, GridBagLayout, Insets, Toolkit}
+import java.awt.Toolkit
 import java.awt.datatransfer.{Clipboard, StringSelection}
-import java.io.{BufferedReader, FileReader, IOException}
+import java.io.IOException
 import java.lang.System.currentTimeMillis
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
@@ -16,10 +15,9 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.concurrent.{Executors, TimeUnit}
 import java.util.{Base64, Properties}
-import javax.swing.{JLabel, JOptionPane, JPanel, JPasswordField, SwingUtilities}
 import scala.jdk.CollectionConverters.given
 import scala.collection.mutable
-import scala.concurrent.{Await, Awaitable, ExecutionContext, Future, Promise, TimeoutException}
+import scala.concurrent.{Await, Awaitable, ExecutionContext, ExecutionContextExecutor, Future, Promise, TimeoutException}
 import scala.concurrent.duration.{Duration, DurationLong}
 import scala.quoted.{Expr, Quotes, Type}
 import scala.reflect.ClassTag
@@ -413,15 +411,19 @@ object Utils {
   }
 
   def awaitSeq[A](futures: Iterable[Future[A]], timeout: Duration): Iterable[Option[Try[A]]] = {
+    logger.debug(s"awaitSeq ${futures.size}")
+    logger.debug(s"${global.toString}, ${global.getClass}")
     val endTime = currentTimeMillis() + timeout.toMillis
     for (future <- futures) yield {
       val now = currentTimeMillis()
       val remaining = endTime - now
+      logger.debug(s"remaining $remaining, ${future.value}")
       if (remaining > 0)
         try Await.ready(future, remaining.millis)
         catch {
           case _: TimeoutException =>
         }
+      logger.debug(s"-> ${future.value}")
       future.value
     }
   }

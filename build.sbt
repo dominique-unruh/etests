@@ -30,7 +30,9 @@ lazy val problems = (project in file("problems"))
   .settings(
       Assets / sourceDirectories += baseDirectory.value / "src/main/assets",
       SassKeys.cssStyle := Maxified,
-    libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "2.4.0",
+
+  libraryDependencies += "com.github.blemale" %% "scaffeine" % "5.3.0",
+  libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "2.4.0",
     libraryDependencies += "org.scala-lang" %% "scala3-compiler" % scalaVersion.value,
     libraryDependencies += "com.lihaoyi" %% "sourcecode" % "0.4.2",
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.19" % Test,

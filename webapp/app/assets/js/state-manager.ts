@@ -123,8 +123,10 @@ export class StateManager {
         this.setFeedback(feedback);
         if (timedout) {
             console.log("(Feedback had timeout)")
-            this.needFeedbackUpdate = prevNeedFeedbackUpdate * 2;
+            this.needFeedbackUpdate = prevNeedFeedbackUpdate * 1.3;
         }
+        if (parsed.errors != null)
+            console.log("(Feedback has errors)", parsed.errors)
     }
 
     async askForAnswers(kind: string) {

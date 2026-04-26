@@ -10,9 +10,9 @@ import org.commonmark.parser.Parser
 
 import scala.collection.{SeqMap, mutable}
 import scala.util.matching.Regex
-import play.api.libs.json.{JsObject, JsString, JsValue}
+import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
 import utils.Tag.Tags
-import utils.{IndentedInterpolator, Utils}
+import utils.{FutureCache, IndentedInterpolator, Utils}
 
 import java.io.{BufferedReader, InputStreamReader}
 import java.nio.charset.StandardCharsets
@@ -22,7 +22,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.util.boundary.break
-import scala.util.{Random, Using, boundary}
+import scala.util.{Failure, Random, Success, Using, boundary}
 import scala.xml.*
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -91,20 +91,27 @@ class Assessment (val name: String,
     (body, explanation, gradingRules, fileMapBuilder.result())
   }
 
-  def getFeedback(answer: JsObject): (JsObject, Boolean) = {
+  def getFeedback(answer: JsObject): (JsObject, JsArray, Boolean) = {
     // TODO should only recalculate changed things
     val answerMap = answer.value.map { (name, content) => (ElementName.fromHtmlComponentName(name), content) }.toMap
     val elements = pageElements.values.collect { case element: DynamicElement => element }.toSeq
-    val feedbackFutures = elements.map(_.getFeedback(this, answerMap))
+    val feedbackFutures = for (element <- elements)
+      yield FutureCache.evaluateFuture((this, element.name, answerMap))(element.getFeedback(this, answerMap))
     val feedbackOptions = Utils.awaitSeq(feedbackFutures, feedbackTimeout)
-      .map(_.map(_.get))
     var timedOut = false
-    val feedbacks = for ((element, feedback) <- elements.zip(feedbackOptions))
-      yield element.name.htmlComponentName -> (feedback match {
-        case Some(value) => value
-        case None => timedOut = true; element.timeoutFeedback(this, answerMap)
-      })
-    (JsObject(feedbacks.toSeq), timedOut)
+    val feedbacks = Seq.newBuilder[(String, JsValue)]
+    val errors = Seq.newBuilder[JsString]
+    for ((element, feedback) <- elements.zip(feedbackOptions))
+      feedback match {
+        case Some(Success(value)) =>
+          feedbacks += element.name.htmlComponentName -> value
+        case None =>
+          timedOut = true
+          feedbacks += element.name.htmlComponentName -> element.timeoutFeedback(this, answerMap)
+        case Some(Failure(exception)) =>
+          errors += JsString(Utils.exceptionMessage(exception))
+      }
+    (JsObject(feedbacks.result()), JsArray(errors.result()), timedOut)
   }
   
   def referenceSolution: Map[ElementName, String] =

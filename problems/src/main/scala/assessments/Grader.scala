@@ -2,15 +2,17 @@ package assessments
 
 import assessments.Comment.Kind
 import assessments.ExceptionContext.initialExceptionContext
-import assessments.Grader.logger
+import assessments.Grader.{graderExecutionContext, logger}
 import assessments.pageelements.{AnswerElement, DynamicElement, ElementAction, InputElement, RenderContext}
 import com.typesafe.scalalogging.Logger
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.commons.text.StringEscapeUtils
 import play.api.libs.json.{JsBoolean, JsNumber, JsObject, JsString, JsValue}
 import utils.Utils
+import utils.Utils.Timeout
 
-import scala.concurrent.Future
+import java.util.concurrent.Executors
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 abstract class Grader(val name: ElementName) extends DynamicElement {
@@ -22,16 +24,20 @@ abstract class Grader(val name: ElementName) extends DynamicElement {
   override def timeoutFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue =
     JsObject(Map("processing" -> JsBoolean(true)))
 
-  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsObject] = Future {
+  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsObject] =
+    Future(getFeedbackSync(assessment, state))(using graderExecutionContext)
+
+  private def getFeedbackSync(assessment: Assessment, state: Map[ElementName, JsValue]): JsObject = {
     given ExceptionContext = initialExceptionContext(s"Recomputing grading based on change of inputs in webapp")
     val registrationNumber = state.get(ElementName.registrationNumber) match
       case Some(regno) => regno.asInstanceOf[JsString].value match
         case "" => "NO_STUDENT"
         case regno => regno
       case None => "NO_STUDENT"
+    logger.debug(s"Running grader for ${assessment.name}, $registrationNumber")
     val answers = for (case element : AnswerElement <- assessment.pageElements.values) yield {
       state.get(element.name) match
-        case Some(elementState) => 
+        case Some(elementState) =>
           element.name -> elementState.asInstanceOf[JsString].as[String]
         case None => element.name -> ""
     }
@@ -58,4 +64,6 @@ abstract class Grader(val name: ElementName) extends DynamicElement {
 
 object Grader {
   private val logger = Logger[Grader]
+  private val graderExecutionContext: ExecutionContext =
+    ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(10))
 }

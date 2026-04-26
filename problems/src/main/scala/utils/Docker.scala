@@ -113,19 +113,19 @@ object Docker {
     }
   }
 
-  private val currentlyRunning = mutable.HashMap[ByteKey, (java.time.Instant, Future[DockerResult], String)]()
+//  private val currentlyRunning = mutable.HashMap[ByteKey, (java.time.Instant, Future[DockerResult], String)]()
 
-  private val garbageCollectionDelay = 60
-  private val garbageCollectionFrequency = 10
-  private var lastGarbageCollection = Instant.now()
-  private def garbageCollection(): Unit = synchronized {
-    if (lastGarbageCollection.isBefore(Instant.now().minusSeconds(garbageCollectionFrequency)))
-      return
-    currentlyRunning.filterInPlace {
-      case (_, (time, _, _)) => time.isAfter(Instant.now().minusSeconds(garbageCollectionDelay))
-    }
-    lastGarbageCollection = Instant.now()
-  }
+//  private val garbageCollectionDelay = 60
+//  private val garbageCollectionFrequency = 10
+//  private var lastGarbageCollection = Instant.now()
+//  private def garbageCollection(): Unit = synchronized {
+//    if (lastGarbageCollection.isBefore(Instant.now().minusSeconds(garbageCollectionFrequency)))
+//      return
+//    currentlyRunning.filterInPlace {
+//      case (_, (time, _, _)) => time.isAfter(Instant.now().minusSeconds(garbageCollectionDelay))
+//    }
+//    lastGarbageCollection = Instant.now()
+//  }
 
   /** Runs a command in a docker image.
    *
@@ -161,39 +161,44 @@ object Docker {
     val argsJson = DockerKey(imageId, command, filesBytes, requestedOutputs).asJson.noSpacesSortKeys
     val argsJsonBytes = ByteKey(argsJson.getBytes)
 
-    synchronized {
-      logCurrentlyRunningDockers()
-      logger.debug(s"Need docker for: ${shortDescription}")
+//    synchronized {
+//      logCurrentlyRunningDockers()
+//      logger.debug(s"Need docker for: ${shortDescription}")
+//
+//      currentlyRunning.get(argsJsonBytes) match {
+//        case Some((time, oldFuture, oldDescription)) if !invalidateCache =>
+//          if (oldFuture.isCompleted && oldFuture.value.get.isFailure)
+//            currentlyRunning.remove(argsJsonBytes)
+//          else
+//            logger.debug(s"Reusing docker from ${java.time.Duration.between(time, Instant.now()).getSeconds}s ago")
+//            currentlyRunning.update(argsJsonBytes, (Instant.now(), oldFuture, oldDescription))
+//            return oldFuture
+//        case _ =>
+//      }
 
-      currentlyRunning.get(argsJsonBytes) match {
-        case Some((time, oldFuture, oldDescription)) if !invalidateCache =>
-          if (oldFuture.isCompleted && oldFuture.value.get.isFailure)
-            currentlyRunning.remove(argsJsonBytes)
-          else
-            logger.debug(s"Reusing docker from ${java.time.Duration.between(time, Instant.now()).getSeconds}s ago")
-            currentlyRunning.update(argsJsonBytes, (Instant.now(), oldFuture, oldDescription))
-            return oldFuture
+//      val newFuture = Future[DockerResult] {
+    FutureCache.evaluate(("DOCKER",argsJsonBytes)) {
+      logger.debug(s"Looking for cached docker result for: $shortDescription")
+      PersistentCache.get(argsJsonBytes.bytes) match
+        case Some(cached) if !invalidateCache =>
+          decode[DockerResult](new String(cached)).getOrElse(throw IOException("Unparsable cache content"))
         case _ =>
-      }
-
-      val newFuture = Future[DockerResult] {
-        PersistentCache.get(argsJsonBytes.bytes) match
-          case Some(cached) if !invalidateCache =>
-            decode[DockerResult](new String(cached)).getOrElse(throw IOException("Unparsable cache content"))
-          case _ =>
-            val result = withBuildBound(s"Running docker image: $image (for $shortDescription)") {
-              runInDockerNoCache(imageId = imageId, command = command, files = filesBytes,
-                shortDescription = shortDescription,
-                requestedOutputs = requestedOutputs, hashKey = argsJson) }
-            PersistentCache.put(argsJsonBytes.bytes, result.asJson.noSpaces.getBytes)
-            result
-      }
-      currentlyRunning.update(argsJsonBytes, (Instant.now(), newFuture, shortDescription))
-      garbageCollection()
-      newFuture
+          val result = withBuildBound(s"Running docker image: $image (for $shortDescription)") {
+            runInDockerNoCache(imageId = imageId, command = command, files = filesBytes,
+              shortDescription = shortDescription,
+              requestedOutputs = requestedOutputs, hashKey = argsJson) }
+          logger.debug(s"Finished docker for: $shortDescription")
+          PersistentCache.put(argsJsonBytes.bytes, result.asJson.noSpaces.getBytes)
+          result
     }
+
+//      currentlyRunning.update(argsJsonBytes, (Instant.now(), newFuture, shortDescription))
+//      garbageCollection()
+//      newFuture
+//    }
   }
 
+/*
   private def logCurrentlyRunningDockers(): Unit = {
     val running = currentlyRunning.toSeq
       .filter { case (_, (_, future, _)) => !future.isCompleted }
@@ -205,6 +210,7 @@ object Docker {
     else
       logger.debug("Currently no running dockers.")
   }
+*/
 
   private val pulledInThisSession = mutable.Map[String | Path, String]()
   private def runInDockerNoCache(imageId: String,
