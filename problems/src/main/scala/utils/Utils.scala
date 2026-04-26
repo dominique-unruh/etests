@@ -411,19 +411,15 @@ object Utils {
   }
 
   def awaitSeq[A](futures: Iterable[Future[A]], timeout: Duration): Iterable[Option[Try[A]]] = {
-    logger.debug(s"awaitSeq ${futures.size}")
-    logger.debug(s"${global.toString}, ${global.getClass}")
     val endTime = currentTimeMillis() + timeout.toMillis
     for (future <- futures) yield {
       val now = currentTimeMillis()
       val remaining = endTime - now
-      logger.debug(s"remaining $remaining, ${future.value}")
       if (remaining > 0)
         try Await.ready(future, remaining.millis)
         catch {
           case _: TimeoutException =>
         }
-      logger.debug(s"-> ${future.value}")
       future.value
     }
   }
