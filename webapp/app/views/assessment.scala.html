@@ -18,16 +18,19 @@
         <title>@title</title>
         <link rel="stylesheet" href="@routes.Assets.versioned("stylesheets/main.css")">
         <script type="text/javascript" src="@routes.MiscController.javascriptRoutes"></script>
-        <script id="MathJax-script" async src="@routes.Assets.versioned("lib/mathjax/es5/tex-mml-chtml.js")"></script>
         <script src="@routes.Assets.versioned("lib/jquery/jquery.min.js")"></script>
         <script>
             window.MathJax = {
                 tex: {
                     inlineMath: [['$', '$'], ['\\(', '\\)']]
-                }
+                },
+                // startup: {
+                //     typeset: false
+                // },
             };
             window.csrfToken = "@(CSRF.getToken.value)";
         </script>
+        <script id="MathJax-script" src="@routes.Assets.versioned("lib/mathjax/es5/tex-mml-chtml.js")"></script>
         <script language="JavaScript" type="module">
             import {StateManager} from "@routes.Assets.versioned("js/webapp.js")";
             window.stateManager = new StateManager("@(CSRF.getToken.value)", "@(examName)", "@(assessmentName)");
@@ -74,4 +77,8 @@
             </div>
         </div>
     </body>
+    <script>
+        // Sometimes some math in custom components is loaded too late for MathJax's automatic pass
+        setTimeout(() => MathJax.typesetPromise(), 1000)
+    </script>
 </html>
