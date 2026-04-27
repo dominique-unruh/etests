@@ -216,6 +216,6 @@ object TaskGradeEveryone extends Task {
     if (errors.nonEmpty)
       println("***** THERE WERE ERRORS *****")
     if (onlyTheseStudents.nonEmpty)
-      println(s"***** ONLY ${onlyTheseStudents.mkString(", ")} graded *****")
+      println(s"***** ONLY ${onlyTheseStudents.get.mkString(", ")} GRADED *****")
   }
 }
