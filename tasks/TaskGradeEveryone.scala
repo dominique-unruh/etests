@@ -21,6 +21,8 @@ object TaskGradeEveryone extends Task {
   val stopAfterFirst = false
   val generatePDFs = true
   val generateHTMLs = true
+  /** For quicker processing, only a single student (or few) */
+  lazy val onlyTheseStudents: Option[Seq[String]] = None
 
   val exam = Utils.getSystemPropertyObject[assessments.Exam]("current.exam", "the current exam")
 
@@ -189,11 +191,16 @@ object TaskGradeEveryone extends Task {
     val targetDir = exam.tags.getOrElse(gradingReportDir, throw RuntimeException(s"Specify gradingReportDir-tag in exam ${exam.name}"))
 //    val targetDir = Utils.getSystemPropertyPath("student.report.dir", "the directory where to write the student reports")
     val errors = mutable.Queue[(String, Assessment, String)]()
-    tryWithError[Unit](errors, label = "Exam tests failed") {
-      exam.runTests() }
+    if (onlyTheseStudents.isEmpty) // Don't run time consuming things if we only want to test grade a student
+      tryWithError[Unit](errors, label = "Exam tests failed") {
+        exam.runTests() }
 
-    val students = Dynexite.resultsByLearner(exam).toSeq.collect { case (student, results) if results.nonEmpty => student }
-    
+    val students = onlyTheseStudents match {
+      case Some(value) => value
+      case None => Dynexite.resultsByLearner(exam).toSeq.collect { case (student, results) if results.nonEmpty => student }
+    }
+
+
     val pointMap = Map.newBuilder[String, Points]
     breakable {
       for (student <- students) {
@@ -208,5 +215,7 @@ object TaskGradeEveryone extends Task {
     println(s"\n\nReports in $targetDir, errors in ${targetDir.resolve("errors.html")}")
     if (errors.nonEmpty)
       println("***** THERE WERE ERRORS *****")
+    if (onlyTheseStudents.nonEmpty)
+      println(s"***** ONLY ${onlyTheseStudents.mkString(", ")} graded *****")
   }
 }

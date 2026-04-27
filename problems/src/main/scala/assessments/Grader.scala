@@ -34,7 +34,7 @@ abstract class Grader(val name: ElementName) extends DynamicElement {
         case "" => "NO_STUDENT"
         case regno => regno
       case None => "NO_STUDENT"
-    logger.debug(s"Running grader for ${assessment.name}, $registrationNumber")
+    logger.debug(s"Running grader for ${assessment.name}, $registrationNumber: $state")
     val answers = for (case element : AnswerElement <- assessment.pageElements.values) yield {
       state.get(element.name) match
         case Some(elementState) =>
