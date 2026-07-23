@@ -79,6 +79,26 @@ object ArchiveExam extends Task {
     val archiveDir = exam.sourceFile.getParent.resolve("archive")
     Files.createDirectories(archiveDir)
 
+    // Clear stale files so a rerun does not leave behind renamed/removed
+    // problems' outputs. Deliberately conservative: refuse unless the directory
+    // is literally named "archive", never recurse, and delete only regular
+    // files that are direct children. Anything unexpected (subdirectory,
+    // symlink, ...) is a hard error rather than silently deleted or kept, so we
+    // never touch anything outside archiveDir.
+    if (archiveDir.getFileName.toString != "archive")
+      throw new AssertionError(s"Refusing to clear unexpected archive directory: $archiveDir")
+    val stream = Files.newDirectoryStream(archiveDir)
+    try {
+      val it = stream.iterator()
+      while (it.hasNext) {
+        val child = it.next()
+        if (Files.isRegularFile(child, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+          Files.delete(child)
+        else
+          throw new AssertionError(s"Refusing to clear archive directory $archiveDir: unexpected non-regular entry $child")
+      }
+    } finally stream.close()
+
     val problems = for (problem <- exam.problems) yield
       exportProblem(archiveDir = archiveDir, problem = problem)
 
