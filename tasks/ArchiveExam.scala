@@ -102,7 +102,7 @@ object ArchiveExam extends Task {
       name = exam.name,
       reachablePoints = exam.reachablePoints,
       problems = problems,
-      rendered = Seq(s"$exam.html", s"$exam.pdf"))
+      rendered = Seq("exam.html", "exam.pdf"))
 
     val printer = io.circe.yaml.Printer(preserveOrder = true)
     val yamlString = printer.pretty(examDescription.asJson)
