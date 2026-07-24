@@ -10,7 +10,12 @@
 	},
 	"features": {
 //		"ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {},
+		// moby:false => install docker-ce-cli from Docker's repo instead of Debian's moby-cli,
+		// which Microsoft does not build for trixie.
+		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": { "moby": false },
 	},
+	// The base image is plain Debian, so it carries no remoteUser metadata.
+	"remoteUser": "user",
 	"customizations": {
 		"vscode": {
 			"extensions": [
@@ -29,8 +34,8 @@
 		}
 	},
 	"mounts": [
-    	"source=${localWorkspaceFolder}/.devcontainer/persistent/claude,target=/home/vscode/.claude,type=bind,consistency=cached",
-    	"source=${localWorkspaceFolder}/.devcontainer/persistent/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",
+    	"source=${localWorkspaceFolder}/.devcontainer/persistent/claude,target=/home/user/.claude,type=bind,consistency=cached",
+    	"source=${localWorkspaceFolder}/.devcontainer/persistent/opencode,target=/home/user/.config/opencode,type=bind,consistency=cached",
 		// Example how to mount a local directory (must be same path on everyone's computer though.)
 	    // "source=/opt/Isabelle2025-2,target=/opt/Isabelle2025-2,type=bind,readonly,consistency=cached",
   	],
