@@ -106,12 +106,18 @@ object Exam {
   lazy val exams: Seq[Exam] = {
     val classgraph = new ClassGraph()
       .enableClassInfo()
-      .acceptPackages("exam")
       .scan()
     val results = Seq.newBuilder[Exam]
 
+    // Only discover exams whose package is a single level (e.g. `y2025_pqc1`, `example_exam`);
+    // nested packages (e.g. `assessments.something`) are ignored.
+    def singleLevelPackage(classInfo: io.github.classgraph.ClassInfo): Boolean = {
+      val pkg = classInfo.getPackageName
+      pkg.nonEmpty && !pkg.contains(".")
+    }
+
     for (classInfo <- classgraph.getAllStandardClasses.asScala)
-       if (classInfo.getName.endsWith("$") && classInfo.extendsSuperclass(classOf[Exam]))
+       if (classInfo.getName.endsWith("$") && singleLevelPackage(classInfo) && classInfo.extendsSuperclass(classOf[Exam]))
          try {
 //           println(classInfo)
            val clazz = classInfo.loadClass()

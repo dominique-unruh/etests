@@ -1,4 +1,4 @@
-package exam.example
+package example_exam
 
 import assessments.Exam
 import assessments.Exam.{courseName, examDate}

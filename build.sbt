@@ -1,5 +1,7 @@
 import org.irundaia.sass.Maxified
 import sbt.librarymanagement.CrossVersion.for3Use2_13
+import org.yaml.snakeyaml.Yaml
+import scala.jdk.CollectionConverters.*
 
 name := """etests"""
 
@@ -76,13 +78,37 @@ lazy val problems = (project in file("problems"))
     libraryDependencies += "org.typelevel" %% "spire" % "0.18.0",
   )
 
+// Directories (relative to exams/) listed under `archived:` in exams/exams.yaml.
+// Their sources are excluded from compilation; their resources stay on the classpath.
+lazy val archivedExams: Seq[String] = {
+  val f = file("exams") / "exams.yaml"
+  if (!f.exists) Nil
+  else Option(new Yaml().load[java.util.Map[String, AnyRef]](IO.read(f)))
+    .flatMap(m => Option(m.get("archived")))
+    .map(_.asInstanceOf[java.util.List[String]].asScala.toSeq)
+    .getOrElse(Nil)
+}
+
+// The exams/ directory itself is the source root: each exam is a flat folder whose
+// name equals its single-segment package (e.g. y2025_pqc1/ = package y2025_pqc1), so
+// resources resolve package-relative and IDEs see files in the right folders.
 lazy val exams = (project in file("exams"))
-  .settings (
-    Compile / scalaSource := baseDirectory.value / "working",
-    Compile / unmanagedResourceDirectories += baseDirectory.value / "working",
-    Test / scalaSource := baseDirectory.value / "test",
-//      Test / excludeFilter := new SimpleFileFilter(_.toPath.startsWith((baseDirectory.value / "broken").toPath)) || HiddenFileFilter,
-    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.19" % Test,
+  .settings(
+    Compile / scalaSource := baseDirectory.value,
+    Compile / resourceDirectory := baseDirectory.value,
+    Compile / unmanagedSources / excludeFilter := {
+      val base = baseDirectory.value
+      def under(d: File): FileFilter =
+        new SimpleFileFilter(f => f.toPath.normalize.startsWith(d.toPath.normalize))
+      val excluded = Seq(base / "target", base / ".git") ++ archivedExams.map(base / _)
+      excluded.map(under).reduce(_ || _) || HiddenFileFilter
+    },
+    Compile / unmanagedResources / excludeFilter := {
+      val base = baseDirectory.value
+      def under(d: File): FileFilter =
+        new SimpleFileFilter(f => f.toPath.normalize.startsWith(d.toPath.normalize))
+      ("*.scala": FileFilter) || under(base / "target") || under(base / ".git") || HiddenFileFilter
+    },
   )
   .dependsOn(problems)
 

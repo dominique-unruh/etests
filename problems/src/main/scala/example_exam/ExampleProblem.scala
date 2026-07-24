@@ -1,4 +1,4 @@
-package exam.example
+package example_exam
 
 import assessments.DynexiteDefaults.*
 import assessments.GradingContext.*

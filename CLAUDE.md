@@ -33,8 +33,12 @@ TypeScript (`webapp/app/assets/js/*.ts`) and SCSS are compiled by sbt-web plugin
 - **`problems/`** — the engine. Assessment/Exam model, page elements, Markdown/HTML interpolation,
   STACK+Sympy math, Docker helpers, external-system integrations. Everything else depends on it.
 - **`exams/`** — the actual exam question sources. **Separate git repo, gitignored at repo root**
-  (`/exams`). Source roots are non-standard: `working/` (compiled), `test/`, `broken/`
-  (excluded/WIP). Depends on `problems`.
+  (`/exams`). The `exams/` dir itself is the source root: one flat folder per exam whose name
+  equals its single-segment package (e.g. `y2025_pqc1/` = `package y2025_pqc1`), with resources
+  (png/svg) sitting next to the sources. `exams/exams.yaml` has an `archived:` list of folders
+  excluded from compilation (old exams kept only for their `archive/` snapshots, and broken/WIP
+  exams) but still resource-included. `test/` holds the test sources (`Test` scope). Depends on
+  `problems`. Exam discovery only finds `Exam` objects in single-level packages (see `Exam.exams`).
 - **`webapp/`** — Play Framework preview server. Depends on `problems` and `exams`.
 - **`tasks/`** — runnable `Task` objects (grade-everyone, export, push grades). Depends on `exams`.
   Source root is the project dir itself.
@@ -45,7 +49,7 @@ TypeScript (`webapp/app/assets/js/*.ts`) and SCSS are compiled by sbt-web plugin
 - A question is an `object X extends MarkdownAssessment` with `name`, `reachablePoints`, `question`
   (and optional `explanation`, `gradingRules`) as `md"""..."""` interpolated Markdown, plus a
   `grade()(using GradingContext, ExceptionContext)` method. Boilerplate documented in
-  `doc/questions.md`; working example: `problems/src/main/scala/exam/example/ExampleProblem.scala`.
+  `doc/questions.md`; working example: `problems/src/main/scala/example_exam/ExampleProblem.scala`.
 - An `Exam` is an `object extends Exam(name, tags)(problem1, problem2, ...)`. Exams and their
   problems are discovered by classpath scanning (`io.github.classgraph.ClassGraph`).
 - `MarkdownAssessment` lazily builds an `Assessment` (the lower-level model) by reflecting over its

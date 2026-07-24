@@ -14,7 +14,7 @@ The exam to archive is the `current.exam` option (fully-qualified `Exam` class n
 popup if unset. See `doc/java-properties.md`.
 
 Output goes into an `archive/` subdirectory **next to the exam source file**
-(`exam.sourceFile.getParent/archive`), e.g. `exams/working/exam/y2025/pqc1/archive/`. The directory
+(`exam.sourceFile.getParent/archive`), e.g. `exams/y2025_pqc1/archive/`. The directory
 is created if missing; existing files with the same basename are overwritten.
 
 ## Directory contents
