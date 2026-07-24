@@ -1,6 +1,6 @@
 import assessments.Exam.{courseName, examDate}
 import assessments.pageelements.RenderContext
-import assessments.{Assessment, Exam, Html, MarkdownAssessment, Points, Task}
+import assessments.{ArchivedExam, Assessment, Exam, Html, MarkdownAssessment, Points, Task}
 import com.fasterxml.jackson.annotation.JsonPropertyOrder
 import io.circe.generic.auto.*
 import io.circe.syntax.*
@@ -75,6 +75,8 @@ object ArchiveExam extends Task {
     val exam = getClass.getClassLoader.loadClass(examName.value + "$").getField("MODULE$")
       .get(null).asInstanceOf[Exam]
     val basename = exam.getClass.getSimpleName.stripSuffix("$")
+
+    assert(!exam.isInstanceOf[ArchivedExam])
 
     val archiveDir = exam.sourceFile.getParent.resolve("archive")
     Files.createDirectories(archiveDir)
