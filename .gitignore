@@ -16,3 +16,5 @@
 /exams
 /tasks/target/
 /webapp/node_modules/
+.vagrant/
+/Vagrantfile
