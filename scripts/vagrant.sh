@@ -3,7 +3,7 @@ set -euo pipefail
 export VAGRANT_DISABLE_STRICT_DEPENDENCY_ENFORCEMENT=1
 
 case "${1:-}" in
-  provision)
+  update)
     vagrant up --provision
     ;;
   rebuild)
