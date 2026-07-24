@@ -128,6 +128,12 @@ object Exam {
          } catch
            case e: NoSuchFieldException =>
 
+    // Add a placeholder ArchivedExam for every subdir listed under `archived:` in exams/exams.yaml
+    // that actually exists (has resources on the classpath).
+    val presentDirs = classgraph.getAllResources.asScala.flatMap(_.getPath.split("/").headOption).toSet
+    for (subdir <- archivedSubdirs if presentDirs.contains(subdir))
+      results += new ArchivedExam(subdir)
+
     val exams = results.result()
 
     // Complain if two exams have same ID
@@ -136,6 +142,20 @@ object Exam {
 
     exams
   }
+
+  /** Subdirectories of `exams/` listed under `archived:` in `exams/exams.yaml` (read from the
+   * classpath). Empty if the file is missing or unparseable. */
+  private def archivedSubdirs: Seq[String] =
+    try {
+      val stream = getClass.getResourceAsStream("/exams.yaml")
+      if (stream == null) Nil
+      else {
+        val content = new String(stream.readAllBytes(), UTF_8)
+        io.circe.yaml.parser.parse(content).toOption
+          .flatMap(_.hcursor.get[Seq[String]]("archived").toOption)
+          .getOrElse(Nil)
+      }
+    } catch case _: Throwable => Nil
 
   def getExamById(examId: String): Exam =
     exams.find(_.id == examId) match
