@@ -1,3 +1,4 @@
+# Installed using vagrant-config.py from <no remote>, file snippets/claude.rb, revision <no revision>
 def claude_code(config)
   $claude_code_seen ||= {}
   return if $claude_code_seen[config.object_id]

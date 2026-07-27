@@ -1,3 +1,4 @@
+# Installed using vagrant-config.py from <no remote>, file snippets/caveman.rb, revision <no revision>
 def caveman(config)
   $caveman_seen ||= {}
   return if $caveman_seen[config.object_id]

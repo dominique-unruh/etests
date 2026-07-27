@@ -1,3 +1,4 @@
+# Installed using vagrant-config.py from <no remote>, file snippets/pip.rb, revision <no revision>
 def pip_install(config, *packages)
   packages = packages.flatten
   $pip_install_seen ||= {}

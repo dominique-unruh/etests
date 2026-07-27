@@ -1,3 +1,4 @@
+# Installed using vagrant-config.py from <no remote>, file snippets/scalapy.rb, revision <no revision>
 # Installs scalapy dependencies (scalapy itself is just a JVM dependency and pulled by sbt when needed)
 def scalapy(config)
   $scalapy_seen ||= {}

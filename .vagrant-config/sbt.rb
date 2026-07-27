@@ -1,3 +1,4 @@
+# Installed using vagrant-config.py from <no remote>, file snippets/sbt.rb, revision <no revision>
 def sbt(config)
   $sbt_seen ||= {}
   return if $sbt_seen[config.object_id]

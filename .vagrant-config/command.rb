@@ -1,3 +1,4 @@
+# Installed using vagrant-config.py from <no remote>, file snippets/command.rb, revision <no revision>
 def command(config, name, content)
   $command_seen ||= {}
   key = [config.object_id, name]
