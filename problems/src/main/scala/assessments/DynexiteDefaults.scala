@@ -8,6 +8,8 @@ import scala.language.implicitConversions
 import assessments.pageelements.*
 import assessments.pageelements.DynamicElement.humanName
 import assessments.pageelements.MultipleChoice.Style.select
+import assessments.pageelements.SolutionElement.Styling
+import assessments.pageelements.SolutionElement.Styling.{explanation, grading}
 import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
 import assessments.stack.{SympyAssumption, SympyExpr}
@@ -155,6 +157,22 @@ object DynexiteDefaults {
       ElementName(name.value)
     MathPreviewElement(name2, observed.name, stackMathRender(observed))
   }
+
+
+  def explain(text: InterpolatedMarkdown[HtmlConvertible])(using name: sourcecode.Name): SolutionElement = {
+    if (name.value == "question") // Inlined in the markdown, not a good default
+      throw RuntimeException("expl called inside question markdown. Put into own val.")
+    val name2 = ElementName(name.value)
+    ExplanationElement(name2, text)
+  }
+
+  def grading(text: InterpolatedMarkdown[HtmlConvertible])(using name: sourcecode.Name): SolutionElement = {
+    if (name.value == "question") // Inlined in the markdown, not a good default
+      throw RuntimeException("grading called inside question markdown. Put into own val.")
+    val name2 = ElementName(name.value)
+    ExplanationElement(name2, text)
+  }
+
 
   /** Checks for equality of two Sympy expressions (`x==y`?)
    * Up to mathematical equivalence, as far as can be figured out (somewhat heuristic).

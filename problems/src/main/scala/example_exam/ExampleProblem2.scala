@@ -22,18 +22,22 @@ ${preview(answer)}
 
 And an arbitary picture:
 $someImage
+
+$explanation
+
+$gradingRules
 """
 
   val answer: InputElement = input("10")
 
-  override lazy val explanation: InterpolatedMarkdown[Element] = md"""
-For example, 10 would work.
-Of course, there are many other possibilities like \(5+5\).
-      """
+  lazy val explanation = explain(md"""
+      For example, 10 would work.
+      Of course, there are many other possibilities like \(5+5\).
+  """)
 
-  override lazy val gradingRules: InterpolatedMarkdown[Element] = md"""
-* Anything that evaluates to 10: full points.
-      """
+  lazy val gradingRules = grading(md"""
+    * Anything that evaluates to 10: full points.
+  """)
 
   override def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
     given MathContext = MathContext.default

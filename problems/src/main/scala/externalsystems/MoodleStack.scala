@@ -288,7 +288,7 @@ object MoodleStack {
     val inputs = Seq.newBuilder[Input]
     val fileMapBuilder = DefaultFileMapBuilder("@@PLUGINFILE@@/")
     val renderContext = RenderContext(RenderContext.dynamic := false)
-    val (questionText, explanation, gradingRules) = assessment.renderHtml { element =>
+    val questionText = assessment.renderHtml { element =>
       element match {
         case pageElement: InputElement =>
           val name = pageElement.name.toString

@@ -72,16 +72,14 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     given ExceptionContext = ExceptionContext.initialExceptionContext(s"Web query for exam $examName, problem $assessmentName")
     val exam = Exam.getExamById(examName)
     val assessment = getAssessment(exam, assessmentName)
-    val (body, explanation, gradingRules, files) = assessment.renderHtml
+    val (body, files) = assessment.renderHtml
     val html = views.html.assessment(
       examName = examName,
       assessmentName = assessmentName,
       title = assessment.name,
 //      initialState = JsObject(assessment.pageElements.map{ (name, element) => (name.toString, element.initialState) }),
       reachablePoints = assessment.reachablePoints.decimalFractionString,
-      body = Html(body.html),
-      explanation = Html(explanation.html),
-      gradingRules = Html(gradingRules.html))
+      body = Html(body.html))
     Ok(html)
 
   }
@@ -145,7 +143,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     given ExceptionContext = initialExceptionContext(s"Responsing to web-request $request")
     val exam = Exam.getExamById(examName)
     val assessment = getAssessment(exam, assessmentName)
-    val (body, explanation, gradingRules, files) = assessment.renderHtml
+    val (body, files) = assessment.renderHtml
     val (mime, content) = files(fileName)
     Ok(content).as(mime)
   }

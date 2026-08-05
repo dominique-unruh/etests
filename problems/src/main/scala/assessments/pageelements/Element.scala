@@ -42,7 +42,7 @@ trait DynamicElement extends Element { self =>
    * update that element's display. Runs asynchronously and is cached per `(assessment, name, state)`;
    * if it does not complete within the feedback timeout, [[timeoutFeedback]] supplies a fallback.
    *
-   * Implementations vary: a [[assessments.Grader]] returns live grading, [[MathPreviewElement]]
+   * Implementations vary: a [[assessments.LegacyGrader]] returns live grading, [[MathPreviewElement]]
    * returns a rendered math preview, while plain input elements return `JsNull` (no feedback).
    *
    * @param state the current answers, keyed by [[ElementName]]

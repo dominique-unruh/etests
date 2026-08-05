@@ -28,6 +28,7 @@ object ElementName {
   }
   
   val grader: ElementName = ElementName("grader")
+  val pointsReached: ElementName = ElementName("points-reached")
   val errordisplay: ElementName = ElementName("errorDisplay")
   val registrationNumber: ElementName = ElementName("registration-number")
   /** For any extra data that should be displayed */

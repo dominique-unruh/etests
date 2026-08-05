@@ -5,7 +5,7 @@ import assessments.GradingContext.comments
 
 import scala.language.experimental.genericNumberLiterals
 import assessments.pageelements.AnswerElement
-import assessments.{Assessment, ElementName, ExceptionContext, ExceptionWithContext, Grader, GradingContext, Points}
+import assessments.{Assessment, ElementName, ExceptionContext, ExceptionWithContext, LegacyGrader, GradingContext, Points}
 import com.typesafe.scalalogging.Logger
 import externalsystems.Dynexite.{ClassificationBlock, DynexiteResponses, StackBlock, getDynexiteAnswers}
 
@@ -83,7 +83,7 @@ object DynexiteGrader {
     assert(blocks.nonEmpty)
 
     val (answers, dynexitePoints, dynexiteReachable) = getDynexiteAnswers(item, assessment)
-    val graders = (for (case (_, grader: Grader) <- assessment.pageElements) yield grader).toSeq
+    val graders = (for (case (_, grader: LegacyGrader) <- assessment.pageElements) yield grader).toSeq
     assert(graders.size == 1, graders)
     val grader = graders.head
 

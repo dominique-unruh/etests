@@ -19,38 +19,26 @@ $answer
 
 ${preview(answer)}
 
-$xxx
+$explanation
+
+$gradingRules
+
+$legacyGrader
 """
 
-  def expl(text: InterpolatedMarkdown[HtmlConvertible])(using name: sourcecode.Name): SolutionElement = {
-    if (name.value == "question" || name.value == "explanation") // Inlined in the markdown, not a good default
-      throw RuntimeException("expl called inside question markdown. Put into own val.")
-    val name2 = ElementName(name.value)
-    SolutionElement(name2, text)
-  }
-
-
-  def grading(text: InterpolatedMarkdown[HtmlConvertible])(using name: sourcecode.Name): SolutionElement = {
-    if (name.value == "question" || name.value == "explanation") // Inlined in the markdown, not a good default
-      throw RuntimeException("grading called inside question markdown. Put into own val.")
-    val name2 = ElementName(name.value)
-    SolutionElement(name2, text)
-  }
-
-  lazy val xxx = expl(md"""Hello **there**.""")
 
   val answer: InputElement = input("sqrt(100)")
 
-  override lazy val explanation: InterpolatedMarkdown[HtmlConvertible] = md"""
-For example, \(\sqrt{100}\) would work because it evaluates to 10.
-Of course, there are many other possibilities.
-But 10 itself is not a valid answer.
-      """
+  lazy val explanation = explain(md"""
+    For example, \(\sqrt{100}\) would work because it evaluates to 10.
+    Of course, there are many other possibilities.
+    But 10 itself is not a valid answer.
+  """)
 
-  override lazy val gradingRules: InterpolatedMarkdown[Element] = md"""
-* Anything that evaluates to 10 and isn't the string 10 (after trimming whitespace): full points.
-* The number 10: half points.
-      """
+  lazy val gradingRules = grading(md"""
+    * Anything that evaluates to 10 and isn't the string 10 (after trimming whitespace): full points.
+    * The number 10: half points.
+  """)
 
   override def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
     given MathContext = MathContext.default

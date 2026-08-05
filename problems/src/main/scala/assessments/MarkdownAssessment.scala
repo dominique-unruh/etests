@@ -25,12 +25,12 @@ abstract class MarkdownAssessment {
   /** ID of this assessment (guaranteed unique within an [[Exam]]) */
   val id: String = getClass.getName
   lazy val question: InterpolatedMarkdown[Element | HtmlConvertible]
-  lazy val explanation: InterpolatedMarkdown[Element | HtmlConvertible] = md""
-  lazy val gradingRules: InterpolatedMarkdown[Element | HtmlConvertible] = md""
-  
+
   def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit
   lazy val reachablePoints: Points
-  val grader: Grader = new Grader(ElementName.grader) {
+
+  // TODO get rid of this
+  val legacyGrader: LegacyGrader = new LegacyGrader(ElementName.grader) {
     override def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
       val duration = Utils.getSystemProperty("grading.timeout", "timeout for graders, e.g., 10s, 1m")
       Utils.runWithTimeout(Duration(duration), s"${MarkdownAssessment.this.name}-${context.registrationNumber}",
@@ -42,7 +42,6 @@ abstract class MarkdownAssessment {
     }
 
     override lazy val reachablePoints: Points = MarkdownAssessment.this.reachablePoints
-    override val tags: Tag.Tags[this.type] = Tag.Tags.empty
   }
 
   private def findMethod(elementName: ElementName) =
@@ -61,13 +60,6 @@ abstract class MarkdownAssessment {
       question.toHtml.inlineHtmlConvertible
     }
 
-    val explanationTemplate = explanation.toHtml.inlineHtmlConvertible
-    val gradingRulesTemplate = gradingRules.toHtml.inlineHtmlConvertible
-
-    assert(grader.name == ElementName.grader)
-    elements.addOne(grader.name, grader)
-    seen.add(grader.name)
-
     for (case element: DynamicElement <- questionTemplate.args) {
       if (!seen.add(element.name))
         throw ExceptionWithContext(s"Duplicate page element name '${element.name}'")
@@ -76,8 +68,6 @@ abstract class MarkdownAssessment {
 
     Assessment(name = name,
       questionTemplate = questionTemplate,
-      explanationTemplate = explanationTemplate,
-      gradingRulesTemplate = gradingRulesTemplate,
       reachablePoints = reachablePoints,
       pageElements = elements.result(), tags = tags)
   }
@@ -106,7 +96,7 @@ abstract class MarkdownAssessment {
       println(s"Reference solution: ${changedReference.map((k, v) => s"$k -> $v").mkString(", ")}")
       val context = GradingContext(answers = changedReference.toMap, registrationNumber = "TEST", reachablePoints)
       try {
-        grader.grade()(using context)
+        legacyGrader.grade()(using context)
         println("Resulting comments:")
         for (comment <- comments(using context))
           println("* " + comment.toPlaintext)
@@ -125,7 +115,7 @@ abstract class MarkdownAssessment {
 
   def testProblems(): AssessmentTest = new AssessmentTest {
     override def runTest()(using exceptionContext: ExceptionContext): Unit =
-      for (element <- question.args ++ explanation.args ++ gradingRules.args
+      for (element <- question.args
            if element.isInstanceOf[ProblemElement])
         throw ExceptionWithContext(s"Encountered problem/todo: $element")
   }

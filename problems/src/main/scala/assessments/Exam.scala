@@ -72,7 +72,7 @@ case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownA
     val renderContext = RenderContext(RenderContext.dynamic := false)
 
     def problemHTML(problem: MarkdownAssessment) =
-      val (body, explanation, gradingRules) =
+      val body =
         problem.renderStaticHtml(renderContext)
       ind"""<h2>Problem: ${escapeHtml4(problem.name)}</h1>
            |

@@ -22,7 +22,7 @@ object ExamAccessDemo {
     println(s"Picked problem $examId")
     val problem = exam.assessmentById(problemId)
     println(s"Retrieved: ${problem.name}")
-    val (body, explanation, gradingRules, files) = problem.renderHtml
+    val (body, files) = problem.renderHtml
     println(s"Main HTML: ${body}")
     println(s"Files to be served alongside: ${files.keys.mkString(", ")}")
   }

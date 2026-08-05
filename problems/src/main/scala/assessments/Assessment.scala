@@ -1,7 +1,7 @@
 package assessments
 
 import assessments.Assessment.feedbackTimeout
-import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, ErrorElement, ImageElement, RenderContext, StaticElement}
+import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, ErrorElement, ImageElement, RenderContext, SolutionElement, StaticElement}
 import com.eed3si9n.eval.Eval
 import io.github.classgraph.ClassGraph
 import org.apache.commons.text.StringEscapeUtils
@@ -10,14 +10,14 @@ import org.commonmark.parser.Parser
 
 import scala.collection.{SeqMap, mutable}
 import scala.util.matching.Regex
-import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
+import play.api.libs.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, JsValue}
 import utils.Tag.Tags
 import utils.{FutureCache, IndentedInterpolator, Utils}
 
 import java.io.{BufferedReader, InputStreamReader}
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
-import scala.collection.JavaConverters.mapAsScalaMapConverter
+import scala.collection.JavaConverters.{asScalaSet, mapAsScalaMapConverter}
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
@@ -25,11 +25,10 @@ import scala.util.boundary.break
 import scala.util.{Failure, Random, Success, Using, boundary}
 import scala.xml.*
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 class Assessment (val name: String,
                   val questionTemplate: InterpolatedHtml[Element],
-                  val explanationTemplate: InterpolatedHtml[Element],
-                  val gradingRulesTemplate: InterpolatedHtml[Element],
                   val pageElements: SeqMap[ElementName, DynamicElement],
                   val reachablePoints: Points,
                   val tags: Tags[Assessment] = Tags.empty) {
@@ -40,7 +39,7 @@ class Assessment (val name: String,
       assert(element.name == name, (element.name, name))
   }
 
-  def renderHtml(elementHtml: Element => Html): (Html, Html, Html) = {
+  def renderHtml(elementHtml: Element => Html): Html = {
     def substituted = mutable.HashSet[ElementName]()
 
     def substitute(interpolatable: Element): Html = {
@@ -56,18 +55,16 @@ class Assessment (val name: String,
 
 //    val body = templateRegex.replaceAllIn(htmlTemplate, substitute)
     val body = questionTemplate.mapArgs(substitute).mkText
-    val explanation = explanationTemplate.mapArgs(substitute).mkText
-    val gradingRules = gradingRulesTemplate.mapArgs(substitute).mkText
 
-    (body, explanation, gradingRules)
+    body
   }
 
-  def renderStaticHtml(renderContext: RenderContext): (Html, Html, Html) = {
+  def renderStaticHtml(renderContext: RenderContext): Html = {
 //    val renderContext = RenderContext(RenderContext.dynamic := false, RenderContext.studentAnswers := solution)
     val fileMapBuilder = DataUrlFileMapBuilder()
     def render(element: Element) = element.renderHtml(renderContext, fileMapBuilder)
     
-    val (body, explanation, gradingRules) = renderHtml(render)
+    val body = renderHtml(render)
     assert(fileMapBuilder.result().isEmpty)
 
     // Add "extra data" to the rendering if exists
@@ -79,22 +76,49 @@ class Assessment (val name: String,
       case _ => body
     }
 
-    (body2, explanation, gradingRules)
+    body2
   }
 
-  lazy val renderHtml: (Html, Html, Html, Map[String, (String, Array[Byte])]) = {
+  lazy val renderHtml: (Html, Map[String, (String, Array[Byte])]) = {
     val renderContext = RenderContext(RenderContext.dynamic := true)
     val fileMapBuilder = DefaultFileMapBuilder("")
     def render(element: Element) = element.renderHtml(renderContext, fileMapBuilder)
 
-    val (body, explanation, gradingRules) = renderHtml(render)
-    (body, explanation, gradingRules, fileMapBuilder.result())
+    val body = renderHtml(render)
+    (body, fileMapBuilder.result())
   }
+
+  private object PointsReached extends DynamicElement {
+    override val name: ElementName = ElementName.pointsReached
+
+    private val processing = JsObject(Seq(("processing", JsBoolean(true))))
+
+    override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsObject] = {
+      val pointIterFuture =
+        Future.traverse(assessment.pageElements.values.collect { case e : SolutionElement => e })
+          { _.pointsReached(assessment, state) }
+
+      for (points <- pointIterFuture) yield {
+        val sum = points.map(_.getOrElse(0 : Points)).sum
+        JsObject(Seq(("points", JsNumber(sum.toBigDecimal))))
+      }
+    }
+
+    override def timeoutFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsObject =
+      processing
+
+    override val tags: Tags[PointsReached.this.type] = Tags.empty
+
+    override def renderHtml(context: RenderContext, associatedFiles: FileMapBuilder): Html = ???
+  }
+
 
   def getFeedback(answer: JsObject): (JsObject, JsArray, Boolean) = {
     // TODO should only recalculate changed things
     val answerMap = answer.value.map { (name, content) => (ElementName.fromHtmlComponentName(name), content) }.toMap
-    val elements = pageElements.values.collect { case element: DynamicElement => element }.toSeq
+    val elements =
+      (pageElements.values.collect { case element: DynamicElement => element }.toSeq)
+        `appended` PointsReached
     val feedbackFutures = for (element <- elements)
       yield FutureCache.evaluateFuture((this, element.name, answerMap))(element.getFeedback(this, answerMap))
     val feedbackOptions = Utils.awaitSeq(feedbackFutures, feedbackTimeout)
@@ -111,6 +135,7 @@ class Assessment (val name: String,
         case Some(Failure(exception)) =>
           errors += JsString(Utils.exceptionMessage(exception))
       }
+
     (JsObject(feedbacks.result()), JsArray(errors.result()), timedOut)
   }
   

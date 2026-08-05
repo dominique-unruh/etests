@@ -8,9 +8,7 @@
     assessmentName: String,
     title: String,
     reachablePoints: String,
-    body: Html,
-    explanation: Html,
-    gradingRules: Html)(implicit requestHeader: RequestHeader)
+    body: Html)(implicit requestHeader: RequestHeader)
 
 <!DOCTYPE html>
 <html lang="en">
@@ -43,16 +41,6 @@
             <div class="left-column">
                 <h1>@(title) <span id="working" style="color:blue"></span></h1>
                 @body
-
-                <div class="explanation">
-                    <h1>Explanation</h1>
-                    @explanation
-                </div>
-
-                <div class="grading-rules">
-                    <h1>Grading rules</h1>
-                    @gradingRules
-                </div>
             </div>
 
             <div class="right-column">
@@ -67,7 +55,7 @@
                 <a href="javascript:window.stateManager.askForAnswers('reference') ">Load reference...</a> |
                 <a href="javascript:window.stateManager.showDynexiteAnswers()">Raw Dynexite answers...</a>
 
-                <etest-grading id="etest-grader" reachable="@(reachablePoints)"></etest-grading>
+                <etest-points-reached id="etest-points-reached" reachable="@(reachablePoints)"></etest-points-reached>
 
                 <div>
                     <h3>Extra data</h3>

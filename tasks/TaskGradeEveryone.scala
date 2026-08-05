@@ -62,7 +62,7 @@ object TaskGradeEveryone extends Task {
         answers = answers,
         registrationNumber = student,
         question.reachablePoints)
-      question.pageElements(ElementName.grader).asInstanceOf[Grader].grade()(using context)
+      question.pageElements(ElementName.grader).asInstanceOf[LegacyGrader].grade()(using context)
       output ++= s"Points: ${context.points.decimalFractionString(2)} of ${question.reachablePoints}\n"
       points += context.points
       output ++= Comment.seqToHtml(Comment.filterFeedback(comments(using context).toSeq)).html

@@ -1,6 +1,12 @@
 import {InteractiveElement} from "./interactive-element.js";
 
-export class Solution extends InteractiveElement<null, string> {
+type SolutionFeedback = {
+    points?: number,
+    text: string,
+}
+
+
+export class Solution extends InteractiveElement<null, SolutionFeedback> {
     private body: HTMLSpanElement;
 
     constructor() {
@@ -15,11 +21,11 @@ export class Solution extends InteractiveElement<null, string> {
             this.showError("Unknown solution styling: " + styling);
     }
 
-    protected feedbackExternallyChanged(oldValue: string, newValue: string) {
-        if (newValue == null) newValue = '';
+    protected feedbackExternallyChanged(oldValue: SolutionFeedback, newValue: SolutionFeedback) {
+        if (newValue == null) newValue = {"text": ""};
         // @ts-ignore
         MathJax.typesetClear([this.body]);
-        this.body.innerHTML = newValue;
+        this.body.innerHTML = newValue.text;
         // @ts-ignore
         MathJax.typesetPromise([this.body]);
     }
