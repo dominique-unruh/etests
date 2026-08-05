@@ -14,14 +14,20 @@ object ProblemName extends MarkdownAssessment {
   override val name = "Problem Name"
   override val reachablePoints: Points = 10000000
 
-  // The actual question text as Markdown
-  lazy val question = md"""..."""
+  // The actual question text as Markdown.
+  // Explanation, grading rules and the grader are page elements interpolated
+  // into it with `$` (they are only shown in the solution view, see below).
+  lazy val question = md"""...
+    $explanation
+    $gradingRules
+    $legacyGrader
+  """
 
-  // Explanation of the solution as Markdown (shown to students after exam)
-  lazy val explanation = md"""..."""
+  // Explanation of the solution (shown to students after exam)
+  lazy val explanation = explain(md"""...""")
 
-  // Grading rules as Markdown (shown to students after exam)
-  lazy val gradingRules: InterpolatedMarkdown[Element] = md"""..."""
+  // Grading rules (shown to students after exam)
+  lazy val gradingRules = grading(md"""...""")
 
   // Additional configuration options (optional)
   override val tags = Tags(tagname := content, tagname2 := content2)  
@@ -31,6 +37,11 @@ object ProblemName extends MarkdownAssessment {
     throw NoGraderYetException
   }
 ```
+
+Note: unlike the question text, `explanation`, `gradingRules` and the grader are only
+shown in the **solution** view (after the exam / while authoring), not to students during
+the exam. They must be placed in the `question` markdown with `$` where you want them to
+appear; there is no longer a fixed layout that renders them in separate boxes.
 
 ## Question text
 
@@ -95,4 +106,26 @@ Note: By default, `input` produces a Stack-formula-input.
 A preview can be added by including `${preview(answer)}` in the question text Markdown.
 Where `answer` is the variable containing the input element. (See above.) 
 Since one never refers to the preview from the remaining code, it is not necessary to assign it to a `val` first.
+
+### Explanation, grading rules and grader (solution elements)
+
+Explanation, grading rules and the grader are all **solution elements** (`SolutionElement`):
+page elements that are only rendered in the solution view, not shown to students during the
+exam. They are created with helper functions and then interpolated into the `question`
+markdown with `$` wherever you want them displayed:
+
+```scala
+lazy val explanation  = explain(md"""...""")   // styled as an explanation box
+lazy val gradingRules = grading(md"""...""")    // styled as a grading-rules box
+```
+
+`explain(...)` and `grading(...)` differ only in styling (`styling = explanation` vs.
+`grading`, which selects the CSS class `solution-explanation` / `solution-grading`).
+Put `$explanation`, `$gradingRules` into the `question` markdown to place them.
+
+The grader is also a solution element. `MarkdownAssessment` auto-provides one named
+`legacyGrader` that wraps your `grade()` method (see [graders.md](graders.md)); interpolate
+`$legacyGrader` into the `question` markdown to show the live grading box. During feedback,
+the points reached across all solution elements are summed and displayed by the
+`etest-points-reached` component in the sidebar.
 

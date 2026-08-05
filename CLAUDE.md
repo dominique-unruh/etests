@@ -47,9 +47,12 @@ TypeScript (`webapp/app/assets/js/*.ts`) and SCSS are compiled by sbt-web plugin
 
 **Question authoring model** (`problems/src/main/scala/assessments/`):
 - A question is an `object X extends MarkdownAssessment` with `name`, `reachablePoints`, `question`
-  (and optional `explanation`, `gradingRules`) as `md"""..."""` interpolated Markdown, plus a
-  `grade()(using GradingContext, ExceptionContext)` method. Boilerplate documented in
-  `doc/questions.md`; working example: `problems/src/main/scala/example_exam/ExampleProblem.scala`.
+  as `md"""..."""` interpolated Markdown, plus a `grade()(using GradingContext, ExceptionContext)`
+  method. Explanation, grading rules and the grader are no longer separate fields: they are
+  `SolutionElement` page elements (created with `explain(...)` / `grading(...)`, and the auto-provided
+  `legacyGrader`) interpolated into `question` with `$`, and are only rendered in the solution view.
+  Boilerplate documented in `doc/questions.md`; working example:
+  `problems/src/main/scala/example_exam/ExampleProblem.scala`.
 - An `Exam` is an `object extends Exam(name, tags)(problem1, problem2, ...)`. Exams and their
   problems are discovered by classpath scanning (`io.github.classgraph.ClassGraph`).
 - `MarkdownAssessment` lazily builds an `Assessment` (the lower-level model) by reflecting over its
@@ -57,19 +60,23 @@ TypeScript (`webapp/app/assets/js/*.ts`) and SCSS are compiled by sbt-web plugin
   element into the rendered page.
 
 **Page elements** (`assessments/pageelements/`): `InputElement`, `MultipleChoice`, `ImageElement`,
-`MathElement`, `MathPreviewElement`, etc. Input fields default to STACK-formula inputs. Rendering is
+`MathElement`, `MathPreviewElement`, `SolutionElement` (solution-only content — explanations, grading
+rules, graders; see below), etc. Input fields default to STACK-formula inputs. Rendering is
 driven by a `RenderContext` (dynamic vs. static, whose answers to show).
 
 **Interpolation layer**: `InterpolatedMarkdown`/`InterpolatedHtml`/`InterpolatedString` +
 `IndentedInterpolator` implement the `md"..."` / `ind"..."` string interpolators that mix Scala
 values (page elements, HTML) into templates. `ElementName` identifies interpolated slots.
 
-**Grading**: `Grader` / `GradingContext` (`import assessments.GradingContext.*`). Inside `grade()`,
+**Grading**: `GradingContext` (`import assessments.GradingContext.*`). Inside `grade()`,
 `points += n`, `comments += "..."`, `answers(element) = ...`. Grade blocks and `combinatorialGrader`
-give undoable/hierarchical scoring. Graders run under a timeout (`grading.timeout`). See
-`doc/graders.md` — **important:** exception *handlers* (`try/catch`) are forbidden in graders (they
-hide grading mistakes); use safe helper functions that return `Option` instead. Throwing is allowed
-and denotes an unimplemented case.
+give undoable/hierarchical scoring. Graders run under a timeout (`grading.timeout`). A grader is a
+`SolutionElement` (`LegacyGrader`, styled as `grading`); `MarkdownAssessment` auto-wraps your
+`grade()` in a `legacyGrader` element (marked TODO to remove). Each `SolutionElement` can report
+points; `Assessment` sums them in a synthetic `PointsReached` element (`ElementName.pointsReached`)
+that feeds the `etest-points-reached` web component. See `doc/graders.md` — **important:** exception
+*handlers* (`try/catch`) are forbidden in graders (they hide grading mistakes); use safe helper
+functions that return `Option` instead. Throwing is allowed and denotes an unimplemented case.
 
 **Math** (`doc/math.md`, `doc/stack.md`): two representations. `StackMath` = terms in Scala (name is
 historical; unrelated to STACK), best for programmatic manipulation. `SympyExpr` = Python/sympy

@@ -1,5 +1,10 @@
 # How to write graders?
 
+The grader is a `SolutionElement` (i.e. a page element shown only in the solution view).
+`MarkdownAssessment` auto-provides one named `legacyGrader` wrapping the `grade()` method
+described below; interpolate `$legacyGrader` into the `question` markdown to render its live
+grading box (see [questions.md](questions.md)). You normally just implement `grade()`.
+
 ## Writing rules
 
 ### Misc
