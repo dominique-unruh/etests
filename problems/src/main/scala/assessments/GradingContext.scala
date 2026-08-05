@@ -139,11 +139,16 @@ object GradingContext {
    * }}}
    *
    * @param max  Number of reachable points for this subproblem.
+   * @param allowExitWithoutDone If `false` (default), the block must finish via `done()` / `abort()`,
+   *                             otherwise falling off the end throws. If `true`, reaching the end of
+   *                             `body` without `done()`/`abort()` simply exits normally (no abort),
+   *                             keeping whatever points were awarded. Used by inline graders, which
+   *                             may just fall through.
    * @param body A block which does grading for the subproblem
    * */
-  def gradeBlock(max: Points)(body: (GradingContext, Label[GradeBlockExit], ExceptionContext) ?=> Unit)
+  def gradeBlock(max: Points, allowExitWithoutDone: Boolean = false)(body: (GradingContext, Label[GradeBlockExit], ExceptionContext) ?=> Unit)
                 (using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
-    val (result, subcontext) = bareGradeBlock(max)(body)
+    val (result, subcontext) = bareGradeBlock(max, allowExitWithoutDone = allowExitWithoutDone)(body)
     if (result.abort) return
     val reached = subcontext.points
     assert(reached <= max)
@@ -152,7 +157,7 @@ object GradingContext {
     context.mergeSubcontext(subcontext)
   }
 
-  def bareGradeBlock(max: Points)(body: (GradingContext, Label[GradeBlockExit], ExceptionContext) ?=> Unit)
+  def bareGradeBlock(max: Points, allowExitWithoutDone : Boolean = false)(body: (GradingContext, Label[GradeBlockExit], ExceptionContext) ?=> Unit)
                     (using context: GradingContext, exceptionContext: ExceptionContext): (GradeBlockExit, GradingContext) = {
     val local = Label[GradeBlockExit]()
     val subcontext = context.subcontext(max, local)
@@ -160,7 +165,9 @@ object GradingContext {
     val result =
       try {
         body(using subcontext, local, exceptionContext)
-        throw ExceptionWithContext(s"Grade block returned without using done() / abort()")
+        if (allowExitWithoutDone) GradeBlockExit(abort = false)
+        else
+          throw ExceptionWithContext(s"Grade block returned without using done() / abort()")
       } catch {
         case ex: Break[GradeBlockExit] @unchecked =>
           if ex.label eq local then ex.value

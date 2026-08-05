@@ -1,9 +1,14 @@
 # How to write graders?
 
-The grader is a `SolutionElement` (i.e. a page element shown only in the solution view).
-`MarkdownAssessment` auto-provides one named `legacyGrader` wrapping the `grade()` method
-described below; interpolate `$legacyGrader` into the `question` markdown to render its live
-grading box (see [questions.md](questions.md)). You normally just implement `grade()`.
+Graders are written **inline** in grading elements. Each `grading(text) { grader }` (see
+[questions.md](questions.md)) is a page element carrying a rule text plus the grader block
+that awards its points; interpolate it into the `question` markdown to show its live grading
+box. A problem usually has several, one per rule, and their points are summed.
+
+The grader block itself is a **grade block** (see below): it runs with `max = 0` local
+points, and you finish it with `done()` (there is no `return`; `abort()` is not allowed in a
+top-level grading element). The old single `grade()` method still exists but is
+`@deprecated` in favour of inline graders.
 
 ## Writing rules
 

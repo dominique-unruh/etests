@@ -277,6 +277,39 @@ object Utils {
     }
   }
 
+  /** Returns a [[Future]] executing `body` in a fresh thread.
+   * The future will execute body at most `timeout` long.
+   * If `body` executes longer, it will be interrupted.
+   *
+   * Far from perfect: the code may continue running in the background
+   *    * because JVM does not support killing threads (just asking them in a friendly way).
+   *    * Tasks will stop fully when they call [[checkInterrupt]] or in certain System operations (like waiting).
+   *
+   * The returned future fails with [[Timeout]] if the timeout occurs, or with any exception
+   * thrown by `body` (forwarded as the failure). The async counterpart of [[runWithTimeout]]. */
+  def runWithTimeoutFuture[A](timeout: Duration, label: String)(body: => A)(implicit context: ExceptionContext): Future[A] = {
+    val promise = Promise[A]()
+    val worker = new Thread((() => promise.complete(Try(body))): Runnable, label)
+    worker.setDaemon(true)
+    worker.start()
+    val timeoutTask = timeoutScheduler.schedule((() =>
+      if (promise.tryFailure(Timeout(s"Timeout encountered ($timeout)"))) {
+        worker.setName("INTERRUPTED-" + label)
+        worker.setPriority(Thread.MIN_PRIORITY)
+        worker.interrupt() // Only asks the thread to stop; see the note above.
+      }): Runnable, timeout.toNanos, TimeUnit.NANOSECONDS)
+    // Once the work is done (or timed out) we no longer need the scheduled interrupt.
+    promise.future.onComplete(_ => timeoutTask.cancel(false))
+    promise.future
+  }
+
+  private lazy val timeoutScheduler = Executors.newSingleThreadScheduledExecutor((r: Runnable) => {
+    val thread = new Thread(r, "runWithTimeoutFuture-scheduler")
+    thread.setDaemon(true)
+    thread
+  })
+
+
   def htmlToPdf(htmlFile: Path, pdfOutputFile: Path): Unit =
     htmlToPdfAsync(htmlFile, pdfOutputFile).awaitResult()
 

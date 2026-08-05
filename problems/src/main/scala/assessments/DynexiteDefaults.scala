@@ -1,6 +1,6 @@
 package assessments
 
-import assessments.GradingContext.comments
+import assessments.GradingContext.{GradeBlockExit, comments}
 import assessments.math.Math
 import assessments.math.Math.Ops
 
@@ -19,6 +19,7 @@ import utils.Utils
 
 import java.io.IOException
 import scala.collection.{SeqMap, immutable}
+import scala.util.boundary.Label
 
 object DynexiteDefaults {
 //  given sympyCache: Cache[SympyExpr] = CaffeineCache[SympyExpr]
@@ -159,20 +160,20 @@ object DynexiteDefaults {
   }
 
 
-  def explain(text: InterpolatedMarkdown[HtmlConvertible])(using name: sourcecode.Name): SolutionElement = {
+  def explain(text: InterpolatedMarkdown[HtmlConvertible])(using name: sourcecode.Name): ExplanationElement = {
     if (name.value == "question") // Inlined in the markdown, not a good default
       throw RuntimeException("expl called inside question markdown. Put into own val.")
     val name2 = ElementName(name.value)
     ExplanationElement(name2, text)
   }
 
-  def grading(text: InterpolatedMarkdown[HtmlConvertible])(using name: sourcecode.Name): SolutionElement = {
+  def grading(text: InterpolatedMarkdown[HtmlConvertible])(using name: sourcecode.Name)
+             (grader: (context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]) ?=> Unit) : GradingElement = {
     if (name.value == "question") // Inlined in the markdown, not a good default
       throw RuntimeException("grading called inside question markdown. Put into own val.")
     val name2 = ElementName(name.value)
-    ExplanationElement(name2, text)
+    GradingElement(name2, text)(grader)
   }
-
 
   /** Checks for equality of two Sympy expressions (`x==y`?)
    * Up to mathematical equivalence, as far as can be figured out (somewhat heuristic).

@@ -26,7 +26,8 @@ abstract class MarkdownAssessment {
   val id: String = getClass.getName
   lazy val question: InterpolatedMarkdown[Element | HtmlConvertible]
 
-  def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit
+  @deprecated("Use inline graders")
+  def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {}
   lazy val reachablePoints: Points
 
   // TODO get rid of this

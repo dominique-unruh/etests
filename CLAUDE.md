@@ -68,13 +68,16 @@ driven by a `RenderContext` (dynamic vs. static, whose answers to show).
 `IndentedInterpolator` implement the `md"..."` / `ind"..."` string interpolators that mix Scala
 values (page elements, HTML) into templates. `ElementName` identifies interpolated slots.
 
-**Grading**: `GradingContext` (`import assessments.GradingContext.*`). Inside `grade()`,
-`points += n`, `comments += "..."`, `answers(element) = ...`. Grade blocks and `combinatorialGrader`
-give undoable/hierarchical scoring. Graders run under a timeout (`grading.timeout`). A grader is a
-`SolutionElement` (`LegacyGrader`, styled as `grading`); `MarkdownAssessment` auto-wraps your
-`grade()` in a `legacyGrader` element (marked TODO to remove). Each `SolutionElement` can report
-points; `Assessment` sums them in a synthetic `PointsReached` element (`ElementName.pointsReached`)
-that feeds the `etest-points-reached` web component. See `doc/graders.md` — **important:** exception
+**Grading**: `GradingContext` (`import assessments.GradingContext.*`). Inside a grader,
+`points += n`, `comments += "..."`, `answers(element) = ...`. Grading is done by **inline graders**:
+each `grading(text) { grader }` builds a `GradingElement` (a `SolutionElement`, styled `grading`)
+that holds a rule text plus its grader block, interpolated into `question` with `$`. The grader
+block is a grade block (finish with `done()`; `abort()` disallowed at top level) run under a timeout
+(`grading.timeout`) via `Utils.runWithTimeoutFuture`. Grade blocks and `combinatorialGrader` give
+undoable/hierarchical scoring. Each `SolutionElement` can report points; `Assessment` sums them in a
+synthetic `PointsReached` element (`ElementName.pointsReached`) that feeds the `etest-points-reached`
+web component. The old single `MarkdownAssessment.grade()` / `LegacyGrader` still exists but is
+`@deprecated`. See `doc/graders.md` — **important:** exception
 *handlers* (`try/catch`) are forbidden in graders (they hide grading mistakes); use safe helper
 functions that return `Option` instead. Throwing is allowed and denotes an unimplemented case.
 

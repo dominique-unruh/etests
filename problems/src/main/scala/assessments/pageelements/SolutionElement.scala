@@ -43,13 +43,6 @@ abstract class SolutionElement(val name: ElementName,
     }
 }
 
-class ExplanationElement(name: ElementName, text: InterpolatedMarkdown[HtmlConvertible]) extends SolutionElement(name = name, styling = explanation) {
-  lazy val html: Html = text.toHtml.flatMapArgs(_.toHtml)
-
-  override protected def feedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[Feedback] =
-    Future.successful(Feedback(text = html))
-}
-
 object SolutionElement {
   enum Styling {
     case explanation

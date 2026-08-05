@@ -15,33 +15,37 @@ object ProblemName extends MarkdownAssessment {
   override val reachablePoints: Points = 10000000
 
   // The actual question text as Markdown.
-  // Explanation, grading rules and the grader are page elements interpolated
-  // into it with `$` (they are only shown in the solution view, see below).
+  // Explanation and grading elements are page elements interpolated into it
+  // with `$` (they are only shown in the solution view, see below).
   lazy val question = md"""...
     $explanation
-    $gradingRules
-    $legacyGrader
+    $gradingRule
   """
 
   // Explanation of the solution (shown to students after exam)
   lazy val explanation = explain(md"""...""")
 
-  // Grading rules (shown to students after exam)
-  lazy val gradingRules = grading(md"""...""")
+  // A grading rule: its Markdown text is the rule shown to students, and the
+  // trailing `{ ... }` block is the grader that awards the points for that rule.
+  lazy val gradingRule = grading(md"""...""") {
+    if (answer.stringValue.trim == "10")
+      points += reachablePoints
+      done()
+  }
 
   // Additional configuration options (optional)
   override val tags = Tags(tagname := content, tagname2 := content2)  
-  
-  // Function that computes the actual grade
-  def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
-    throw NoGraderYetException
-  }
+}
 ```
 
-Note: unlike the question text, `explanation`, `gradingRules` and the grader are only
+Note: unlike the question text, the explanation and grading elements are only
 shown in the **solution** view (after the exam / while authoring), not to students during
 the exam. They must be placed in the `question` markdown with `$` where you want them to
 appear; there is no longer a fixed layout that renders them in separate boxes.
+
+Grading is done by **inline graders**: each `grading(...) { ... }` element carries both a
+rule text and the grader block that scores it. Points are summed across all grading
+elements. (The old single `grade()` method still exists but is `@deprecated`.)
 
 ## Question text
 
@@ -107,25 +111,29 @@ A preview can be added by including `${preview(answer)}` in the question text Ma
 Where `answer` is the variable containing the input element. (See above.) 
 Since one never refers to the preview from the remaining code, it is not necessary to assign it to a `val` first.
 
-### Explanation, grading rules and grader (solution elements)
+### Explanations and grading rules (solution elements)
 
-Explanation, grading rules and the grader are all **solution elements** (`SolutionElement`):
-page elements that are only rendered in the solution view, not shown to students during the
-exam. They are created with helper functions and then interpolated into the `question`
-markdown with `$` wherever you want them displayed:
+Explanations and grading rules are **solution elements** (`SolutionElement`): page elements
+that are only rendered in the solution view, not shown to students during the exam. They are
+created with helper functions and then interpolated into the `question` markdown with `$`
+wherever you want them displayed:
 
 ```scala
-lazy val explanation  = explain(md"""...""")   // styled as an explanation box
-lazy val gradingRules = grading(md"""...""")    // styled as a grading-rules box
+lazy val explanation = explain(md"""...""")   // styled as an explanation box
+
+lazy val gradingRule = grading(md"""...""") {  // styled as a grading-rules box
+  ... grader block, see below ...
+}
 ```
 
-`explain(...)` and `grading(...)` differ only in styling (`styling = explanation` vs.
-`grading`, which selects the CSS class `solution-explanation` / `solution-grading`).
-Put `$explanation`, `$gradingRules` into the `question` markdown to place them.
+`explain(...)` produces an `ExplanationElement` (styling `explanation`); `grading(...)`
+produces a `GradingElement` (styling `grading`), which selects the CSS class
+`solution-explanation` / `solution-grading`. Put `$explanation`, `$gradingRule` into the
+`question` markdown to place them.
 
-The grader is also a solution element. `MarkdownAssessment` auto-provides one named
-`legacyGrader` that wraps your `grade()` method (see [graders.md](graders.md)); interpolate
-`$legacyGrader` into the `question` markdown to show the live grading box. During feedback,
-the points reached across all solution elements are summed and displayed by the
-`etest-points-reached` component in the sidebar.
+A `grading(text) { grader }` element carries both the rule text *and* the grader that awards
+its points (see [graders.md](graders.md)). A problem typically has several, one per rule.
+During feedback each element runs its grader (under `grading.timeout`), and the points
+reached across all grading elements are summed and displayed by the `etest-points-reached`
+component in the sidebar.
 

@@ -5,7 +5,11 @@ import assessments.GradingContext.*
 import assessments.InterpolatedMarkdown.md
 import assessments.pageelements.{Element, InputElement, SolutionElement}
 import assessments.math.Math
-import assessments.{DynexiteDefaults, ElementName, ExceptionContext, GradingContext, HtmlConvertible, InterpolatedMarkdown, MarkdownAssessment, MathContext, Points}
+import assessments.{DynexiteDefaults, ElementName, ExceptionContext, GradingContext, HtmlConvertible, InterpolatedMarkdown, MarkdownAssessment, MathContext, NoGraderYetException, Points}
+import com.typesafe.scalalogging.Logger
+
+import scala.util.boundary
+import scala.util.boundary.break
 
 object ExampleProblem extends MarkdownAssessment {
   override val name = "Example problem"
@@ -21,9 +25,9 @@ ${preview(answer)}
 
 $explanation
 
-$gradingRules
+$gradingRule1
+$gradingRule2
 
-$legacyGrader
 """
 
 
@@ -35,22 +39,18 @@ $legacyGrader
     But 10 itself is not a valid answer.
   """)
 
-  lazy val gradingRules = grading(md"""
+  lazy val gradingRule1 = grading(md"""
     * Anything that evaluates to 10 and isn't the string 10 (after trimming whitespace): full points.
-    * The number 10: half points.
-  """)
-
-  override def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
+  """) {
     given MathContext = MathContext.default
 
+    // TODO: it should be possible to check whether gradingRule2 triggered instead
     if (answer.stringValue.trim == "10")
-      comments += "You entered 10 literally. Half points"
-      points += reachablePoints / 2
-      return
+      done()
 
     val parsed = answer.mathTry
     if (parsed == Math.noAnswer)
-      return
+      done()
 
     if (parsed.toSympyMC() `algebraicEqual` 10)
       comments += "Correct"
@@ -58,4 +58,14 @@ $legacyGrader
     else
       comments += raw"Doesn't evaluate to 10, but to \(${parsed.toSympyMC().simplify.latex}\)"
   }
+
+  lazy val gradingRule2 = grading(md"""The number 10: half points.""") {
+    if (answer.stringValue.trim == "10")
+      comments += "You entered 10 literally. Half points"
+      points += reachablePoints / 2
+      done()
+  }
+
+  private val logger = Logger[ExampleProblem.type]
 }
+

@@ -37,14 +37,12 @@ $gradingRules
 
   lazy val gradingRules = grading(md"""
     * Anything that evaluates to 10: full points.
-  """)
-
-  override def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
+  """) {
     given MathContext = MathContext.default
 
     val parsed = answer.mathTry
     if (parsed == Math.noAnswer)
-      return
+      done()
 
     if (parsed.toSympyMC() `algebraicEqual` 10)
       comments += "Correct"

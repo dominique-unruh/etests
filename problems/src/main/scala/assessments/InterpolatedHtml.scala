@@ -71,6 +71,7 @@ object InterpolatedHtml extends InterpolatedTextC[Html, InterpolatedHtml] {
  * @see [[Markdown]], [[Plaintext]]
  **/
 final case class Html(html: String) extends HtmlConvertible {
+  def isEmpty: Boolean = html.isEmpty
   override def toHtml: Html = this
   def +(other: HtmlConvertible) = Html(html + other.toHtml.html)
   def toPlaintext: Plaintext = {

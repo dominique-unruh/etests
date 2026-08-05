@@ -81,6 +81,7 @@ object Comment {
   given Conversion[Html, Comment] = feedback
 
   def seqToHtml(comments: Seq[Comment]): Html = {
+    if (comments.isEmpty) return Html.empty
     val result = new StringBuilder
     result ++= "<ul>\n"
     for (comment <- comments) {
