@@ -14,12 +14,12 @@
     },
     "./features/sbt": {}
   },
-  "forwardPorts": [9000],
+/*  "forwardPorts": [9000],
   "appPort": [9000],
   "portsAttributes": {
     "9000": {
       "label": "my-service",
       "onAutoForward": "notify"
     }
-  }
+  }*/
 }

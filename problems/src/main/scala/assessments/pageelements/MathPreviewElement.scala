@@ -55,5 +55,5 @@ class MathPreviewElement(val name: ElementName,
   }
 
   override def timeoutFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue =
-    JsString(s"""<span style="color:gray; font-weight:bold;">⌛</span>""")
+    DynamicElement.hourglass
 }

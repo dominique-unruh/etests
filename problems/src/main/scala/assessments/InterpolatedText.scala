@@ -11,7 +11,14 @@ trait InterpolatedText[+T, Text, Self[+U] <: InterpolatedText[U, Text, Self]] {
   def checkCorrectness(): Unit
   def isComplete: Boolean
   def completeText: Text
+  /** Collapses this into a single plain [[Text]]: each interpolated arg is turned into `Text` by `f`
+   * and spliced between the literal parts, then everything is concatenated. Use this to fully render
+   * an interpolated text once every arg can be reduced to raw text. */
   def flatMapArgs(f: T => Text): Text
+  /** Monadic flatMap over the args: each arg is replaced by another interpolated text (`f(arg)`),
+   * whose parts and args are spliced in place, flattening the result into one interpolated text of
+   * the same kind with new arg type `U`. Use this to substitute args while staying interpolated
+   * (as opposed to the `T => Text` overload, which reduces to plain text). */
   def flatMapArgs[U](f: T => Self[U]): Self[U]
   def args: Seq[T]
   def ++[U >: T](other: Self[U]): Self[U]
