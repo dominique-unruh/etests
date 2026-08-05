@@ -1,43 +1,25 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the
-// README at: https://github.com/devcontainers/templates/tree/main/src/debian
 {
-	"build": {
-		"dockerfile": "Dockerfile"
-	},
-	"containerEnv": {
-		// Use local timezone if it's set in $TZ, otherwise Europe/Berlin
-		"TZ": "${localEnv:TZ:Europe/Berlin}"
-	},
-	"features": {
-//		"ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {},
-		// moby:false => install docker-ce-cli from Docker's repo instead of Debian's moby-cli,
-		// which Microsoft does not build for trixie.
-		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": { "moby": false },
-	},
-	// The base image is plain Debian, so it carries no remoteUser metadata.
-	"remoteUser": "user",
-	"customizations": {
-		"vscode": {
-			"extensions": [
-				"leanprover.lean4",
-				"anthropic.claude-code",
-				"sst-dev.opencode",
-				"FedaykinDev.openchamber",
-			]
-		},
-		"jetbrains": {
-			"plugins": [
-				"com.redhat.devtools.lsp4ij", // Required by lean4ij
-				"lean4ij",
-				"com.anthropic.code.plugin",
-			]
-		}
-	},
-	"mounts": [
-    	"source=${localWorkspaceFolder}/.devcontainer/persistent/claude,target=/home/user/.claude,type=bind,consistency=cached",
-    	"source=${localWorkspaceFolder}/.devcontainer/persistent/opencode,target=/home/user/.config/opencode,type=bind,consistency=cached",
-		// Example how to mount a local directory (must be same path on everyone's computer though.)
-	    // "source=/opt/Isabelle2025-2,target=/opt/Isabelle2025-2,type=bind,readonly,consistency=cached",
-  	],
-	"postCreateCommand": "~/init.sh",
+  "image": "ubuntu:24.04",
+  "remoteUser": "dev",
+  "features": {
+    "./features/user": {
+      "username": "dev"
+    },
+    "./features/apt": {},
+    "./features/claude": {
+      "dangerousPermissions": true
+    },
+    "./features/caveman": {
+      "mode": "ultra"
+    },
+    "./features/sbt": {}
+  },
+  "forwardPorts": [9000],
+  "appPort": [9000],
+  "portsAttributes": {
+    "9000": {
+      "label": "my-service",
+      "onAutoForward": "notify"
+    }
+  }
 }

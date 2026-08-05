@@ -1,0 +1,18 @@
+{
+  "id": "claude",
+  "version": "1.0.0",
+  "name": "Claude Code (local config)",
+  "description": "Wraps the official Claude Code CLI feature with local, this-repo-specific configuration on top (e.g. permissions).",
+  "options": {
+    "dangerousPermissions": {
+      "type": "boolean",
+      "default": false,
+      "description": "Set permissions.defaultMode to bypassPermissions in Claude Code's settings.json (skips all permission prompts — only enable in trusted/sandboxed environments)."
+    }
+  },
+  "dependsOn": {
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {},
+    "./features/apt": {}
+  },
+  "postCreateCommand": "/usr/local/share/devcontainer-config/claude/configure.sh"
+}

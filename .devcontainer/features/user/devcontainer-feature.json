@@ -1,0 +1,13 @@
+{
+  "id": "user",
+  "version": "1.0.0",
+  "name": "Non-root user",
+  "description": "Creates a non-root user with passwordless sudo (plain ubuntu:24.04 ships none).",
+  "options": {
+    "username": {
+      "type": "string",
+      "default": "dev",
+      "description": "Name of the non-root user to create."
+    }
+  }
+}

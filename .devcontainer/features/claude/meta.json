@@ -1,0 +1,10 @@
+{
+  "deps": ["apt"],
+  "tests": [],
+  "commands": {
+    "claude": {
+      "help": "run `claude` inside the devcontainer",
+      "shell": "claude"
+    }
+  }
+}

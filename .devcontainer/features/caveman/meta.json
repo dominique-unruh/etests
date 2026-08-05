@@ -1,0 +1,4 @@
+{
+  "deps": ["claude", "apt"],
+  "tests": []
+}

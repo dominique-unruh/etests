@@ -1,0 +1,13 @@
+{
+  "id": "apt",
+  "version": "1.0.0",
+  "name": "apt update",
+  "description": "Runs apt-get update at build time, once, so other features that installsAfter/dependsOn this one can apt-get install packages without repeating it.",
+  "options": {
+    "packages": {
+      "type": "string",
+      "default": "",
+      "description": "Space-separated list of additional apt packages to install at build time."
+    }
+  }
+}

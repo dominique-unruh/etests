@@ -1,0 +1,10 @@
+{
+  "id": "sbt",
+  "version": "1.0.0",
+  "name": "sbt (Scala Build Tool)",
+  "description": "Installs sbt system-wide (build-time) from the official scala-sbt apt repository. Depends on the official Java feature for a JVM.",
+  "options": {},
+  "dependsOn": {
+    "ghcr.io/devcontainers/features/java:1": {}
+  }
+}

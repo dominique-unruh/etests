@@ -1,0 +1,19 @@
+{
+  "id": "caveman",
+  "version": "1.0.0",
+  "name": "caveman Claude Code plugin",
+  "description": "Installs the caveman Claude Code plugin and sets its default mode (requires claude, tracked via this tool's external-feature support).",
+  "options": {
+    "mode": {
+      "type": "string",
+      "default": "ultra",
+      "enum": ["lite", "full", "ultra"],
+      "description": "Default caveman mode."
+    }
+  },
+  "dependsOn": {
+    "./features/claude": {},
+    "./features/apt": {}
+  },
+  "postCreateCommand": "/usr/local/share/devcontainer-config/caveman/configure.sh"
+}

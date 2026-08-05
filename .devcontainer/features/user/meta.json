@@ -1,0 +1,10 @@
+{
+  "deps": [],
+  "tests": [
+    {
+      "kind": "custom",
+      "script": "validate-remote-user.mjs",
+      "message": "devcontainer.json's remoteUser doesn't match the user feature's username option"
+    }
+  ]
+}
