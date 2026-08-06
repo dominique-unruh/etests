@@ -1,6 +1,6 @@
 package assessments.stack
 
-import assessments.MathContext
+import assessments.{ExceptionContext, MathContext}
 import assessments.MathContext.default
 import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.{checkEquality, checkEqualityNew}
@@ -8,6 +8,8 @@ import org.scalatest.funsuite.AnyFunSuiteLike
 import utils.Python
 
 class StackUtilsTest extends AnyFunSuiteLike {
+  given ExceptionContext = ExceptionContext.initialExceptionContext(s"Test suite $getClass")
+
   test("checkEquality with sqrt") {
     val t1 = parse("2^((1-c/2)*n)").toSympy
     val t2 = parse("sqrt(2^(2*n-n*c))").toSympy

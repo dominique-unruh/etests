@@ -38,7 +38,10 @@ object TaskGradeEveryone extends Task {
 
     try {
       val answers = Dynexite.getDynexiteAnswers(question, exam, student)
-      val renderContext = RenderContext(RenderContext.dynamic := false, RenderContext.studentAnswers := answers)
+      val renderContext = RenderContext(
+        RenderContext.dynamic := false,
+        RenderContext.studentAnswers := answers,
+        RenderContext.registrationNumber := student)
       val body = question.renderStaticHtml(renderContext)
 
       output ++= "<div class=\"question-text\">\n"

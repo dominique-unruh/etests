@@ -1,10 +1,13 @@
 package assessments.stack
 
 import assessments.DynexiteDefaults.sympy
+import assessments.ExceptionContext
 import assessments.stack.SympyExpr.{integer, symbol}
 import org.scalatest.funsuite.AnyFunSuiteLike
 
 class SympyExprTest extends AnyFunSuiteLike {
+  given ExceptionContext = ExceptionContext.initialExceptionContext(s"Test suite $getClass")
+
   test("replaceFunction 1 arg") {
     val f = "f(f(x))".sympy
     val result = f.replaceFunction("f", x => SympyExpr.function("g")(x))

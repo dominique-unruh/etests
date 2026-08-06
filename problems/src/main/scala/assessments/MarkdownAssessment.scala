@@ -21,6 +21,7 @@ import scala.concurrent.duration.Duration
 import scala.util.matching.Regex
 
 abstract class MarkdownAssessment {
+  given ExceptionContext = initialExceptionContext(s"Initializing problem ${getClass.getName}")
   val name: String = getClass.getName
   /** ID of this assessment (guaranteed unique within an [[Exam]]) */
   val id: String = getClass.getName

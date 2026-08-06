@@ -1,6 +1,6 @@
 package assessments.pageelements
 
-import assessments.ElementName
+import assessments.{Assessment, ElementName}
 import utils.Tag
 import utils.Tag.Tags
 
@@ -21,4 +21,8 @@ object RenderContext {
   val dynamic: Tag[RenderContext, Boolean] = Tag(default = true)
   /** The answers the student gave */
   val studentAnswers: Tag[RenderContext, Map[ElementName, String]] = Tag()
+  /** The [[Assessment]] object we are rendering */
+  val problem: Tag[RenderContext, Assessment] = Tag()
+  /** Registration number of the student */
+  val registrationNumber: Tag[RenderContext, String] = Tag()
 }

@@ -29,25 +29,13 @@ class GradingElement(name: ElementName,
                     (grader: (context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]) ?=> Unit)
   extends SolutionElement(name = name, styling = SolutionElement.Styling.grading) {
 
-  override protected def feedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[SolutionElement.Feedback] = {
+  override protected def feedback(assessment: Assessment, registrationNumber: Option[String], answers: Map[ElementName, String]): Future[SolutionElement.Feedback] = {
     given ExceptionContext = initialExceptionContext(s"Recomputing grading based on change of inputs in webapp")
-
     val duration = Utils.getSystemProperty("grading.timeout", "timeout for graders, e.g., 10s, 1m")
-    val registrationNumber = state.get(ElementName.registrationNumber) match
-      case Some(regno) => regno.asInstanceOf[JsString].value match
-        case "" => "NO_STUDENT"
-        case regno => regno
-      case None => "NO_STUDENT"
-    logger.debug(s"Running grader $name, $registrationNumber: $state")
-    val answers = for (case element: AnswerElement <- assessment.pageElements.values) yield {
-      state.get(element.name) match
-        case Some(elementState) =>
-          element.name -> elementState.asInstanceOf[JsString].as[String]
-        case None => element.name -> ""
-    }
+    logger.debug(s"Running grader $name, $registrationNumber: $answers")
     Utils.runWithTimeoutFuture(Duration(duration), s"${assessment.name}-$name-${registrationNumber}") {
       val (exit, context) = bareGradeBlock(0, allowExitWithoutDone = true) {
-        grader }(using context = GradingContext(answers.toMap, registrationNumber, assessment.reachablePoints))
+        grader }(using context = GradingContext(answers.toMap, registrationNumber.getOrElse("NO_STUDENT"), assessment.reachablePoints))
       if (exit.abort) throw ExceptionWithContext("abort() not allowed in this grader")
       val pointsString = context.points.decimalFractionString(precision = 2)
       val report = Comment.seqToHtml(GradingContext.comments(using context).toSeq)

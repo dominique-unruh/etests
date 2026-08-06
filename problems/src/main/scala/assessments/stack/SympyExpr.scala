@@ -231,6 +231,7 @@ class gcd(sympy.Function):
   lazy val orBit: py.Dynamic = Python.define("def orBit(a,b): from sympy import Integer; return max(a%Integer(2),b%Integer(2))\nreturn orBit")
   lazy val arrayIndex: py.Dynamic = Python.define("def arrayIndex(a,b): return a[b]\nreturn arrayIndex")
   def array(components: SympyExpr*): SympyExpr = SympyExpr(sympy.Array(components.map(_.python).toPythonProxy))
+  def finiteSet(components: SympyExpr*): SympyExpr = SympyExpr(sympy.FiniteSet(components.map(_.python)*))
   def matrix(rows: SympyExpr*): SympyExpr = SympyExpr(sympy.Matrix(rows.map(_.python).toPythonProxy))
   /** Converts a string into a SympyExpr using the sympy-parser.
    * The sympy parser is unsafe for unsanitized inputs.

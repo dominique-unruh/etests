@@ -1,7 +1,7 @@
 package assessments.stack
 
 import assessments.math.Math
-import assessments.{ElementName, Html, SyntaxError}
+import assessments.{ElementName, ExceptionContext, ExceptionWithContext, Html, SyntaxError}
 import assessments.pageelements.InputElement
 import assessments.math.Math.{Operation, Ops}
 import externalsystems.MoodleStack.{Question, Quiz, inputElementToMoodle}
@@ -34,7 +34,7 @@ object StackParser {
       MaximaInteger(BigInt(int))
     case _ => throw RuntimeException(s"Invalid json found coming from maxima: $json")
 
-  def maximaToStackMath(maximaTerm: MaximaTerm): Math = {
+  def maximaToStackMath(maximaTerm: MaximaTerm)(using exceptionContext: ExceptionContext): Math = {
     def to(term: MaximaTerm): Math = term match
       case MaximaSymbol(name) =>
         if (!name.startsWith("%"))
@@ -43,7 +43,7 @@ object StackParser {
           case "%i" => Math.imaginaryUnit
           case "%e" => Math.eulerConstant
           case "%pi" => Math.pi
-          case _ => throw RuntimeException(s"Unknown maxima special symbol '$name' encountered in $maximaTerm")
+          case _ => throw ExceptionWithContext(s"Unknown maxima special symbol '$name' encountered in $maximaTerm")
       case MaximaAtom(name) => ???
       case MaximaInteger(int) => Math.Integer(int)
       case MaximaOperation(MaximaAtom(name), args*) =>
@@ -64,9 +64,10 @@ object StackParser {
           case ("nounor", n) if n > 1 => (Ops.or, true)
           case (".", 2) => (Ops.times, false)
           case ("[", n) => (Ops.list, false)
+          case ("{", n) => (Ops.set, false)
           case ("=", 2) => (Ops.equal, false)
           case ("!", 1) => (Ops.factorial, false)
-          case _ => throw RuntimeException(s"Unknown maxima atom \"$nameStripped\" of arity ${args.length} in $maximaTerm")
+          case _ => throw ExceptionWithContext(s"Unknown maxima atom \"$nameStripped\" of arity ${args.length} in $maximaTerm")
         if (iter)
           args.tail.foldLeft(to(args.head))((t, a) => Operation(op, t, to(a)))
         else
@@ -80,15 +81,15 @@ object StackParser {
   }
 
   @deprecated
-  def parse(input: String): Math = {
+  def parse(input: String)(using exceptionContext: ExceptionContext): Math = {
     val pageElement = InputElement(ElementName("input"), "reference", Tags())
     parse(input, pageElement)
   }
 
-  def parse(expression: String, inputElement: InputElement): Math =
+  def parse(expression: String, inputElement: InputElement)(using exceptionContext: ExceptionContext): Math =
     parseFuture(expression, inputElement).awaitResult()
 
-  def parseFuture(expression: String, inputElement: InputElement): Future[Math] = {
+  def parseFuture(expression: String, inputElement: InputElement)(using exceptionContext: ExceptionContext): Future[Math] = {
     if (expression.trim.isEmpty)
       throw SyntaxError("empty string is not a valid math expression")
 

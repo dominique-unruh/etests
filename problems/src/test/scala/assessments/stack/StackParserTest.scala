@@ -1,9 +1,12 @@
 package assessments.stack
 
+import assessments.ExceptionContext
 import assessments.math.Math.{Operation, Ops}
 import org.scalatest.funsuite.AnyFunSuiteLike
 
 class StackParserTest extends AnyFunSuiteLike {
+  given ExceptionContext = ExceptionContext.initialExceptionContext(s"Test suite $getClass")
+
   test("parse: (m)/n") {
     val str = "(m)/n"
     val result = StackParser.parse(str)

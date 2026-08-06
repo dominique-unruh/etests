@@ -297,7 +297,7 @@ object Math {
     case times, divide
     case unaryPlus, unaryMinus
     case imaginaryUnit, eulerConstant, pi
-    case list, matrix
+    case list, set, matrix
     /** Special symbol to denote a missing answer */
     case noAnswer
 

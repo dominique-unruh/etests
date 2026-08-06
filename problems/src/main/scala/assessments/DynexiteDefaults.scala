@@ -46,7 +46,7 @@ object DynexiteDefaults {
 
   extension (str: String) {
     @deprecated("Use .math")
-    def sympy: SympyExpr = {
+    def sympy(using exceptionContext: ExceptionContext): SympyExpr = {
       if (str == "" || str == null)
         SympyExpr.errorTerm("empty")
       else try
@@ -55,7 +55,7 @@ object DynexiteDefaults {
       catch
         case e: SyntaxError => SympyExpr.errorTerm(e.getMessage)
     }
-    def math(inputElement: InputElement): Math =
+    def math(inputElement: InputElement)(using exceptionContext: ExceptionContext): Math =
       parse(str, inputElement)
     /**
      * Attempts to parse and evaluate a mathematical expression from this string
@@ -72,7 +72,7 @@ object DynexiteDefaults {
      * @return [[Math.noAnswer]] if input is empty or contains syntax errors,
      *         otherwise returns the parsed mathematical result from math(inputElement)
      */
-    def mathTry(name: String, inputElement: InputElement)(using gradingContext: GradingContext): Math = {
+    def mathTry(name: String, inputElement: InputElement)(using gradingContext: GradingContext, exceptionContext: ExceptionContext): Math = {
       if (str == "")
         Math.noAnswer
       else
@@ -103,12 +103,12 @@ object DynexiteDefaults {
 
   implicit class InputElementMethods(ie: InputElement) {
     @deprecated("Use .math.toSympyMC()")
-    def sympy(using gradingContext: GradingContext): SympyExpr = ie.stringValue.sympy
-    def latex(using gradingContext: GradingContext, mathContext: MathContext): String = math.toSympyMC(allowUndefined = true).latex
-    def math(using gradingContext: GradingContext): Math = ie.stringValue.math(ie)
-    def refmath: Math = ie.reference.math(ie)
+    def sympy(using gradingContext: GradingContext, exceptionContext: ExceptionContext): SympyExpr = ie.stringValue.sympy
+    def latex(using gradingContext: GradingContext, mathContext: MathContext, exceptionContext: ExceptionContext): String = math.toSympyMC(allowUndefined = true).latex
+    def math(using gradingContext: GradingContext, exceptionContext: ExceptionContext): Math = ie.stringValue.math(ie)
+    def refmath(using exceptionContext: ExceptionContext): Math = ie.reference.math(ie)
     /** See another `mathTry` for documentation. */
-    def mathTry(using gradingContext: GradingContext): Math =
+    def mathTry(using gradingContext: GradingContext, exceptionContext: ExceptionContext): Math =
       ie.stringValue.mathTry(ie.humanName, ie)
   }
 
@@ -127,7 +127,7 @@ object DynexiteDefaults {
     .sympyFunction(Ops.or, { case Seq(x,y) => x.logicalOr(y)})
     .sympyFunction(Ops.not, { case Seq(x) => x.logicalNot})
 
-  private def stackMathRender(pageElement: InputElement)(string: String): String = {
+  private def stackMathRender(pageElement: InputElement)(string: String)(using exceptionContext: ExceptionContext): String = {
     given MathContext = renderMathContext
     if (string == "")
       ""
@@ -151,7 +151,7 @@ object DynexiteDefaults {
 
   private val logger = Logger[DynexiteDefaults.type]
   
-  def preview(observed: InputElement)(using name: sourcecode.Name): MathPreviewElement = {
+  def preview(observed: InputElement)(using name: sourcecode.Name, exceptionContext: ExceptionContext): MathPreviewElement = {
     val name2 = if (name.value == "question" || name.value == "explanation") // Inlined in the markdown, not a good default
       ElementName(s"${observed.name}_preview")
     else
@@ -187,7 +187,7 @@ object DynexiteDefaults {
   def checkEq(x: => InputElement | SympyExpr,
               y: => InputElement | SympyExpr,
               assumption: SympyAssumption = SympyAssumption.positive)
-             (using context: GradingContext): Boolean =
+             (using context: GradingContext, exceptionContext: ExceptionContext): Boolean =
     try {
       def toSympy(value: InputElement | SympyExpr) = value match {
         case x: InputElement => x.sympy

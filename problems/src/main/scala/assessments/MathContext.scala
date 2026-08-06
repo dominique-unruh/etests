@@ -113,7 +113,8 @@ object MathContext {
     Ops.imaginaryUnit -> { case Seq() => SympyExpr.imaginaryUnit },
     Ops.eulerConstant -> { case Seq() => SympyExpr.eulerConstant },
     Ops.pi -> { case Seq() => SympyExpr.pi },
-    Ops.list -> { args => SympyExpr.array(args*) }
+    Ops.list -> { args => SympyExpr.array(args*) },
+    Ops.set -> { args => SympyExpr.finiteSet(args*) }
   )
 
   val default = new MathContext(

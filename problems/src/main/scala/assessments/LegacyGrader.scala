@@ -24,24 +24,13 @@ abstract class LegacyGrader(name: ElementName) extends SolutionElement(name = na
   override def timeoutFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue =
     JsObject(Map("processing" -> JsBoolean(true)))
 
-  override protected def feedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[Feedback] =
-    Future(getFeedbackSync(assessment, state))(using graderExecutionContext)
+  override protected def feedback(assessment: Assessment, registrationNumber: Option[String], answers: Map[ElementName, String]): Future[Feedback] =
+    Future(feedbackSync(assessment, registrationNumber, answers))(using graderExecutionContext)
 
-  private def getFeedbackSync(assessment: Assessment, state: Map[ElementName, JsValue]): Feedback = {
+  private def feedbackSync(assessment: Assessment, registrationNumber: Option[String], answers: Map[ElementName, String]): Feedback = {
     given ExceptionContext = initialExceptionContext(s"Recomputing grading based on change of inputs in webapp")
-    val registrationNumber = state.get(ElementName.registrationNumber) match
-      case Some(regno) => regno.asInstanceOf[JsString].value match
-        case "" => "NO_STUDENT"
-        case regno => regno
-      case None => "NO_STUDENT"
-    logger.debug(s"Running grader for ${assessment.name}, $registrationNumber: $state")
-    val answers = for (case element : AnswerElement <- assessment.pageElements.values) yield {
-      state.get(element.name) match
-        case Some(elementState) =>
-          element.name -> elementState.asInstanceOf[JsString].as[String]
-        case None => element.name -> ""
-    }
-    val context = GradingContext(answers.toMap, registrationNumber, reachablePoints)
+    logger.debug(s"Running grader for ${assessment.name}, $registrationNumber: $answers")
+    val context = GradingContext(answers.toMap, registrationNumber.getOrElse("NO_STUDENT"), reachablePoints)
     grade()(using context)
     val report = StringBuilder()
     val pointsString = context.points.decimalFractionString(precision = 2)

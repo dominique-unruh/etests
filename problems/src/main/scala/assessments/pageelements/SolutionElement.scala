@@ -8,6 +8,7 @@ import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import play.api.libs.json.{JsNumber, JsObject, JsString, JsValue}
 import utils.{IndentedInterpolator, Tag}
 import utils.Tag.Tags
+import utils.Utils.awaitResult
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -23,24 +24,29 @@ abstract class SolutionElement(val name: ElementName,
 
   override def renderHtml(context: RenderContext, files: FileMapBuilder): Html =
     if (!context(RenderContext.dynamic)) {
-      val html: Html = ???
+      val html: Html = feedback(
+        context(RenderContext.problem),
+        context.get(RenderContext.registrationNumber),
+        context(RenderContext.studentAnswers)).awaitResult().text
       return Html(s"""<div class="solution solution-${escapeHtml4(styling.toString)}">${html.html}</div>""")
     }
     Html(ind"""<etest-solution id="${name.htmlComponentNameEscaped}" styling="${escapeHtml4(styling.toString)}"></etest-solution>""")
 
-  protected def feedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[Feedback]
+  protected def feedback(assessment: Assessment, registrationNumber: Option[String], answers: Map[ElementName, String]): Future[Feedback]
 
-  def pointsReached(assessment: Assessment, state: Map[ElementName, JsValue]): Future[Option[Points]] =
-    feedback(assessment, state).map(_.points)
+  def pointsReached(assessment: Assessment, registrationNumber: Option[String], answers: Map[ElementName, String]): Future[Option[Points]] =
+    feedback(assessment, registrationNumber, answers).map(_.points)
 
-  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsObject] =
-    for (fb <- feedback(assessment, state)) yield {
+  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsObject] = {
+    val registrationNumber = state.get(ElementName.registrationNumber).map(_.asInstanceOf[JsString].value)
+    for (fb <- feedback(assessment, registrationNumber, assessment.webappStateToAnswers(state))) yield {
       val builder = Map.newBuilder[String, JsValue]
       builder.addOne(("text", JsString(fb.text.html)))
       for (points <- fb.points)
         builder.addOne(("points", JsNumber(points.toBigDecimal)))
       JsObject(builder.result())
     }
+  }
 }
 
 object SolutionElement {

@@ -1,7 +1,7 @@
 package assessments
 
 import assessments.Assessment.feedbackTimeout
-import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, ErrorElement, ImageElement, RenderContext, SolutionElement, StaticElement}
+import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, ErrorElement, ImageElement, InputElement, RenderContext, SolutionElement, StaticElement}
 import com.eed3si9n.eval.Eval
 import io.github.classgraph.ClassGraph
 import org.apache.commons.text.StringEscapeUtils
@@ -94,9 +94,10 @@ class Assessment (val name: String,
     private val processing = JsObject(Seq(("processing", JsBoolean(true))))
 
     override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsObject] = {
+      val registrationNumber = state.get(ElementName.registrationNumber).map(_.asInstanceOf[JsString].value)
       val pointIterFuture =
         Future.traverse(assessment.pageElements.values.collect { case e : SolutionElement => e })
-          { _.pointsReached(assessment, state) }
+          { _.pointsReached(assessment, registrationNumber, assessment.webappStateToAnswers(state)) }
 
       for (points <- pointIterFuture) yield {
         val sum = points.map(_.getOrElse(0 : Points)).sum
@@ -142,6 +143,18 @@ class Assessment (val name: String,
   def referenceSolution: Map[ElementName, String] =
     Map.from(for (case (name: ElementName, element: AnswerElement) <- pageElements.iterator)
       yield name -> element.reference)
+
+  def webappStateToAnswers(state: Map[ElementName, JsValue]) : Map[ElementName, String] = {
+    val result = Map.newBuilder[ElementName, String]
+    for (case element : AnswerElement <- pageElements.values) {
+      val answer = state.get(element.name) match {
+        case Some(value) => value.asInstanceOf[JsString].as[String]
+        case None => ""
+      }
+      result += ((element.name, answer))
+    }
+    result.result()
+  }
 }
 
 object Assessment {

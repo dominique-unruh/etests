@@ -6,6 +6,8 @@ import assessments.math.Math
 import org.scalatest.funsuite.AnyFunSuiteLike
 
 class DynexiteDefaultsTest extends AnyFunSuiteLike {
+  given ExceptionContext = ExceptionContext.initialExceptionContext(s"Test suite $getClass")
+
   private def gc(x: String = null): GradingContext = {
     val map = Map.newBuilder[ElementName, String]
     if (x != null) map += ElementName("x") -> x
