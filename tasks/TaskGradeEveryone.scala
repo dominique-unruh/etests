@@ -39,21 +39,11 @@ object TaskGradeEveryone extends Task {
     try {
       val answers = Dynexite.getDynexiteAnswers(question, exam, student)
       val renderContext = RenderContext(RenderContext.dynamic := false, RenderContext.studentAnswers := answers)
-      val (body, explanation, gradingRules) = question.renderStaticHtml(renderContext)
+      val body = question.renderStaticHtml(renderContext)
 
       output ++= "<div class=\"question-text\">\n"
       output ++= "<h2>Question text</h2>\n"
       output ++= body.html += '\n'
-      output ++= "</div>\n"
-
-      output ++= "<div class=\"explanation\">\n"
-      output ++= "<h2>Solution explanation</h2>\n"
-      output ++= explanation.html += '\n'
-      output ++= "</div>\n"
-
-      output ++= "<div class=\"grading-rules\">"
-      output ++= "<h2>Grading rules</h2>\n"
-      output ++= gradingRules.html += '\n'
       output ++= "</div>\n"
 
       output ++= "<div class=\"grading-report\">"

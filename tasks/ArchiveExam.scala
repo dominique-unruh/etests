@@ -20,22 +20,12 @@ object ArchiveExam extends Task {
   
   def problemHTML(problem: MarkdownAssessment) =
     val renderContext = RenderContext(RenderContext.dynamic := false, RenderContext.studentAnswers := problem.referenceSolution)
-    val (body, explanation, gradingRules) =
+    val body =
       problem.renderStaticHtml(renderContext)
     ind"""<h1>${escapeHtml4(problem.name)}</h1>
          |
          |<div style="">
          |  ${body.html}
-         |</div>
-         |
-         |<div class="explanation">
-         |  <h2>Explanation</h2>
-         |  ${explanation.html}
-         |</div>
-         |
-         |<div class="grading-rules">
-         |  <h2>Grading rules</h2>
-         |  ${gradingRules.html}
          |</div>
      """
 
