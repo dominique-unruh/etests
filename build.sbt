@@ -78,14 +78,17 @@ lazy val problems = (project in file("problems"))
     libraryDependencies += "org.typelevel" %% "spire" % "0.18.0",
   )
 
-// Directories (relative to exams/) listed under `archived:` in exams/exams.yaml.
-// Their sources are excluded from compilation; their resources stay on the classpath.
+// Directories (relative to exams/) whose entry under `exams:` in exams/exams.yaml has
+// `archived: true`. Their sources are excluded from compilation; resources stay on the classpath.
 lazy val archivedExams: Seq[String] = {
   val f = file("exams") / "exams.yaml"
   if (!f.exists) Nil
   else Option(new Yaml().load[java.util.Map[String, AnyRef]](IO.read(f)))
-    .flatMap(m => Option(m.get("archived")))
-    .map(_.asInstanceOf[java.util.List[String]].asScala.toSeq)
+    .flatMap(m => Option(m.get("exams")))
+    .map(_.asInstanceOf[java.util.Map[String, AnyRef]].asScala.collect {
+      case (subdir, dict: java.util.Map[String, AnyRef] @unchecked)
+        if dict.get("archived") == java.lang.Boolean.TRUE => subdir
+    }.toSeq)
     .getOrElse(Nil)
 }
 

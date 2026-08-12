@@ -143,8 +143,8 @@ object Exam {
     exams
   }
 
-  /** Subdirectories of `exams/` listed under `archived:` in `exams/exams.yaml` (read from the
-   * classpath). Empty if the file is missing or unparseable. */
+  /** Subdirectories of `exams/` whose entry under `exams:` in `exams/exams.yaml` has
+   * `archived: true` (read from the classpath). Empty if the file is missing or unparseable. */
   private def archivedSubdirs: Seq[String] =
     try {
       val stream = getClass.getResourceAsStream("/exams.yaml")
@@ -152,8 +152,10 @@ object Exam {
       else {
         val content = new String(stream.readAllBytes(), UTF_8)
         io.circe.yaml.parser.parse(content).toOption
-          .flatMap(_.hcursor.get[Seq[String]]("archived").toOption)
-          .getOrElse(Nil)
+          .flatMap(_.hcursor.get[Map[String, io.circe.Json]]("exams").toOption)
+          .getOrElse(Map.empty)
+          .collect { case (subdir, json) if json.hcursor.get[Boolean]("archived").toOption.contains(true) => subdir }
+          .toSeq
       }
     } catch case _: Throwable => Nil
 
