@@ -13,7 +13,6 @@
 /webapp/target
 /project/target
 /project/project/target
-/exams
 /tasks/target/
 /webapp/node_modules/
 .vagrant/

@@ -1,0 +1,66 @@
+exams:
+  y2023_pqc1:
+    name: Post-quantum Cryptography, WS 2023/24, 1st
+    lecture: Post-quantum Cryptography
+    repository: git@git.rwth-aachen.de:unruh/qis-exams.git
+    revision: y2023_pqc1
+    archived: true
+  y2023_pqc2:
+    name: Post-quantum Cryptography, WS 2023/24, 2nd
+    lecture: Post-quantum Cryptography
+    repository: git@git.rwth-aachen.de:unruh/qis-exams.git
+    revision: y2023_pqc2
+    archived: true
+  y2024_iqc1:
+    name: Introduction to Quantum Computing, SS 2024, 1st
+    lecture: Introduction to Quantum Computing
+    repository: git@git.rwth-aachen.de:unruh/qis-exams.git
+    revision: y2024_iqc1
+    archived: true
+  y2024_iqc2:
+    name: Introduction to Quantum Computing, SS 2024, 2nd
+    lecture: Introduction to Quantum Computing
+    repository: git@git.rwth-aachen.de:unruh/qis-exams.git
+    revision: y2024_iqc2
+    archived: true
+  y2024_pqc1:
+    name: Post-quantum Cryptography, WS 2024/25, 1st
+    lecture: Post-quantum Cryptography
+    repository: git@git.rwth-aachen.de:unruh/qis-exams.git
+    revision: y2024_pqc1
+    archived: true
+  y2024_pqc2:
+    name: Post-quantum Cryptography, WS 2024/25, 2nd
+    lecture: Post-quantum Cryptography
+    repository: git@git.rwth-aachen.de:unruh/qis-exams.git
+    revision: y2024_pqc2
+    archived: true
+  y2025_iqc1:
+    name: Intro to QC, SS 2025, 1st
+    lecture: Introduction to Quantum Computing
+    repository: git@git.rwth-aachen.de:unruh/qis-exams.git
+    revision: y2025_iqc1
+    archived: true
+  y2025_iqc2:
+    name: Intro to QC, SS 2025, 2nd
+    lecture: Introduction to Quantum Computing
+    repository: git@git.rwth-aachen.de:unruh/qis-exams.git
+    revision: y2025_iqc2
+    archived: true
+  y2025_pqc1:
+    name: Post-quantum Cryptography, WS 2025/26, 1st
+    lecture: Post-quantum Cryptography
+    repository: git@git.rwth-aachen.de:unruh/qis-exams.git
+    revision: y2025_pqc1
+    archived: true
+  y2025_pqc2:
+    name: Post-quantum Cryptography, WS 2025/26, 2nd
+    lecture: Post-quantum Cryptography
+    repository: git@git.rwth-aachen.de:unruh/qis-exams.git
+    revision: y2025_pqc2
+    archived: true
+  y2026_iqc1:
+    name: Introduction to Quantum Computing, SS 2026, 1st
+    lecture: Introduction to Quantum Computing
+    repository: git@git.rwth-aachen.de:unruh/qis-exams.git
+    revision: y2026_iqc1
