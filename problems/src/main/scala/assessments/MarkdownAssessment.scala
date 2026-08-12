@@ -186,7 +186,7 @@ abstract class MarkdownAssessment {
   }
 
   def mainExtractStack(implicit exceptionContext: ExceptionContext): Unit = {
-    runTests()
+//    runTests()
     val question = MoodleStack.assessmentToQuestion(assessment)
     val quiz = MoodleStack.Quiz(question)
     val pretty = quiz.prettyXml
