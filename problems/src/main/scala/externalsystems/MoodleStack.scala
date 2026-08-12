@@ -2,7 +2,7 @@ package externalsystems
 
 import assessments.pageelements.MultipleChoice.{Style, checkboxLabel}
 import assessments.{Assessment, DefaultFileMapBuilder, Html}
-import assessments.pageelements.{DynamicElement, ImageElement, InputElement, MathPreviewElement, MultipleChoice, RenderContext, StaticElement}
+import assessments.pageelements.{DynamicElement, ImageElement, InputElement, MathPreviewElement, MultipleChoice, RenderContext, SolutionElement, StaticElement}
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import utils.Tag
@@ -306,6 +306,8 @@ object MoodleStack {
           Html(s"[[input:$name]]")
         case element: StaticElement =>
           element.renderHtml(renderContext, fileMapBuilder)
+        case _: SolutionElement =>
+          Html.empty
         case _ =>
           throw RuntimeException(s"Unknown page element (type ${element.getClass.getName}): $element")
       }
