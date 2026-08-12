@@ -227,28 +227,47 @@ object Docker {
 
 //    logger.debug(s"Docker inputs: ${files.map((k,v) => k+String(v)).mkString(";")}")
 
-    val dockerCommand = Seq(
-      "docker", "run", "--rm",
-      "-v", s"$tempDir:/workdir",
+    // We do not use a bind mount (`-v $tempDir:/workdir`) to provide the input files and collect the outputs.
+    // A bind mount references a path on the *Docker daemon's* host, which is not our filesystem when the daemon
+    // is remote or shared via docker-outside-of-docker (the mount would silently be empty). Instead we create the
+    // container, `docker cp` the inputs in, run it, and `docker cp` the requested outputs back out. This works
+    // regardless of where the daemon lives.
+    val createCommand = Seq(
+      "docker", "create",
       "-w", "/workdir",
       "--platform=linux/amd64",
       imageId) ++ command
 
-    logger.debug(s"Running Docker command (for $shortDescription): ${dockerCommand.mkString(" ")}")
+    logger.debug(s"Creating Docker container (for $shortDescription): ${createCommand.mkString(" ")}")
 
-    val output = StringBuffer() // Not using StringBuilder (not thread safe)
-    val exitCode = dockerCommand.!(ProcessLogger(line => output.append(line).append('\n')))
+    val containerId = createCommand.!!.trim
 
+    try {
+      // Copy the staged input files into /workdir (the `/.` makes docker copy the directory *contents*, and
+      // /workdir is created if it does not exist).
+      val cpInExit = Seq("docker", "cp", s"$tempDir/.", s"$containerId:/workdir").!(ProcessLogger(_ => ()))
+      if (cpInExit != 0)
+        throw IOException(s"Failed to copy inputs into Docker container (for $shortDescription)")
 
-    val resultFiles = Map.from(requestedOutputs.flatMap { name =>
-      val file = tempDir.resolve(name)
-      if (Files.exists(file))
-        Some((name, Files.readAllBytes(file)))
-      else
-        None
-    })
+      val output = StringBuffer() // Not using StringBuilder (not thread safe)
+      // `docker start -a` attaches to the container's stdout/stderr and exits with the container's exit code.
+      val exitCode = Seq("docker", "start", "-a", containerId).!(ProcessLogger(line => output.append(line).append('\n')))
 
-    DockerResult(exitCode = exitCode, output = output.toString, files = resultFiles)
+      // Copy back the requested outputs. It is not an error if a file does not exist (docker cp then fails and we
+      // skip it), matching the documented behaviour of runInDocker.
+      val resultFiles = Map.from(requestedOutputs.flatMap { name =>
+        val dest = tempDir.resolve(name)
+        val cpOutExit = Seq("docker", "cp", s"$containerId:/workdir/$name", dest.toString).!(ProcessLogger(_ => ()))
+        if (cpOutExit == 0 && Files.exists(dest))
+          Some((name, Files.readAllBytes(dest)))
+        else
+          None
+      })
+
+      DockerResult(exitCode = exitCode, output = output.toString, files = resultFiles)
+    } finally {
+      Seq("docker", "rm", "-f", containerId).!(ProcessLogger(_ => ()))
+    }
   }
 
   private final class ByteKey(val bytes: Array[Byte]) {

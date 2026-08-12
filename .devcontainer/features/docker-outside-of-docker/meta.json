@@ -1,0 +1,50 @@
+{
+  "deps": [],
+  "tests": [],
+  "external": {
+    "ref": "ghcr.io/devcontainers/features/docker-outside-of-docker:1",
+    "description": "Docker CLI inside the container, talking to the host's Docker daemon via the mounted socket (no nested dockerd).",
+    "options": {
+      "version": {
+        "type": "string",
+        "default": "latest",
+        "description": "Docker/Moby CLI version."
+      },
+      "moby": {
+        "type": "boolean",
+        "default": true,
+        "description": "Install OSS Moby build instead of Docker CE."
+      },
+      "mobyBuildxVersion": {
+        "type": "string",
+        "default": "latest",
+        "description": "moby-buildx version to install when moby is true."
+      },
+      "dockerDashComposeVersion": {
+        "type": "string",
+        "default": "latest",
+        "description": "docker-compose version: v1, v2, none, or latest."
+      },
+      "installDockerBuildx": {
+        "type": "boolean",
+        "default": true,
+        "description": "Install Docker Buildx."
+      },
+      "installDockerComposeSwitch": {
+        "type": "boolean",
+        "default": false,
+        "description": "Install Compose Switch (docker-compose -> docker compose shim)."
+      },
+      "socketPath": {
+        "type": "string",
+        "default": "/var/run/docker-host.sock",
+        "description": "Path where the host's Docker socket is bind-mounted inside the container."
+      }
+    }
+  },
+  "provenance": {
+    "remote": "https://github.com/dominique-unruh/devcontainer-config.git",
+    "pathInRepo": "features/docker-outside-of-docker/meta.json",
+    "contentHash": "d01d7726069456f233b0d7916e7a1f52d3a2ace524e804510899fe0220da942f"
+  }
+}

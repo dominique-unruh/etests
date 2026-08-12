@@ -12,8 +12,19 @@
     "./features/caveman": {
       "mode": "ultra"
     },
-    "./features/sbt": {}
+    "./features/sbt": {},
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "version": "latest",
+      "moby": true,
+      "mobyBuildxVersion": "latest",
+      "dockerDashComposeVersion": "latest",
+      "installDockerBuildx": true,
+      "installDockerComposeSwitch": false,
+      "socketPath": "/var/run/docker-host.sock"
+    }
   },
+  "forwardPorts": [9000],
+  "appPort": [9000],
 /*  "forwardPorts": [9000],
   "appPort": [9000],
   "portsAttributes": {
