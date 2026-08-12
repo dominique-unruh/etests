@@ -5,7 +5,7 @@ import assessments.GradingContext.comments
 import assessments.InterpolatedMarkdown.md
 import assessments.MarkdownAssessment.MarkdownAssessmentRun
 import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, ProblemElement, StaticElement}
-import externalsystems.MoodleStack
+import externalsystems.{Dynexite, MoodleStack}
 import org.apache.commons.text.StringEscapeUtils
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
@@ -171,6 +171,7 @@ abstract class MarkdownAssessment {
     runOption match {
       case MarkdownAssessmentRun.runTests => mainRunTests()
       case MarkdownAssessmentRun.extractStack => mainExtractStack()
+      case MarkdownAssessmentRun.uploadDynexite => mainUploadDynexite()
     }
   }
   private lazy val runOption = {
@@ -196,6 +197,19 @@ abstract class MarkdownAssessment {
     Thread.sleep(60000)
     println("Time expired.")
   }
+
+  def mainUploadDynexite(implicit exceptionContext: ExceptionContext): Unit = {
+    val questionId = assessment.tags.getOrElse(Dynexite.dynexiteQuestionId,
+      throw ExceptionWithContext(s"Problem '$name' has no tag dynexiteQuestionId; cannot upload to Dynexite."))
+    val expectedName = assessment.tags.getOrElse(Dynexite.dynexiteQuestionName, name)
+    val title = Plaintext(name).toMarkdown.markdown
+    val question = MoodleStack.assessmentToQuestion(assessment)
+    val pretty = MoodleStack.Quiz(question).prettyXml
+    println(s"Uploading question '$name' to Dynexite item $questionId (expecting name '$expectedName') ...")
+    Dynexite.uploadQuestionXML(questionId, pretty, expectedName, title)
+    println(s"Uploaded.")
+    println(Dynexite.editUrl(questionId))
+  }
 }
 
 object MarkdownAssessment {
@@ -208,6 +222,7 @@ object MarkdownAssessment {
   enum MarkdownAssessmentRun {
     case extractStack
     case runTests
+    case uploadDynexite
   }
 
   given Conversion[MarkdownAssessment, Assessment] = _.assessment

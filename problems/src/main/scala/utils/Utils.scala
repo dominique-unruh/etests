@@ -9,7 +9,8 @@ import java.awt.datatransfer.{Clipboard, StringSelection}
 import java.io.IOException
 import java.lang.System.currentTimeMillis
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, LinkOption, Path, Paths}
+import java.nio.file.attribute.{PosixFileAttributes, PosixFilePermission, PosixFilePermissions}
 import java.time.{Instant, LocalDate}
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -82,6 +83,91 @@ object Utils {
     val stringSelection = new StringSelection(string)
     val clipboard: Clipboard = Toolkit.getDefaultToolkit.getSystemClipboard
     clipboard.setContents(stringSelection, null)
+  }
+
+  /** Ask the user for a string. Uses a Swing input dialog ([[javax.swing.JOptionPane]]) when a
+   * display is available, otherwise falls back to reading a line from the terminal. Throws if the
+   * user cancels or no input can be obtained. */
+  def promptForString(prompt: String): String = {
+    val fromGui: Option[String] =
+      if (java.awt.GraphicsEnvironment.isHeadless) None
+      else
+        try Option(javax.swing.JOptionPane.showInputDialog(null, prompt))
+              .orElse(throw new RuntimeException(s"Input cancelled: $prompt"))
+        catch case _: java.awt.HeadlessException => None
+    fromGui.getOrElse {
+      val console = System.console()
+      val line =
+        if (console != null) console.readLine("%s: ", prompt)
+        else scala.io.StdIn.readLine(s"$prompt: ")
+      if (line == null) throw new RuntimeException(s"No input available for: $prompt")
+      line
+    }
+  }
+
+  /** Ensure `dir` is a directory private to the current user: it must be a real directory (not a
+   * symlink), owned by the current user, with POSIX mode 0700 (no group/other access). If it does
+   * not exist it is created atomically with mode 0700 (missing parents are created too). If it
+   * exists but fails any of these checks, this throws.
+   *
+   * Intended for holding secrets under world-writable locations such as /tmp: the owner /
+   * permission / symlink checks defend against another user pre-creating or symlinking the dir. */
+  def ensureUserPrivateDir(dir: Path): Unit = {
+    val ownerOnly = PosixFilePermissions.fromString("rwx------")
+    Option(dir.getParent).foreach(Files.createDirectories(_))
+    try
+      Files.createDirectory(dir, PosixFilePermissions.asFileAttribute(ownerOnly))
+    catch
+      case _: java.nio.file.FileAlreadyExistsException => // exists already: verify below
+
+    val attrs = Files.readAttributes(dir, classOf[PosixFileAttributes], LinkOption.NOFOLLOW_LINKS)
+    if (attrs.isSymbolicLink)
+      throw new RuntimeException(s"$dir is a symbolic link; refusing to use it for private data.")
+    if (!attrs.isDirectory)
+      throw new RuntimeException(s"$dir exists but is not a directory.")
+    val me = java.nio.file.FileSystems.getDefault.getUserPrincipalLookupService
+      .lookupPrincipalByName(System.getProperty("user.name"))
+    if (attrs.owner != me)
+      throw new RuntimeException(s"$dir is owned by ${attrs.owner.getName}, not the current user " +
+        s"${me.getName}. Refusing to use it for private data.")
+    val forbidden = Set(
+      PosixFilePermission.GROUP_READ, PosixFilePermission.GROUP_WRITE, PosixFilePermission.GROUP_EXECUTE,
+      PosixFilePermission.OTHERS_READ, PosixFilePermission.OTHERS_WRITE, PosixFilePermission.OTHERS_EXECUTE)
+    if (attrs.permissions.asScala.exists(forbidden.contains))
+      throw new RuntimeException(s"$dir is accessible to group/others " +
+        s"(mode ${PosixFilePermissions.toString(attrs.permissions)}). Refusing to use it for " +
+        s"private data. Fix with: chmod 700 $dir")
+  }
+
+  /** Read a per-user secret stored in `file`. The containing directory is first made / verified
+   * user-private via [[ensureUserPrivateDir]]. If `file` exists (as a regular, non-symlink file)
+   * its trimmed contents are returned. If it does not exist, `prompt` is evaluated to obtain the
+   * secret, which is stored in `file` with POSIX mode 0600 and returned (trimmed).
+   *
+   * `description` is used only in log/error messages. */
+  def readOrPromptUserSecret(file: Path, description: String)(prompt: => String): String = {
+    val dir = Option(file.getParent)
+      .getOrElse(throw new RuntimeException(s"Secret file $file has no parent directory."))
+    ensureUserPrivateDir(dir)
+
+    if (Files.exists(file, LinkOption.NOFOLLOW_LINKS)) {
+      val fattrs = Files.readAttributes(file, classOf[PosixFileAttributes], LinkOption.NOFOLLOW_LINKS)
+      if (fattrs.isSymbolicLink)
+        throw new RuntimeException(s"$file is a symbolic link; refusing to read $description from it.")
+      if (!fattrs.isRegularFile)
+        throw new RuntimeException(s"$file is not a regular file; refusing to read $description from it.")
+      // Directory verified user-private above, so the contents are trustworthy.
+      Files.readString(file).trim
+    } else {
+      val secret = prompt.trim
+      if (secret.isEmpty)
+        throw new RuntimeException(s"No $description provided; aborting.")
+      val ownerOnly = PosixFilePermissions.fromString("rw-------")
+      Files.createFile(file, PosixFilePermissions.asFileAttribute(ownerOnly))
+      Files.writeString(file, secret)
+      logger.info(s"Stored $description in $file (mode 0600).")
+      secret
+    }
   }
 
   private val stripLeadingEmptyLinesRegex = """(?s)^([ \t]*\n)+""".r

@@ -12,6 +12,9 @@ import upickle.default as up
 import utils.{Tag, Utils}
 
 import java.math.MathContext
+import java.net.URI
+import java.net.http.{HttpClient, WebSocket, WebSocketHandshakeException}
+import java.util.concurrent.{CompletionException, CompletionStage, LinkedBlockingQueue, TimeUnit}
 import java.util.zip.ZipFile
 import scala.annotation.experimental
 import scala.collection.mutable
@@ -478,6 +481,8 @@ object Dynexite {
   val dynexiteBlockAssignment = Tag[Assessment, Seq[Seq[AnswerElement]]](default = Seq.empty)
   /** From links like https://dynexite.rwth-aachen.de/t/companies/cpsippjadbec73a3unm0/courses/XXX/exams/ (the XXX part) */
   val dynexiteCourseId = Tag[Exam, String]()
+  /** From links like https://dynexite.rwth-aachen.de/t/companies/cpsippjadbec73a3unm0/items/XXX/edit (the XXX part) */
+  val dynexiteQuestionId = Tag[Assessment, String]()
   /** ZIP file with all student answers as PDFs, as downloaded from Dynexite */
   val dynexitePDFArchive = Tag[Exam, Path]()
   /** JSON file with the exam answers as downloaded from Dynexite */
@@ -504,6 +509,226 @@ object Dynexite {
     val learners = resultsByLearner(exam).view.collect({ case (regno, Some(_)) => regno }).toVector
     val index = Random.nextInt(learners.length)
     learners(index)
+  }
+
+  /** Path of the file holding the Dynexite auth cookie (temporary, for testing). Kept in a
+   * user-private directory; see [[Utils.readOrPromptUserSecret]]. */
+  private val authCookieFile = Path.of("/tmp/etests-tmp/dynexite-authcookie")
+
+  /** Name of the Dynexite session cookie. */
+  private val cookieName = "dyn-orbit-teacher"
+
+  /** The Dynexite editor URL for a question item (`…/items/<id>/edit`). */
+  def editUrl(questionId: String): String =
+    s"https://dynexite.rwth-aachen.de/t/companies/cpsippjadbec73a3unm0/items/$questionId/edit"
+
+  /** Ensure the cookie string carries the `dyn-orbit-teacher=` prefix; if only the value was
+   * stored/entered, prepend the name. (The value itself may contain `=` padding, so we key off
+   * the prefix, not the presence of any `=`.) */
+  private def withCookieName(cookie: String): String =
+    if (cookie.startsWith(s"$cookieName=")) cookie else s"$cookieName=$cookie"
+
+  /** Upload a Moodle/STACK question XML directly into an existing Dynexite item, via the
+   * builder WebSocket (`/t/api/sub/builder/<questionId>`). The item must already exist; this
+   * overwrites its (single) block's `questionXML`. The server re-parses/re-renders server-side,
+   * so only `questionXML` needs to be supplied.
+   *
+   * The block's title (`task`, Markdown) is set to `title`.
+   *
+   * As a safety check, the Dynexite item's name must equal `expectedName` (guards against a
+   * wrong/stale `dynexiteQuestionId`); a mismatch throws and nothing is uploaded.
+   *
+   * Auth cookie is read from [[authCookieFile]] (see [[Utils.readOrPromptUserSecret]]). If the
+   * cookie is rejected by the server (HTTP 401/403, e.g. expired), the stored cookie is discarded
+   * and the user is asked for a fresh one; the upload is retried once. */
+  def uploadQuestionXML(questionId: String, xml: String, expectedName: String, title: String): Unit = {
+    if (!questionId.matches("[A-Za-z0-9]+"))
+      throw RuntimeException(s"'$questionId' is not a valid Dynexite item id (expected something " +
+        s"like 'd9uad1badbec73djbua0', the <id> in a '…/items/<id>/edit' URL). Fix the " +
+        s"dynexiteQuestionId tag of this problem.")
+
+    def readCookie(): String = {
+      val cookie = Utils.readOrPromptUserSecret(authCookieFile, "Dynexite auth cookie") {
+        Utils.promptForString(
+          s"Enter the Dynexite auth cookie value (the '$cookieName' cookie; get it from the browser devtools after login):")
+      }
+      if (cookie.isEmpty) throw RuntimeException(s"Auth cookie ($authCookieFile) is empty.")
+      cookie
+    }
+
+    try uploadOnce(questionId, xml, expectedName, title, readCookie())
+    catch case e: DynexiteAuthFailure =>
+      logger.warn(s"Dynexite rejected the auth cookie (expired?): ${e.getMessage}. " +
+        s"Discarding $authCookieFile and asking for a new one.")
+      Files.deleteIfExists(authCookieFile)
+      uploadOnce(questionId, xml, expectedName, title, readCookie())
+  }
+
+  /** Thrown when Dynexite rejects the WebSocket handshake — typically a bad/expired/misformatted
+   * auth cookie (HTTP 400/401/403). */
+  private class DynexiteAuthFailure(message: String, cause: Throwable) extends RuntimeException(message, cause)
+
+  /** Turn Dynexite's `errorMap` (block-uuid -> list of `{reason, message, line, column, ...}`)
+   * into a readable multi-line string. Falls back to raw JSON if the shape is unexpected. */
+  private def formatValidationErrors(errorMap: ujson.Value): String =
+    try
+      errorMap.obj.map { (uuid, errors) =>
+        val items = errors.arr.map { e =>
+          val eo = e.obj
+          val reason = eo.get("reason").map(_.str).filter(_.nonEmpty).getOrElse("error")
+          val line = eo.get("line").map(_.num.toInt).getOrElse(0)
+          val column = eo.get("column").map(_.num.toInt).getOrElse(0)
+          val loc = if (line != 0 || column != 0) s" (line $line, column $column)" else ""
+          val message = eo.get("message").map(_.str).getOrElse("").trim
+          s"  - [$reason]$loc\n" + message.linesIterator.map("      " + _).mkString("\n")
+        }.mkString("\n")
+        s"Block $uuid:\n$items"
+      }.mkString("\n")
+    catch case _: Throwable => ujson.write(errorMap, indent = 2)
+
+  /** HTTP status of a handshake rejection, if `t` (or its cause) is one. The status is not always
+   * exposed (some rejections surface only as a [[WebSocketHandshakeException]] with no response),
+   * so callers should treat any [[WebSocketHandshakeException]] as a handshake failure. */
+  private def handshakeStatus(t: Throwable): Option[Int] = t match {
+    case h: WebSocketHandshakeException => Option(h.getResponse).map(_.statusCode)
+    case _ => None
+  }
+
+  private def uploadOnce(questionId: String, xml: String, expectedName: String, title: String,
+                         cookie: String): Unit = {
+    val url = URI.create(s"wss://dynexite.rwth-aachen.de/t/api/sub/builder/$questionId")
+    val queue = new LinkedBlockingQueue[String]()
+
+    val listener = new WebSocket.Listener {
+      private val buffer = StringBuilder()
+      override def onOpen(ws: WebSocket): Unit = ws.request(Long.MaxValue)
+      override def onText(ws: WebSocket, data: CharSequence, last: Boolean): CompletionStage[?] = {
+        buffer.append(data)
+        if (last) { queue.put(buffer.toString); buffer.clear() }
+        null
+      }
+      override def onError(ws: WebSocket, error: Throwable): Unit =
+        logger.error(s"WebSocket error while uploading to Dynexite item $questionId", error)
+    }
+
+    def nextMessage(what: String, timeoutSeconds: Int): ujson.Value = {
+      val raw = queue.poll(timeoutSeconds.toLong, TimeUnit.SECONDS)
+      if (raw == null)
+        throw RuntimeException(s"Timed out waiting for $what from Dynexite (item $questionId).")
+      ujson.read(raw)
+    }
+
+    def receive(action: String, timeoutSeconds: Int): ujson.Value = {
+      val deadline = System.nanoTime() + timeoutSeconds.toLong * 1000000000L
+      while (System.nanoTime() < deadline) {
+        val msg = nextMessage(s"'$action'", timeoutSeconds)
+        if (msg.obj.get("action").map(_.str).contains(action)) return msg
+      }
+      throw RuntimeException(s"Timed out waiting for '$action' from Dynexite (item $questionId).")
+    }
+
+    /** Wait for the `OK` acknowledging the request with the given `msgId`, skipping unrelated
+     * frames (`USER:JOIN`, `VALIDATION`, other clients' messages). Throws on an `ERROR` frame. */
+    def receiveOk(msgId: String, timeoutSeconds: Int): ujson.Value = {
+      val deadline = System.nanoTime() + timeoutSeconds.toLong * 1000000000L
+      while (System.nanoTime() < deadline) {
+        val msg = nextMessage(s"OK($msgId)", timeoutSeconds)
+        msg.obj.get("action").map(_.str) match {
+          case Some("ERROR") =>
+            throw RuntimeException(s"Dynexite returned an error for item $questionId: " +
+              msg.obj.get("data").map(ujson.write(_)).getOrElse("(no detail)"))
+          case Some("OK") if msg.obj.get("msgId").map(_.str).contains(msgId) => return msg
+          case _ => // skip
+        }
+      }
+      throw RuntimeException(s"Timed out waiting for OK($msgId) from Dynexite (item $questionId).")
+    }
+
+    val client = HttpClient.newHttpClient()
+    val ws =
+      try client.newWebSocketBuilder()
+        .header("Cookie", withCookieName(cookie))
+        .header("Origin", "https://dynexite.rwth-aachen.de")
+        .buildAsync(url, listener)
+        .join()
+      catch case e: CompletionException if e.getCause.isInstanceOf[WebSocketHandshakeException] =>
+        val status = handshakeStatus(e.getCause).map(s => s"HTTP $s").getOrElse("no status")
+        throw DynexiteAuthFailure(s"handshake rejected ($status)", e.getCause)
+    logger.info(s"Connected to Dynexite builder for item $questionId.")
+
+    try {
+      // The server opens with an INIT frame carrying the full item state (blocks, versions, ...).
+      val init = receive("INIT", 30)
+      val actualName = init("data")("item")("name").str
+      if (actualName != expectedName)
+        throw RuntimeException(s"Dynexite item $questionId is named '$actualName', but expected " +
+          s"'$expectedName'. Refusing to upload; check dynexiteQuestionId / dynexiteQuestionName.")
+      // `blocks` is null (not []) for a brand-new, empty item.
+      val existingBlocks = init("data")("item")("blocks").arrOpt.map(_.toList).getOrElse(Nil)
+
+      /** Create an (empty) STACK block on an item that has none, and return it. Two steps, as the
+       * editor does: BLOCK:CREATE (server mints the block + uuid), then BLOCK:ADD (attach it). */
+      def createStackBlock(): ujson.Value = {
+        logger.info(s"Dynexite item $questionId ('$actualName') has no blocks; creating a STACK block.")
+        ws.sendText(ujson.write(ujson.Obj(
+          "action" -> "BLOCK:CREATE", "data" -> ujson.Obj("type" -> "stack"), "msgId" -> "1000")), true).get()
+        val created = receiveOk("1000", 30)("data")("block")
+        created("solutionPath") = ujson.Null
+        ws.sendText(ujson.write(ujson.Obj(
+          "action" -> "BLOCK:ADD", "data" -> ujson.Obj("block" -> created), "msgId" -> "1001")), true).get()
+        receiveOk("1001", 30) // the empty block also triggers a (failing) VALIDATION, which we skip
+        created
+      }
+
+      val (block, changeMsgId) = existingBlocks match {
+        case Nil => (createStackBlock(), "1002")
+        case single :: Nil =>
+          val typ = single.obj.get("type").map(_.str).getOrElse("")
+          if (typ != "stack")
+            throw RuntimeException(s"Dynexite item $questionId ('$actualName') has a single block of " +
+              s"type '$typ', but only STACK blocks are supported.")
+          (single, "1001")
+        case many =>
+          throw RuntimeException(s"Dynexite item $questionId ('$actualName') has ${many.length} blocks; " +
+            s"upload only supports items with exactly one (STACK) block.")
+      }
+
+      // The editor is a dumb echo: send the whole block back with questionXML + title replaced.
+      block("logic").obj("questionXML") = ujson.Str(xml)
+      block("logic").obj("language") = ujson.Str("en")
+      block("task") = ujson.Str(title)
+      def payload = ujson.Obj(
+        "uuid" -> block("uuid"),
+        "changeCategory" -> ujson.Str("configuration"),
+        "changes" -> block,
+        "solutionPath" -> ujson.Null,
+        "task" -> ujson.Str(title))
+      val frame = ujson.Obj(
+        "action" -> ujson.Str("ELEMENT:CHANGED"),
+        "data" -> ujson.Obj("editor" -> payload, "users" -> payload),
+        "msgId" -> ujson.Str(changeMsgId))
+      ws.sendText(ujson.write(frame), true).get()
+      logger.info(s"Sent question XML to Dynexite item $questionId (msgId $changeMsgId).")
+
+      // The server always answers our message with an OK ack (matching our msgId). When the
+      // content actually changed it first re-parses server-side and sends a VALIDATION frame;
+      // if that reports errors the upload was rejected. If nothing changed, no VALIDATION comes,
+      // so we must not block on it — just wait for our OK.
+      var acked = false
+      while (!acked) {
+        val msg = nextMessage("acknowledgement (OK)", 30)
+        msg.obj.get("action").map(_.str) match {
+          case Some("VALIDATION") if msg.obj.get("hasErrors").exists(_.bool) =>
+            val errors = msg.obj.get("errorMap").map(formatValidationErrors).getOrElse("(no details)")
+            throw RuntimeException(s"Dynexite rejected the question XML for item $questionId:\n$errors")
+          case Some("OK") if msg.obj.get("msgId").map(_.str).contains(changeMsgId) =>
+            acked = true
+          case _ => // ignore unrelated frames (USER:JOIN, clean VALIDATION, broadcasts, ...)
+        }
+      }
+      logger.info(s"Dynexite accepted the question for item $questionId (no validation errors).")
+    } finally
+      ws.sendClose(WebSocket.NORMAL_CLOSURE, "done")
   }
 
   private val logger = Logger[Dynexite.type]
