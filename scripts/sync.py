@@ -373,7 +373,7 @@ def clone_flow() -> None:
             continue
         print(f"\n{C.BOLD}cloning {k}{C.RESET} from {url} → {dest}")
         try:
-            repo = Repo.clone_from(url, dest)
+            repo = Repo.clone_from(url, dest, multi_options=["--filter", "blob:none"])
             if rev:
                 repo.git.checkout(rev)
                 print(f"  {C.GREEN}checked out {rev}{C.RESET}")

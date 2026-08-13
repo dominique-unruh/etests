@@ -16,3 +16,5 @@
 /tasks/target/
 /webapp/node_modules/
 .vagrant/
+/tmp/dynexite_replay.py
+__pycache__/
