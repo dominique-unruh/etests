@@ -51,7 +51,20 @@ object Docker {
     deriveCodec[DockerKey]
   }
 
-  val buildBound = 4
+  /** Optional remote Docker daemon host (`docker.host` in java.properties). When set, all docker
+   * invocations get a `-H <host>` global option and concurrency is reduced (see [[buildBound]]). */
+  private def dockerHost: Option[String] = Utils.getSystemPropertyOptional("docker.host", "remote Docker daemon host")
+
+  /** The `docker` command prefix, including a `-H <host>` global option when [[dockerHost]] is set.
+   * Prepend this to every docker invocation instead of a literal `Seq("docker", ...)`. */
+  private def dockerCmd: Seq[String] = dockerHost match {
+    case Some(host) => Seq("docker", "-H", host)
+    case None => Seq("docker")
+  }
+
+  /** Max number of concurrent docker builds/runs. Lowered to 1 for a remote daemon (see [[dockerHost]])
+   * since a shared/remote daemon does not parallelize as well. */
+  val buildBound = if (dockerHost.isDefined) 1 else 4
   /** Only use via withBuildBound! */
   private val buildBoundSemaphore = Semaphore(buildBound)
 
@@ -89,8 +102,8 @@ object Docker {
         case image: String =>
           withBuildBound(s"Pulling docker image $image") {
             println(s"Pulling docker image $image")
-            Seq("docker", "pull", "--platform=linux/amd64", "--", image).!!
-            val images = Seq("docker", "images", "-q", "--", image).!!
+            (dockerCmd ++ Seq("pull", "--platform=linux/amd64", "--", image)).!!
+            val images = (dockerCmd ++ Seq("images", "-q", "--", image)).!!
             val images2 = images.split('\n')
             logger.debug(s"$image -> ${images2.mkString(", ")}")
             if (images2.length > 1)
@@ -100,7 +113,7 @@ object Docker {
         case dir: Path =>
           withBuildBound(s"Building docker image $dir") {
             println(s"Building docker image $dir")
-            val imageId = Process(command = Seq("docker", "build", "-q", "--platform=linux/amd64", "."), cwd = dir.toFile).!!.trim
+            val imageId = Process(command = dockerCmd ++ Seq("build", "-q", "--platform=linux/amd64", "."), cwd = dir.toFile).!!.trim
             logger.debug(s"$dir -> $imageId")
             imageId
           }
@@ -232,8 +245,8 @@ object Docker {
     // is remote or shared via docker-outside-of-docker (the mount would silently be empty). Instead we create the
     // container, `docker cp` the inputs in, run it, and `docker cp` the requested outputs back out. This works
     // regardless of where the daemon lives.
-    val createCommand = Seq(
-      "docker", "create",
+    val createCommand = dockerCmd ++ Seq(
+      "create",
       "-w", "/workdir",
       "--platform=linux/amd64",
       imageId) ++ command
@@ -245,19 +258,19 @@ object Docker {
     try {
       // Copy the staged input files into /workdir (the `/.` makes docker copy the directory *contents*, and
       // /workdir is created if it does not exist).
-      val cpInExit = Seq("docker", "cp", s"$tempDir/.", s"$containerId:/workdir").!(ProcessLogger(_ => ()))
+      val cpInExit = (dockerCmd ++ Seq("cp", s"$tempDir/.", s"$containerId:/workdir")).!(ProcessLogger(_ => ()))
       if (cpInExit != 0)
         throw IOException(s"Failed to copy inputs into Docker container (for $shortDescription)")
 
       val output = StringBuffer() // Not using StringBuilder (not thread safe)
       // `docker start -a` attaches to the container's stdout/stderr and exits with the container's exit code.
-      val exitCode = Seq("docker", "start", "-a", containerId).!(ProcessLogger(line => output.append(line).append('\n')))
+      val exitCode = (dockerCmd ++ Seq("start", "-a", containerId)).!(ProcessLogger(line => output.append(line).append('\n')))
 
       // Copy back the requested outputs. It is not an error if a file does not exist (docker cp then fails and we
       // skip it), matching the documented behaviour of runInDocker.
       val resultFiles = Map.from(requestedOutputs.flatMap { name =>
         val dest = tempDir.resolve(name)
-        val cpOutExit = Seq("docker", "cp", s"$containerId:/workdir/$name", dest.toString).!(ProcessLogger(_ => ()))
+        val cpOutExit = (dockerCmd ++ Seq("cp", s"$containerId:/workdir/$name", dest.toString)).!(ProcessLogger(_ => ()))
         if (cpOutExit == 0 && Files.exists(dest))
           Some((name, Files.readAllBytes(dest)))
         else
@@ -266,7 +279,7 @@ object Docker {
 
       DockerResult(exitCode = exitCode, output = output.toString, files = resultFiles)
     } finally {
-      Seq("docker", "rm", "-f", containerId).!(ProcessLogger(_ => ()))
+      (dockerCmd ++ Seq("rm", "-f", containerId)).!(ProcessLogger(_ => ()))
     }
   }
 
