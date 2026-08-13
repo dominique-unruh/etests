@@ -1,5 +1,6 @@
 package assessments
 
+import assessments.Assessment.graderIncomplete
 import assessments.ExceptionContext.{addToExceptionContext, initialExceptionContext}
 import assessments.GradingContext.comments
 import assessments.InterpolatedMarkdown.md
@@ -18,6 +19,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import scala.collection.{SeqMap, mutable}
 import scala.concurrent.duration.Duration
+import scala.util.Try
 import scala.util.matching.Regex
 
 abstract class MarkdownAssessment {
@@ -136,8 +138,8 @@ abstract class MarkdownAssessment {
 
   def getTests: Seq[(String, AssessmentTest)] = {
     val tests = Seq.newBuilder[(String, AssessmentTest)]
-//    tests += "testName" -> testName() // Automatically found below because it has no arguments
-    tests += "testSolution" -> testSolution(allowNoGraderYet = true)
+    if (!tags(graderIncomplete))
+      tests += "testSolution" -> testSolution(allowNoGraderYet = true)
     val emptyReference = 
       for (case (answerElement: AnswerElement) <- assessment.pageElements.values)
         yield answerElement -> ""
@@ -187,18 +189,25 @@ abstract class MarkdownAssessment {
   }
 
   def mainExtractStack(implicit exceptionContext: ExceptionContext): Unit = {
-//    runTests()
+    val testResult = Try(runTests())
+    for (exception <- testResult.failed)
+      exception.printStackTrace()
     val question = MoodleStack.assessmentToQuestion(assessment)
     val quiz = MoodleStack.Quiz(question)
     val pretty = quiz.prettyXml
     println(pretty)
     Utils.copyStringToClipboard(pretty)
     println("Copied to clipboard. You have 60s to paste it.")
+    if (testResult.isFailure)
+      println("*** WARNING: tests failed ***")
     Thread.sleep(60000)
     println("Time expired.")
   }
 
   def mainUploadDynexite(implicit exceptionContext: ExceptionContext): Unit = {
+    val testResult = Try(runTests())
+    for (exception <- testResult.failed)
+      exception.printStackTrace()
     val questionId = assessment.tags.getOrElse(Dynexite.dynexiteQuestionId,
       throw ExceptionWithContext(s"Problem '$name' has no tag dynexiteQuestionId; cannot upload to Dynexite."))
     val expectedName = assessment.tags.getOrElse(Dynexite.dynexiteQuestionName, name)
@@ -208,6 +217,8 @@ abstract class MarkdownAssessment {
     println(s"Uploading question '$name' to Dynexite item $questionId (expecting name '$expectedName') ...")
     Dynexite.uploadQuestionXML(questionId, pretty, expectedName, title)
     println(s"Uploaded.")
+    if (testResult.isFailure)
+      println("*** WARNING: tests failed ***")
     println(Dynexite.editUrl(questionId))
   }
 }
