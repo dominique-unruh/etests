@@ -200,6 +200,7 @@ abstract class MarkdownAssessment {
   def uploadToDynexite()(implicit exceptionContext: ExceptionContext): Unit = {
     val questionId = assessment.tags.getOrElse(Dynexite.dynexiteQuestionId,
       throw ExceptionWithContext(s"Problem '$name' has no tag dynexiteQuestionId; cannot upload to Dynexite."))
+    println("Going to upload: " + Dynexite.editUrl(questionId))
     val expectedName = assessment.tags.getOrElse(Dynexite.dynexiteQuestionName, name)
     val title = Plaintext(name).toMarkdown.markdown
     val question = MoodleStack.assessmentToQuestion(assessment)

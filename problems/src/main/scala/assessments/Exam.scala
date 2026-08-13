@@ -72,6 +72,11 @@ case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownA
 
     for (problem <- problems)
       problem.uploadToDynexite()
+
+    println("Uploaded problems:")
+    for (problem <- problems)
+      println(s"- ${problem.name}")
+
     (tags.get(Dynexite.dynexiteCourseId), tags.get(Dynexite.dynexiteExamId)) match {
       case (Some(course), Some(exam)) => println(Dynexite.examUrl(course, exam))
       case (None, _) => println(s"Set tag dynexiteCourseId on exam ${name}")

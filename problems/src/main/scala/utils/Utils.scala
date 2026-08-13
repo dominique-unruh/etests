@@ -50,6 +50,16 @@ object Utils {
     }
   }
 
+  /** All (nonempty) strings composed of `chars` with length <= `len`, ordered by increasing length. */
+  def allStrings(chars: Iterable[Char], len: Int): Iterable[String] =
+    val cs = chars.toSeq
+    val result = Seq.newBuilder[String]
+    var current = Seq("")
+    for (_ <- 1 to len)
+      current = for (s <- current; c <- cs) yield s + c
+      result ++= current
+    result.result()
+
   def uniqueMap[K,V](elems: (K,V)*): Map[K, V] =
     val set = new mutable.HashSet[K]
     for (k <- elems.map(_._1))

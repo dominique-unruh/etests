@@ -5,7 +5,7 @@ import assessments.{Assessment, DefaultFileMapBuilder, Html}
 import assessments.pageelements.{DynamicElement, ImageElement, InputElement, MathPreviewElement, MultipleChoice, RenderContext, SolutionElement, StaticElement}
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
-import utils.Tag
+import utils.{Tag, Utils}
 
 import java.util.Base64
 import scala.xml.*
@@ -195,15 +195,8 @@ object MoodleStack {
       """<?xml version="1.0" encoding="UTF-8"?>""" + "\n" + PrettyPrinter(80, 2).format(xml)
   }
 
-  lazy val defaultForbiddenWords: Set[String] = {
-    val letters = ('a' to 'z') ++ ('A' to 'Z')
-    val result = Set.newBuilder[String]
-    for (x <- letters)
-      result += x.toString
-      for (y <- letters)
-        result += s"$x$y"
-    result.result()
-  }
+  lazy val defaultForbiddenWords: Set[String] =
+    Utils.allStrings(('a' to 'z') ++ ('A' to 'Z'), 2).toSet
 
   def inputElementToMoodle(inputElement: InputElement): Input = {
     val name = inputElement.name.toString

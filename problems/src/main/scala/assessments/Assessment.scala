@@ -161,8 +161,12 @@ object Assessment {
   val feedbackTimeout = Duration("1 second")
 
   lazy val staticCSS: String = {
-    val path = Path.of("problems/target/web/sass/main/stylesheets/static.css").toAbsolutePath
-    Files.readString(path)
+    val resource = "/stylesheets/static.css"
+    val stream = getClass.getResourceAsStream(resource)
+    if (stream == null)
+      throw new RuntimeException(s"Could not find $resource on the classpath")
+    try new String(stream.readAllBytes(), StandardCharsets.UTF_8)
+    finally stream.close()
   }
   lazy val htmlHeaderStatic: Html = Html(
     ind"""<meta charset="UTF-8">
