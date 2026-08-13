@@ -262,13 +262,14 @@ object MoodleStack {
     val referenceSolution = element.style match {
       case Style.select | Style.radio =>
         val referenceSolutionSeq = element.options.zipWithIndex.map { case ((name, text), index) =>
-          val selected = (index == 0)
+          val selected = name == element.reference
           s"[${quote(name)}, $selected, ${quote(text)}]"
         }
         "[" + referenceSolutionSeq.mkString(", ") + "]"
       case Style.checkbox =>
+        val selected = element.reference == element.yesAnswer
         val label = element.tags(checkboxLabel)
-        s"""[["checked", true, ${quote(label.html)}]]"""
+        s"""[["checked", $selected, ${quote(label.html)}]]"""
     }
 
     Input(
