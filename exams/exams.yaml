@@ -64,3 +64,8 @@ exams:
     lecture: Introduction to Quantum Computing
     repository: git@git.rwth-aachen.de:unruh/qis-exams.git
     revision: y2026_iqc1
+  y2026_iqc2:
+    name: Introduction to Quantum Computing, SS 2026, 2nd
+    lecture: Introduction to Quantum Computing
+    repository: git@git.rwth-aachen.de:unruh/qis-exams.git
+    revision: y2026_iqc2
