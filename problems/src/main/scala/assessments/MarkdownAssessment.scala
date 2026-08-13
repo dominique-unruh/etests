@@ -1,10 +1,10 @@
 package assessments
 
 import assessments.Assessment.graderIncomplete
+import assessments.Exam.{ExamMainRun, runOption}
 import assessments.ExceptionContext.{addToExceptionContext, initialExceptionContext}
 import assessments.GradingContext.comments
 import assessments.InterpolatedMarkdown.md
-import assessments.MarkdownAssessment.MarkdownAssessmentRun
 import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, ProblemElement, StaticElement}
 import externalsystems.{Dynexite, MoodleStack}
 import org.apache.commons.text.StringEscapeUtils
@@ -167,21 +167,14 @@ abstract class MarkdownAssessment {
     Utils.loadSystemProperties()
     given ExceptionContext = initialExceptionContext(s"Running main for problem '$name'")
     println(s"Running the main method of \"$name\", with run option $runOption (configured in java.properties).")
-    if (MarkdownAssessmentRun.values.length > 1)
-      println(s"To configure a different action, set MarkdownAssessment.runOption to one of: ${(MarkdownAssessmentRun.values.toSet - runOption).mkString(", ")}")
+    if (ExamMainRun.values.length > 1)
+      println(s"To configure a different action, set MarkdownAssessment.runOption to one of: ${(ExamMainRun.values.toSet - runOption).mkString(", ")}")
 
     runOption match {
-      case MarkdownAssessmentRun.runTests => mainRunTests()
-      case MarkdownAssessmentRun.extractStack => mainExtractStack()
-      case MarkdownAssessmentRun.uploadDynexite => mainUploadDynexite()
+      case ExamMainRun.runTests => mainRunTests()
+      case ExamMainRun.extractStack => mainExtractStack()
+      case ExamMainRun.uploadDynexite => mainUploadDynexite()
     }
-  }
-  private lazy val runOption = {
-    val string = Utils.getSystemProperty("run.option.for.problem", s"What to do when a problem is executed in the IDE. One of ${MarkdownAssessmentRun.values.mkString(", ")}")
-    try
-      MarkdownAssessmentRun.valueOf(string)
-    catch
-      case _ : IllegalArgumentException => throw RuntimeException(s"System property run.option.for.problem contains illegal value. Should be one of ${MarkdownAssessmentRun.values.mkString(", ")}")
   }
 
   def mainRunTests(implicit exceptionContext: ExceptionContext): Unit = {
@@ -204,10 +197,7 @@ abstract class MarkdownAssessment {
     println("Time expired.")
   }
 
-  def mainUploadDynexite(implicit exceptionContext: ExceptionContext): Unit = {
-    val testResult = Try(runTests())
-    for (exception <- testResult.failed)
-      exception.printStackTrace()
+  def uploadToDynexite()(implicit exceptionContext: ExceptionContext): Unit = {
     val questionId = assessment.tags.getOrElse(Dynexite.dynexiteQuestionId,
       throw ExceptionWithContext(s"Problem '$name' has no tag dynexiteQuestionId; cannot upload to Dynexite."))
     val expectedName = assessment.tags.getOrElse(Dynexite.dynexiteQuestionName, name)
@@ -215,11 +205,18 @@ abstract class MarkdownAssessment {
     val question = MoodleStack.assessmentToQuestion(assessment)
     val pretty = MoodleStack.Quiz(question).prettyXml
     println(s"Uploading question '$name' to Dynexite item $questionId (expecting name '$expectedName') ...")
-    Dynexite.uploadQuestionXML(questionId, pretty, expectedName, title)
+    Dynexite.uploadQuestionXML(questionId, pretty, expectedName, title, assessment.reachablePoints)
     println(s"Uploaded.")
+    println(Dynexite.editUrl(questionId))
+  }
+
+  def mainUploadDynexite(implicit exceptionContext: ExceptionContext): Unit = {
+    val testResult = Try(runTests())
+    for (exception <- testResult.failed)
+      exception.printStackTrace()
+    uploadToDynexite()
     if (testResult.isFailure)
       println("*** WARNING: tests failed ***")
-    println(Dynexite.editUrl(questionId))
   }
 }
 
@@ -229,12 +226,6 @@ object MarkdownAssessment {
   private val endTagRegex: Regex = """</(.*?)>""".r
   private val fieldNameRegex: Regex = """([a-zA-Z_][a-zA-Z0-9_]*)""".r
   private val latexTag: Regex = """latex:(?s)\s*(.*?)""".r
-
-  enum MarkdownAssessmentRun {
-    case extractStack
-    case runTests
-    case uploadDynexite
-  }
 
   given Conversion[MarkdownAssessment, Assessment] = _.assessment
 }

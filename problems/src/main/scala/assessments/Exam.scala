@@ -1,9 +1,10 @@
 package assessments
 
-import assessments.Exam.logger
+import assessments.Exam.{ExamMainRun, logger, runOption}
 import assessments.ExceptionContext.{addToExceptionContext, initialExceptionContext}
 import assessments.pageelements.RenderContext
 import com.typesafe.scalalogging.Logger
+import externalsystems.Dynexite
 import io.github.classgraph.ClassGraph
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import utils.{IndentedInterpolator, Tag, Utils}
@@ -14,6 +15,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
 import java.time.LocalDate
 import scala.jdk.CollectionConverters.IterableHasAsScala
+import scala.util.Try
 
 case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownAssessment*)
                (using sourceFileImplicit: sourcecode.File) {
@@ -62,9 +64,36 @@ case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownA
     for (scale <- tags.get(Exam.gradingScale))
       scale.assertCorrect(reachable = tags(Exam.reachablePoints))
   }
-  
+
+  def mainUploadDynexite()(implicit exceptionContext: ExceptionContext): Unit = {
+    val testResult = Try(runTests())
+    for (exception <- testResult.failed)
+      exception.printStackTrace()
+
+    for (problem <- problems)
+      problem.uploadToDynexite()
+    (tags.get(Dynexite.dynexiteCourseId), tags.get(Dynexite.dynexiteExamId)) match {
+      case (Some(course), Some(exam)) => println(Dynexite.examUrl(course, exam))
+      case (None, _) => println(s"Set tag dynexiteCourseId on exam ${name}")
+      case (_, None) => println(s"Set tag dynexiteExamId on exam ${name}")
+    }
+
+    if (testResult.isFailure)
+      println("*** WARNING: tests failed ***")
+  }
+
   def main(args: Array[String]): Unit = {
-    runTests()
+    Utils.loadSystemProperties()
+    given ExceptionContext = initialExceptionContext(s"Running main for problem '$name'")
+    println(s"Running the main method of \"$name\", with run option $runOption (configured in java.properties).")
+    if (ExamMainRun.values.length > 1)
+      println(s"To configure a different action, set MarkdownAssessment.runOption to one of: ${(ExamMainRun.values.toSet - runOption).mkString(", ")}")
+
+    runOption match {
+      case ExamMainRun.runTests => runTests()
+      case ExamMainRun.extractStack => runTests()
+      case ExamMainRun.uploadDynexite => mainUploadDynexite()
+    }
   }
 
   def renderExam(outputFile: Path): Unit = {
@@ -163,6 +192,22 @@ object Exam {
     exams.find(_.id == examId) match
       case Some(exam) => exam
       case None => throw new NoSuchElementException(s"No exam with ID $examId")
+
+
+  lazy val runOption: ExamMainRun = {
+    val string = Utils.getSystemProperty("run.option.for.problem", s"What to do when a problem is executed in the IDE. One of ${ExamMainRun.values.mkString(", ")}")
+    try
+      ExamMainRun.valueOf(string)
+    catch
+      case _: IllegalArgumentException => throw RuntimeException(s"System property run.option.for.problem contains illegal value. Should be one of ${ExamMainRun.values.mkString(", ")}")
+  }
+
+  enum ExamMainRun {
+    case extractStack
+    case runTests
+    case uploadDynexite
+  }
+
 
   val examDate: Tag[Exam, LocalDate] = Tag[Exam, LocalDate]()
   val courseName: Tag[Exam, String] = Tag[Exam, String]()

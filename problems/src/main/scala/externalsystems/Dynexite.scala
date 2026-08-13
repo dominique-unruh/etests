@@ -481,6 +481,8 @@ object Dynexite {
   val dynexiteBlockAssignment = Tag[Assessment, Seq[Seq[AnswerElement]]](default = Seq.empty)
   /** From links like https://dynexite.rwth-aachen.de/t/companies/cpsippjadbec73a3unm0/courses/XXX/exams/ (the XXX part) */
   val dynexiteCourseId = Tag[Exam, String]()
+  /** From links like https://dynexite.rwth-aachen.de/t/companies/cpsippjadbec73a3unm0/courses/.../exams/XXX/development (the XXX part) */
+  val dynexiteExamId = Tag[Exam, String]()
   /** From links like https://dynexite.rwth-aachen.de/t/companies/cpsippjadbec73a3unm0/items/XXX/edit (the XXX part) */
   val dynexiteQuestionId = Tag[Assessment, String]()
   /** ZIP file with all student answers as PDFs, as downloaded from Dynexite */
@@ -521,6 +523,9 @@ object Dynexite {
   /** The Dynexite editor URL for a question item (`…/items/<id>/edit`). */
   def editUrl(questionId: String): String =
     s"https://dynexite.rwth-aachen.de/t/companies/cpsippjadbec73a3unm0/items/$questionId/edit"
+
+  def examUrl(courseId: String, examId: String): String =
+    s"https://dynexite.rwth-aachen.de/t/companies/cpsippjadbec73a3unm0/courses/$courseId/exams/$examId/development"
 
   /** Ensure the cookie string carries the `dyn-orbit-teacher=` prefix; if only the value was
    * stored/entered, prepend the name. (The value itself may contain `=` padding, so we key off
