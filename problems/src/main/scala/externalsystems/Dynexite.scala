@@ -13,7 +13,7 @@ import utils.{Tag, Utils}
 
 import java.math.MathContext
 import java.net.URI
-import java.net.http.{HttpClient, WebSocket, WebSocketHandshakeException}
+import java.net.http.{HttpClient, HttpRequest, HttpResponse, WebSocket, WebSocketHandshakeException}
 import java.util.concurrent.{CompletionException, CompletionStage, LinkedBlockingQueue, TimeUnit}
 import java.util.zip.ZipFile
 import scala.annotation.experimental
@@ -533,47 +533,97 @@ object Dynexite {
   private def withCookieName(cookie: String): String =
     if (cookie.startsWith(s"$cookieName=")) cookie else s"$cookieName=$cookie"
 
-  /** Upload a Moodle/STACK question XML directly into an existing Dynexite item, via the
-   * builder WebSocket (`/t/api/sub/builder/<questionId>`). The item must already exist; this
-   * overwrites its (single) block's `questionXML`. The server re-parses/re-renders server-side,
-   * so only `questionXML` needs to be supplied.
-   *
-   * The block's title (`task`, Markdown) is set to `title`. The block's reachable points
-   * (`logic.points`) are set to `reachablePoints`.
-   *
-   * As a safety check, the Dynexite item's name must equal `expectedName` (guards against a
-   * wrong/stale `dynexiteQuestionId`); a mismatch throws and nothing is uploaded.
-   *
-   * Auth cookie is read from [[authCookieFile]] (see [[Utils.readOrPromptUserSecret]]). If the
-   * cookie is rejected by the server (HTTP 401/403, e.g. expired), the stored cookie is discarded
-   * and the user is asked for a fresh one; the upload is retried once. */
-  def uploadQuestionXML(questionId: String, xml: String, expectedName: String, title: String,
-                        reachablePoints: Points): Unit = {
+  /** Reject anything that isn't a plausible Dynexite item id (the `<id>` in a `…/items/<id>/…`
+   * URL), so a stale/wrong `dynexiteQuestionId` fails loudly instead of hitting the server. */
+  private def requireItemId(questionId: String): Unit =
     if (!questionId.matches("[A-Za-z0-9]+"))
       throw RuntimeException(s"'$questionId' is not a valid Dynexite item id (expected something " +
         s"like 'd9uad1badbec73djbua0', the <id> in a '…/items/<id>/edit' URL). Fix the " +
         s"dynexiteQuestionId tag of this problem.")
 
-    def readCookie(): String = {
-      val cookie = Utils.readOrPromptUserSecret(authCookieFile, "Dynexite auth cookie") {
-        Utils.promptForString(
-          s"Enter the Dynexite auth cookie value (the '$cookieName' cookie; get it from the browser devtools after login):")
-      }
-      if (cookie.isEmpty) throw RuntimeException(s"Auth cookie ($authCookieFile) is empty.")
-      cookie
+  /** Read the Dynexite auth cookie from [[authCookieFile]], prompting the user if absent. */
+  private def readCookie(): String = {
+    val cookie = Utils.readOrPromptUserSecret(authCookieFile, "Dynexite auth cookie") {
+      Utils.promptForString(
+        s"Enter the Dynexite auth cookie value (the '$cookieName' cookie; get it from the browser devtools after login):")
     }
-
-    try uploadOnce(questionId, xml, expectedName, title, reachablePoints, readCookie())
-    catch case e: DynexiteAuthFailure =>
-      logger.warn(s"Dynexite rejected the auth cookie (expired?): ${e.getMessage}. " +
-        s"Discarding $authCookieFile and asking for a new one.")
-      Files.deleteIfExists(authCookieFile)
-      uploadOnce(questionId, xml, expectedName, title, reachablePoints, readCookie())
+    if (cookie.isEmpty) throw RuntimeException(s"Auth cookie ($authCookieFile) is empty.")
+    cookie
   }
 
-  /** Thrown when Dynexite rejects the WebSocket handshake — typically a bad/expired/misformatted
-   * auth cookie (HTTP 400/401/403). */
-  private class DynexiteAuthFailure(message: String, cause: Throwable) extends RuntimeException(message, cause)
+  /** Mark a Dynexite question item as reviewed and upload its question XML, sharing one cookie.
+   *
+   * The review call runs first and doubles as the interactive auth check: it is attempted with the
+   * stored cookie ([[authCookieFile]]), and on HTTP 401 the cookie is discarded, a fresh one is
+   * prompted, and review is retried once. The now-known-good cookie is then reused for the upload,
+   * which is attempted a single time (see [[upload]] for its behaviour / safety checks). */
+  def markReviewedAndUpload(questionId: String, xml: String, expectedName: String, title: String,
+                            reachablePoints: Points): Unit = {
+    requireItemId(questionId)
+    val cookie =
+      try { val c = readCookie(); markReviewed(questionId, c); c }
+      catch case e: DynexiteUnauthenticated =>
+        logger.warn(s"Dynexite rejected the auth cookie (expired?): ${e.getMessage}. " +
+          s"Discarding $authCookieFile and asking for a new one.")
+        Files.deleteIfExists(authCookieFile)
+        val c = readCookie(); markReviewed(questionId, c); c
+    upload(questionId, xml, expectedName, title, reachablePoints, cookie)
+  }
+
+  /** Thrown when Dynexite rejects the auth cookie — a bad/expired/missing/misformatted cookie.
+   * Surfaces as an HTTP 401 from the review REST call, or as a WebSocket handshake rejection
+   * (HTTP 400/401/403) from the builder upload. */
+  private class DynexiteUnauthenticated(message: String, cause: Throwable = null) extends RuntimeException(message, cause)
+
+
+  /** Mark a Dynexite question item as reviewed (the approval-before-publishing state on the
+   * `…/items/<id>/review` page). Two steps, as the UI does: `POST /t/api/v1/items/<id>/review`
+   * (empty body) puts the item into "review pending", then `PUT` with `{"isAccepted":true,
+   * "message":null}` accepts it.
+   *
+   * Single attempt, no auth-retry: `cookie` is supplied by the caller. HTTP 401 throws
+   * [[DynexiteUnauthenticated]] (so the caller can refresh the cookie). An HTTP 500 whose JSON body
+   * has `message == "server-error"` is ignored — Dynexite answers that way when the item is already
+   * in the requested review state. */
+  private def markReviewed(questionId: String, cookie: String): Unit = {
+    val url = URI.create(s"https://dynexite.rwth-aachen.de/t/api/v1/items/$questionId/review")
+    val client = HttpClient.newHttpClient()
+
+    def request(method: HttpRequest.Builder => HttpRequest.Builder): Unit = {
+      val req = method(HttpRequest.newBuilder(url)
+        .header("Cookie", withCookieName(cookie))
+        .header("Origin", "https://dynexite.rwth-aachen.de")
+        .header("Referer", s"https://dynexite.rwth-aachen.de/t/companies/cpsippjadbec73a3unm0/items/$questionId/review")
+        .header("Content-Type", "application/json")
+        .header("Accept", "application/json, text/plain, */*")).build()
+      val response = client.send(req, HttpResponse.BodyHandlers.ofString())
+      val code = response.statusCode()
+      if (code >= 200 && code < 300) return
+      if (code == 401)
+        throw DynexiteUnauthenticated(s"Dynexite returned HTTP 401 for review of item " +
+          s"$questionId (${req.method}).")
+      // "server-error" on a 500 just means the item is already in that review state; ignore it.
+      if (code == 500 && serverErrorBody(response.body())) {
+        logger.info(s"Dynexite review step ${req.method} for item $questionId returned " +
+          s"server-error (already in that state?); ignoring.")
+        return
+      }
+      throw RuntimeException(s"Dynexite returned HTTP $code marking item $questionId reviewed " +
+        s"(${req.method}): ${response.body()}")
+    }
+
+    // Step 1: request review (moves the item into "review pending").
+    request(_.POST(HttpRequest.BodyPublishers.noBody()))
+    // Step 2: accept the review.
+    request(_.PUT(HttpRequest.BodyPublishers.ofString(
+      ujson.write(ujson.Obj("isAccepted" -> ujson.Bool(true), "message" -> ujson.Null)))))
+    logger.info(s"Marked Dynexite item $questionId as reviewed.")
+  }
+
+  /** True if `body` is Dynexite's `{"…","message":"server-error"}` JSON (best-effort parse). */
+  private def serverErrorBody(body: String): Boolean =
+    try ujson.read(body).obj.get("message").map(_.str).contains("server-error")
+    catch case _: Throwable => false
 
   /** Turn Dynexite's `errorMap` (block-uuid -> list of `{reason, message, line, column, ...}`)
    * into a readable multi-line string. Falls back to raw JSON if the shape is unexpected. */
@@ -601,8 +651,16 @@ object Dynexite {
     case _ => None
   }
 
-  private def uploadOnce(questionId: String, xml: String, expectedName: String, title: String,
-                         reachablePoints: Points, cookie: String): Unit = {
+  /** Upload a Moodle/STACK question XML directly into an existing Dynexite item, via the builder
+   * WebSocket (`/t/api/sub/builder/<questionId>`). The item must already exist; this overwrites its
+   * (single) block's `questionXML`, `title`, and reachable points (`logic.points`). The server
+   * re-parses/re-renders, so only `questionXML` need be supplied.
+   *
+   * As a safety check, the item's name must equal `expectedName` (guards against a wrong/stale
+   * `dynexiteQuestionId`); a mismatch throws and nothing is uploaded. Single attempt: `cookie` is
+   * supplied by the caller (a handshake rejection surfaces as [[DynexiteUnauthenticated]]). */
+  private def upload(questionId: String, xml: String, expectedName: String, title: String,
+                     reachablePoints: Points, cookie: String): Unit = {
     val url = URI.create(s"wss://dynexite.rwth-aachen.de/t/api/sub/builder/$questionId")
     val queue = new LinkedBlockingQueue[String]()
 
@@ -660,7 +718,7 @@ object Dynexite {
         .join()
       catch case e: CompletionException if e.getCause.isInstanceOf[WebSocketHandshakeException] =>
         val status = handshakeStatus(e.getCause).map(s => s"HTTP $s").getOrElse("no status")
-        throw DynexiteAuthFailure(s"handshake rejected ($status)", e.getCause)
+        throw DynexiteUnauthenticated(s"handshake rejected ($status)", e.getCause)
     logger.info(s"Connected to Dynexite builder for item $questionId.")
 
     try {

@@ -9,9 +9,10 @@
 ## What this enables
 
 Uploading a Moodle/STACK question XML into an existing Dynexite item programmatically, i.e. what a
-human does manually via *edit question → `</>` → paste XML*. Implemented in
-`externalsystems/Dynexite.scala` (`uploadQuestionXML`), driven from
-`MarkdownAssessment.mainUploadDynexite` (run option `uploadDynexite`).
+human does manually via *edit question → `</>` → paste XML*, and marking the item as *reviewed*
+(the approval-before-publishing state). Implemented in `externalsystems/Dynexite.scala`
+(`markReviewedAndUpload`, which combines the review REST call and the builder-WebSocket `upload`),
+driven from `MarkdownAssessment.mainUploadDynexite` (run option `uploadDynexite`).
 
 `scripts/dynexite_replay.py` is a standalone Python experiment tool for poking at the protocol.
 
@@ -84,7 +85,7 @@ All frames are JSON text. Common fields:
 
   **Creating a question from scratch** (item exists but has no blocks) is therefore a three-step
   sequence: `BLOCK:CREATE` → `BLOCK:ADD` → `ELEMENT:CHANGED` (using the `uuid` from the created
-  block). This is what `uploadQuestionXML` does when `data.item.blocks` is `null`.
+  block). This is what `upload` does when `data.item.blocks` is `null`.
 
 ## The block `logic` object
 
@@ -106,7 +107,7 @@ to set:
   (e.g. `"Stabilizer **State**"`). Our upload sets it from the assessment name, escaped via
   `Plaintext(name).toMarkdown` so plaintext renders verbatim.
 
-## Upload sequence (what `uploadQuestionXML` does)
+## Upload sequence (what `upload` does)
 
 1. Connect (cookie + origin). On 4xx handshake rejection → discard cookie, re-prompt, retry once.
 2. Receive `INIT`. Verify `data.item.name` equals the expected name (`dynexiteQuestionName`, else
@@ -127,18 +128,53 @@ to set:
 ## Validation errors
 
 `VALIDATION.errorMap` maps block-uuid → list of `{ reason, source, line, column, message }`.
-`uploadQuestionXML` pretty-prints this. Examples seen:
+`upload` pretty-prints this. Examples seen:
 
 - Invalid XML (e.g. plain text instead of Moodle XML) → `reason: "stack"`,
   `message: "cat.blocks.stack.error.not-supported"`, empty render.
 - `Stack Error: CAS failed to return any data due to timeout.` — a **transient** server-side
   STACK/Maxima timeout, not an XML problem; usually a re-upload succeeds.
 
+## Review (approval) REST API
+
+Separate from the builder WebSocket, an item's *reviewed* state (the approval-before-publishing
+toggle on the `…/items/<itemId>/review` page) is driven by a plain REST endpoint:
+
+- **Base:** `https://dynexite.rwth-aachen.de/t/api/v1/items/<itemId>/review`
+- **Headers:** same `Cookie: dyn-orbit-teacher=<token>` + `Origin`; we also send a `Referer` of the
+  review page (the browser does, and it appears to matter — a review call without it returned 500).
+- **Two steps** (as the UI does), implemented in `markReviewed`:
+  1. `POST` (empty body) → moves the item into *review pending*.
+  2. `PUT` with body `{"isAccepted": true, "message": null}` → accepts the review. (`isAccepted:
+     false` would reject; `message` is the optional reviewer note.)
+
+Empirically observed:
+
+- **Upload unsets review.** A successful `upload` clears the reviewed state **only if the content
+  actually changed** (an identical re-upload leaves it reviewed). This is why
+  `markReviewedAndUpload` cannot simply review once up front and be done — see its ordering note
+  below.
+- **`"server-error"` = already in that state.** Re-issuing a step when the item is already in the
+  requested review state answers **HTTP 500** with body `{"…","message":"server-error"}`. We treat
+  that specific 500 as success (idempotent) and ignore it; any other non-2xx throws.
+- **Review is a stricter auth check than upload.** After logging out in the web app, the cookie
+  becomes **invalid for the review endpoint** (HTTP 401) while the builder WebSocket upload still
+  accepts it. So the review call is the more sensitive credential test.
+
+### `markReviewedAndUpload` ordering
+
+Because review is the stricter auth check (above), `markReviewedAndUpload` runs `markReviewed`
+**first**, using it as the interactive cookie check: on HTTP 401 (`DynexiteUnauthenticated`) it
+discards the stored cookie, re-prompts, and retries the review once. Only then does it `upload`
+(single attempt) with the now-known-good cookie. Note the caveat: since a content-changing upload
+unsets review, the reviewed state set here does **not** survive an upload that actually changes the
+question — this suffices as an auth gate but is not a "review the final content" guarantee.
+
 ## Editor URL
 
 The human-facing editor URL for an item is
 `https://dynexite.rwth-aachen.de/t/companies/cpsippjadbec73a3unm0/items/<itemId>/edit`
-(`Dynexite.editUrl`). `uploadQuestionXML`'s caller prints it on success.
+(`Dynexite.editUrl`). `upload`'s caller prints it on success.
 
 ## Not (yet) reverse-engineered
 

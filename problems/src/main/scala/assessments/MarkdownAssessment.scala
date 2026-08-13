@@ -206,7 +206,7 @@ abstract class MarkdownAssessment {
     val question = MoodleStack.assessmentToQuestion(assessment)
     val pretty = MoodleStack.Quiz(question).prettyXml
     println(s"Uploading question '$name' to Dynexite item $questionId (expecting name '$expectedName') ...")
-    Dynexite.uploadQuestionXML(questionId, pretty, expectedName, title, assessment.reachablePoints)
+    Dynexite.markReviewedAndUpload(questionId, pretty, expectedName, title, assessment.reachablePoints)
     println(s"Uploaded.")
     println(Dynexite.editUrl(questionId))
   }
