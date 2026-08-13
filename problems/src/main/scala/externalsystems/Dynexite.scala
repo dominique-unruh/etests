@@ -538,7 +538,8 @@ object Dynexite {
    * overwrites its (single) block's `questionXML`. The server re-parses/re-renders server-side,
    * so only `questionXML` needs to be supplied.
    *
-   * The block's title (`task`, Markdown) is set to `title`.
+   * The block's title (`task`, Markdown) is set to `title`. The block's reachable points
+   * (`logic.points`) are set to `reachablePoints`.
    *
    * As a safety check, the Dynexite item's name must equal `expectedName` (guards against a
    * wrong/stale `dynexiteQuestionId`); a mismatch throws and nothing is uploaded.
@@ -546,7 +547,8 @@ object Dynexite {
    * Auth cookie is read from [[authCookieFile]] (see [[Utils.readOrPromptUserSecret]]). If the
    * cookie is rejected by the server (HTTP 401/403, e.g. expired), the stored cookie is discarded
    * and the user is asked for a fresh one; the upload is retried once. */
-  def uploadQuestionXML(questionId: String, xml: String, expectedName: String, title: String): Unit = {
+  def uploadQuestionXML(questionId: String, xml: String, expectedName: String, title: String,
+                        reachablePoints: Points): Unit = {
     if (!questionId.matches("[A-Za-z0-9]+"))
       throw RuntimeException(s"'$questionId' is not a valid Dynexite item id (expected something " +
         s"like 'd9uad1badbec73djbua0', the <id> in a '…/items/<id>/edit' URL). Fix the " +
@@ -561,12 +563,12 @@ object Dynexite {
       cookie
     }
 
-    try uploadOnce(questionId, xml, expectedName, title, readCookie())
+    try uploadOnce(questionId, xml, expectedName, title, reachablePoints, readCookie())
     catch case e: DynexiteAuthFailure =>
       logger.warn(s"Dynexite rejected the auth cookie (expired?): ${e.getMessage}. " +
         s"Discarding $authCookieFile and asking for a new one.")
       Files.deleteIfExists(authCookieFile)
-      uploadOnce(questionId, xml, expectedName, title, readCookie())
+      uploadOnce(questionId, xml, expectedName, title, reachablePoints, readCookie())
   }
 
   /** Thrown when Dynexite rejects the WebSocket handshake — typically a bad/expired/misformatted
@@ -600,7 +602,7 @@ object Dynexite {
   }
 
   private def uploadOnce(questionId: String, xml: String, expectedName: String, title: String,
-                         cookie: String): Unit = {
+                         reachablePoints: Points, cookie: String): Unit = {
     val url = URI.create(s"wss://dynexite.rwth-aachen.de/t/api/sub/builder/$questionId")
     val queue = new LinkedBlockingQueue[String]()
 
@@ -702,6 +704,9 @@ object Dynexite {
       block("logic").obj("questionXML") = ujson.Str(xml)
       block("logic").obj("language") = ujson.Str("en")
       block("task") = ujson.Str(title)
+      // The block's reachable points live in `logic.points` as a decimal string (e.g. "99").
+      block("logic").obj("points") = ujson.Str(
+        reachablePoints.toBigDecimal.bigDecimal.stripTrailingZeros.toPlainString)
       def payload = ujson.Obj(
         "uuid" -> block("uuid"),
         "changeCategory" -> ujson.Str("configuration"),
