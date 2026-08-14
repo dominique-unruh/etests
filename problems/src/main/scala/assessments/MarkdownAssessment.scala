@@ -168,7 +168,6 @@ abstract class MarkdownAssessment extends TestSuite {
   /** Run selftests of this assessment */
   def runTests()(using exceptionContext: ExceptionContext): Unit = {
     given ExceptionContext = addToExceptionContext(s"Running tests for question $name")
-    initDefaultTests
     getTests.runAll()
   }
 
