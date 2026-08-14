@@ -14,6 +14,7 @@ import play.api.libs.json.JsValue
 import utils.Markdown.markdownToHtml
 import utils.Tag.Tags
 import utils.{Tag, Utils}
+import utest.{TestSuite, Tests}
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -22,12 +23,15 @@ import scala.concurrent.duration.Duration
 import scala.util.Try
 import scala.util.matching.Regex
 
-abstract class MarkdownAssessment {
+abstract class MarkdownAssessment extends TestSuite {
   given ExceptionContext = initialExceptionContext(s"Initializing problem ${getClass.getName}")
   val name: String = getClass.getName
   /** ID of this assessment (guaranteed unique within an [[Exam]]) */
   val id: String = getClass.getName
   lazy val question: InterpolatedMarkdown[Element | HtmlConvertible]
+
+  // Root node; created in `initTests`
+  private var testCases: Test = _
 
   @deprecated("Use inline graders")
   def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {}
@@ -80,52 +84,56 @@ abstract class MarkdownAssessment {
 
   protected def testSolution(expected: Points = reachablePoints,
                    changes: Seq[(DynamicElement, String)] = Seq.empty,
-                   allowNoGraderYet: Boolean = true): AssessmentTest = new AssessmentTest {
-    override def runTest()(using exceptionContext: ExceptionContext): Unit = {
-      given ExceptionContext = ExceptionContext.addToExceptionContext(s"Running a test case")
-      println(s"Testing $name with ${if (changes.nonEmpty) "modified " else ""}reference solution.")
-      val originalReference = for (case (name, answerElement: AnswerElement) <- assessment.pageElements)
-        yield name -> answerElement.reference
-      val changedReference = mutable.Map(originalReference.toSeq *)
-      for ((pageElement, value) <- changes)
-        if (pageElement == null)
-          throw ExceptionWithContext(s"Changed contain a null (the changed answer element)", value, changedReference)
+                   allowNoGraderYet: Boolean = true): Test = Test(s"solution: $changes, expected: $expected", {
+    println(s"Testing $name with ${if (changes.nonEmpty) "modified " else ""}reference solution, expected: $expected points.")
+    val originalReference = for (case (name, answerElement: AnswerElement) <- assessment.pageElements)
+      yield name -> answerElement.reference
+    val changedReference = mutable.Map(originalReference.toSeq *)
+    for ((pageElement, value) <- changes)
+      if (pageElement == null)
+        throw ExceptionWithContext(s"Changed contain a null (the changed answer element)", value, changedReference)
         val name = pageElement.name
         if (!changedReference.contains(name))
           throw ExceptionWithContext(s"Unknown answer element $name", pageElement, name, value, changedReference)
-//        if (changedReference(name) == value)
-//          throw ExceptionWithContext(s"Answer element $name was updated to unchanged value $value", name, value, changedReference)
+        //        if (changedReference(name) == value)
+        //          throw ExceptionWithContext(s"Answer element $name was updated to unchanged value $value", name, value, changedReference)
         changedReference.addOne(name -> value)
 
-      println(s"Reference solution: ${changedReference.map((k, v) => s"$k -> $v").mkString(", ")}")
-      val context = GradingContext(answers = changedReference.toMap, registrationNumber = "TEST", reachablePoints)
-      try {
-        legacyGrader.grade()(using context)
-        println("Resulting comments:")
-        for (comment <- comments(using context))
-          println("* " + comment.toPlaintext)
-        println(s"Resulting number of points: ${context.points} (expected points: $expected)")
-        if (context.points.get != expected)
-          throw ExceptionWithContext("Mismatch with expectation")
-      } catch {
-        case NoGraderYetException =>
-          if (allowNoGraderYet)
-            println("No grader implemented yet. Not testing it.")
-          else
-            throw ExceptionWithContext("Grader not implemented yet.")
-      }
+    println(s"Reference solution: ${changedReference.map((k, v) => s"$k -> $v").mkString(", ")}")
+    val context = GradingContext(answers = changedReference.toMap, registrationNumber = "TEST", reachablePoints)
+    try {
+      legacyGrader.grade()(using context, implicitly)
+      println("Resulting comments:")
+      for (comment <- comments(using context))
+        println("* " + comment.toPlaintext)
+      println(s"Resulting number of points: ${context.points} (expected points: $expected)")
+      if (context.points.get != expected)
+        throw ExceptionWithContext("Mismatch with expectation")
+    } catch {
+      case NoGraderYetException =>
+        if (allowNoGraderYet)
+          println("No grader implemented yet. Not testing it.")
+        else
+          throw ExceptionWithContext("Grader not implemented yet.")
     }
-  }
+  });
 
-  def testProblems(): AssessmentTest = new AssessmentTest {
-    override def runTest()(using exceptionContext: ExceptionContext): Unit =
-      for (element <- question.args
-           if element.isInstanceOf[ProblemElement])
-        throw ExceptionWithContext(s"Encountered problem/todo: $element")
-  }
+  private def defaultTests() = {
+    addTest(Test("checking for ProblemElement's", {
+        for (element <- question.args
+             if element.isInstanceOf[ProblemElement])
+          throw ExceptionWithContext(s"Encountered problem/todo: $element")
+    }))
 
-  def testName(): AssessmentTest = new AssessmentTest {
-    override def runTest()(using exceptionContext: ExceptionContext): Unit = {
+    if (!tags(graderIncomplete))
+      addTest(testSolution(allowNoGraderYet = true).withName("Reference solution, full points?"))
+
+    val emptyReference =
+      for (case (answerElement: AnswerElement) <- assessment.pageElements.values)
+        yield answerElement -> ""
+    addTest(testSolution(allowNoGraderYet = true, changes = emptyReference.toSeq, expected = 0).withName("No answers, no points?"))
+
+    addTest(Test("Class name", {
       def cleanup(input: String): String = {
         val words = input.replaceAll("[^\\w\\d]", " ").split("\\s+").filter(_.nonEmpty)
         words.map(_.toLowerCase.capitalize).mkString
@@ -133,34 +141,35 @@ abstract class MarkdownAssessment {
       val className = MarkdownAssessment.this.getClass.getSimpleName.stripSuffix("$")
       if (className.replaceAll("[^\\w\\d]", "").toLowerCase != name.replaceAll("[^\\w\\d]", "").toLowerCase)
         throw ExceptionWithContext(s"Name ($name) and class name ($className) don't match. Use, e.g., ${cleanup(name)} as the class name, so $className (with extra spaces) as name")
-    }
+    }))
   }
 
-  def getTests: Seq[(String, AssessmentTest)] = {
-    val tests = Seq.newBuilder[(String, AssessmentTest)]
-    if (!tags(graderIncomplete))
-      tests += "testSolution" -> testSolution(allowNoGraderYet = true)
-    val emptyReference = 
-      for (case (answerElement: AnswerElement) <- assessment.pageElements.values)
-        yield answerElement -> ""
-    tests += "testEmptySolution" -> testSolution(allowNoGraderYet = true, changes = emptyReference.toSeq, expected = 0)
+  private lazy val initTests: Unit = {
+    assert(name != null)
+    testCases = Test(name, {}) // `name` is safe to read now (lazy val ⇒ forced post-construction)
+  }
 
-    for (method <- this.getClass.getMethods
-         if method.getParameterCount == 0
-         if classOf[AssessmentTest].isAssignableFrom(method.getReturnType))
-      tests += method.getName -> method.invoke(this).asInstanceOf[AssessmentTest]
+  private lazy val initDefaultTests: Unit = {
+    initTests
+    defaultTests()
+  }
 
-    tests.result()
+  def addTest(test: Test): Unit = synchronized {
+    initTests
+    testCases = testCases.appendChild(test)
+  }
+
+  override def tests: Tests = {
+    given ExceptionContext = initialExceptionContext(s"Running tests for problem '$name'")
+    initDefaultTests
+    testCases.toTests
   }
 
   /** Run selftests of this assessment */
   def runTests()(using exceptionContext: ExceptionContext): Unit = {
     given ExceptionContext = addToExceptionContext(s"Running tests for question $name")
-    for ((name,test) <- getTests)
-      given ExceptionContext = addToExceptionContext(s"Running test $name")
-      println(s"""=================================================""")
-      println(s"""Running test $name:""")
-      test.runTest()
+    initDefaultTests
+//    testCases.runAll()
   }
 
   def main(args: Array[String]): Unit = {

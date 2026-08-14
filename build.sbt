@@ -37,7 +37,8 @@ lazy val problems = (project in file("problems"))
   libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "2.4.0",
     libraryDependencies += "org.scala-lang" %% "scala3-compiler" % scalaVersion.value,
     libraryDependencies += "com.lihaoyi" %% "sourcecode" % "0.4.2",
-    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.19" % Test,
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.20" % Test,
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.20",
     libraryDependencies += "org.commonmark" % "commonmark" % "0.25.1",
     libraryDependencies += "org.commonmark" % "commonmark-ext-gfm-tables" % "0.25.1",
     //    libraryDependencies += "com.github.benoitlouy" %% "indent" % "0.8.0",
@@ -45,6 +46,14 @@ lazy val problems = (project in file("problems"))
     libraryDependencies += "dev.scalapy" %% "scalapy-core" % "0.5.3",
     libraryDependencies += "com.eed3si9n.eval" % "eval" % "0.3.1" cross CrossVersion.full,
     libraryDependencies += "com.lihaoyi" %% "upickle" % "4.2.1",
+    // utest on the MAIN classpath: every MarkdownAssessment is a utest.TestSuite, so problem
+    // objects are runnable as tests (their self-tests from getTests) in IDE and `sbt test`.
+    libraryDependencies += "com.lihaoyi" %% "utest" % "0.8.5",
+    testFrameworks += new TestFramework("utest.runner.Framework"),
+    // Problem objects (utest suites) live in the Compile scope, so enable test detection there and
+    // fold those suites into `test`/`testOnly`, letting every problem run as a test.
+    inConfig(Compile)(Defaults.testTasks),
+    Test / definedTests ++= (Compile / definedTests).value,
     libraryDependencies += "com.lihaoyi" %% "fastparse" % "3.1.1",
     libraryDependencies += "org.apache.commons" % "commons-text" % "1.14.0",
     libraryDependencies += "org.apache.commons" % "commons-io" % "1.3.2",
@@ -112,6 +121,10 @@ lazy val exams = (project in file("exams"))
         new SimpleFileFilter(f => f.toPath.normalize.startsWith(d.toPath.normalize))
       ("*.scala": FileFilter) || under(base / "target") || under(base / ".git") || HiddenFileFilter
     },
+    // Problem objects (MarkdownAssessment = utest.TestSuite) are discovered as test suites here too.
+    testFrameworks += new TestFramework("utest.runner.Framework"),
+    inConfig(Compile)(Defaults.testTasks),
+    Test / definedTests ++= (Compile / definedTests).value,
   )
   .dependsOn(problems)
 
