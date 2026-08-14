@@ -8,7 +8,7 @@ import externalsystems.Dynexite
 import io.github.classgraph.ClassGraph
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import utest.{TestSuite, Tests}
-import utils.{IndentedInterpolator, Tag, Utils}
+import utils.{IndentedInterpolator, Tag, UsingWrapper, Utils}
 import utils.Tag.Tags
 import utils.Utils.awaitResult
 
@@ -18,10 +18,13 @@ import java.time.LocalDate
 import scala.jdk.CollectionConverters.IterableHasAsScala
 import scala.util.Try
 
+
+class XXX
+
 case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownAssessment*)
-               (using sourceFileImplicit: sourcecode.File) extends TestSuite {
+               (using sourceFileImplicit: UsingWrapper[sourcecode.File, tags.type]) extends TestSuite {
   val id: String = getClass.getName.stripSuffix("$")
-  val sourceFile: Path = Path.of(sourceFileImplicit.value)
+  val sourceFile: Path = Path.of(sourceFileImplicit.value.value)
   assert(problems.map(_.name).distinct.length == problems.length)
   assert(problems.map(_.id).distinct.length == problems.length)
   

@@ -6,6 +6,7 @@ import assessments.pageelements.RenderContext
 import externalsystems.Dynexite
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
+import utils.Utils.awaitResult
 import utils.{DefaultValue, IndentedInterpolator, Utils}
 
 import java.io.PrintWriter
@@ -51,14 +52,9 @@ object TaskGradeEveryone extends Task {
 
       output ++= "<div class=\"grading-report\">"
       output ++= "<h2>Your grading</h2>\n"
-      val context = GradingContext(
-        answers = answers,
-        registrationNumber = student,
-        question.reachablePoints)
-      question.pageElements(ElementName.grader).asInstanceOf[LegacyGrader].grade()(using context)
-      output ++= s"Points: ${context.points.decimalFractionString(2)} of ${question.reachablePoints}\n"
-      points += context.points
-      output ++= Comment.seqToHtml(Comment.filterFeedback(comments(using context).toSeq)).html
+      val questionPoints = question.pointsReached(answers, Some(student)).awaitResult()
+      output ++= s"Points: ${questionPoints.decimalFractionString(2)} of ${question.reachablePoints}\n"
+      points += questionPoints
     } catch {
       case e: Throwable =>
         output ++= s"""<pre style="color:red">${escapeHtml4(ExceptionUtils.getStackTrace(e))}</pre>\n"""

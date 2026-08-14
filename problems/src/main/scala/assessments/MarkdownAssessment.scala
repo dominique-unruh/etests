@@ -6,15 +6,18 @@ import assessments.ExceptionContext.{addToExceptionContext, initialExceptionCont
 import assessments.GradingContext.comments
 import assessments.InterpolatedMarkdown.md
 import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, ProblemElement, StaticElement}
+import example_exam.ExampleProblem.question
 import externalsystems.{Dynexite, MoodleStack}
 import org.apache.commons.text.StringEscapeUtils
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
 import play.api.libs.json.JsValue
+import sourcecode.{File, Line}
 import utils.Markdown.markdownToHtml
 import utils.Tag.Tags
 import utils.{Tag, Utils}
 import utest.{TestSuite, Tests}
+import utils.Utils.awaitResult
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -37,21 +40,6 @@ abstract class MarkdownAssessment extends TestSuite {
   @deprecated("Use inline graders")
   def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {}
   lazy val reachablePoints: Points
-
-  // TODO get rid of this
-  val legacyGrader: LegacyGrader = new LegacyGrader(ElementName.grader) {
-    override def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
-      val duration = Utils.getSystemProperty("grading.timeout", "timeout for graders, e.g., 10s, 1m")
-      Utils.runWithTimeout(Duration(duration), s"${MarkdownAssessment.this.name}-${context.registrationNumber}",
-        MarkdownAssessment.this.grade())
-      if (context.points > reachablePoints)
-        throw ExceptionWithContext(s"Grader returned ${context.points}, but max ${reachablePoints} were reachable")
-      if (context.points < 0)
-        throw ExceptionWithContext(s"Grader returned ${context.points}, should be >= 0")
-    }
-
-    override lazy val reachablePoints: Points = MarkdownAssessment.this.reachablePoints
-  }
 
   private def findMethod(elementName: ElementName) =
     this.getClass.getMethod(elementName.toString.replace('.','$')).invoke(this)
@@ -84,8 +72,7 @@ abstract class MarkdownAssessment extends TestSuite {
   val tags: Tags[Assessment] = Tags.empty
 
   protected def testSolution(expected: Points = reachablePoints,
-                   changes: Seq[(DynamicElement, String)] = Seq.empty,
-                   allowNoGraderYet: Boolean = true): Test = Test(s"solution: $changes, expected: $expected", {
+                   changes: Seq[(DynamicElement, String)] = Seq.empty): Test = Test(s"solution: $changes, expected: $expected", {
     println(s"Testing $name with ${if (changes.nonEmpty) "modified " else ""}reference solution, expected: $expected points.")
     val originalReference = for (case (name, answerElement: AnswerElement) <- assessment.pageElements)
       yield name -> answerElement.reference
@@ -93,46 +80,28 @@ abstract class MarkdownAssessment extends TestSuite {
     for ((pageElement, value) <- changes)
       if (pageElement == null)
         throw ExceptionWithContext(s"Changed contain a null (the changed answer element)", value, changedReference)
-        val name = pageElement.name
-        if (!changedReference.contains(name))
-          throw ExceptionWithContext(s"Unknown answer element $name", pageElement, name, value, changedReference)
-        //        if (changedReference(name) == value)
-        //          throw ExceptionWithContext(s"Answer element $name was updated to unchanged value $value", name, value, changedReference)
-        changedReference.addOne(name -> value)
 
     println(s"Reference solution: ${changedReference.map((k, v) => s"$k -> $v").mkString(", ")}")
-    val context = GradingContext(answers = changedReference.toMap, registrationNumber = "TEST", reachablePoints)
-    try {
-      legacyGrader.grade()(using context, implicitly)
-      println("Resulting comments:")
-      for (comment <- comments(using context))
-        println("* " + comment.toPlaintext)
-      println(s"Resulting number of points: ${context.points} (expected points: $expected)")
-      if (context.points.get != expected)
+    val points = assessment.pointsReached(changedReference.toMap, None).awaitResult()
+    println(s"Resulting number of points: $points (expected points: $expected)")
+    if (points != expected)
         throw ExceptionWithContext("Mismatch with expectation")
-    } catch {
-      case NoGraderYetException =>
-        if (allowNoGraderYet)
-          println("No grader implemented yet. Not testing it.")
-        else
-          throw ExceptionWithContext("Grader not implemented yet.")
-    }
   });
 
-  private def defaultTests() = {
-    addTest(Test("checking for ProblemElement's", {
-        for (element <- question.args
-             if element.isInstanceOf[ProblemElement])
-          throw ExceptionWithContext(s"Encountered problem/todo: $element")
-    }))
+  private def defaultTests(): Unit = {
+    val problemElements = question.args.collect { case e : ProblemElement => e }
+    if (problemElements.nonEmpty)
+      addTest(Test("checking for ProblemElement's", {
+            throw ExceptionWithContext(s"Encountered problems/todos: ${problemElements.mkString(", ")}")
+      }))
 
     if (!tags(graderIncomplete))
-      addTest(testSolution(allowNoGraderYet = true).withName("Reference solution, full points?"))
+      addTest(testSolution().withName("Reference solution, full points?"))
 
     val emptyReference =
       for (case (answerElement: AnswerElement) <- assessment.pageElements.values)
         yield answerElement -> ""
-    addTest(testSolution(allowNoGraderYet = true, changes = emptyReference.toSeq, expected = 0).withName("No answers, no points?"))
+    addTest(testSolution(changes = emptyReference.toSeq, expected = 0).withName("No answers, no points?"))
 
     addTest(Test("Class name", {
       def cleanup(input: String): String = {
@@ -155,9 +124,9 @@ abstract class MarkdownAssessment extends TestSuite {
     defaultTests()
   }
 
-  def addTest(test: Test): Unit = synchronized {
+  def addTest(test: Test)(using file: File, line: Line): Unit = synchronized {
     initTests
-    testCases = testCases.appendChild(test)
+    testCases = testCases.appendChild(test.there(file, line))
   }
 
   override def tests: Tests = {

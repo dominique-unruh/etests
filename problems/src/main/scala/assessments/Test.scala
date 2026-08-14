@@ -25,7 +25,9 @@ final class Test(val name: String, val run: ExceptionContext ?=> Unit,
   assert(name != "")
 
   /** Print the declaration site (clickable in the run console) before running the body/setup. */
-  private def announce(): Unit = if (declaredAt.nonEmpty) println(declaredAt)
+  private def announce(): Unit =
+    if (declaredAt.nonEmpty) println(s"$declaredAt: $name")
+    else println(s"<unknown location>: $name")
 
   private def nameTree: Tree[String] =
     Tree(name, children.map(_.nameTree) *)
@@ -34,13 +36,10 @@ final class Test(val name: String, val run: ExceptionContext ?=> Unit,
     if (children.isEmpty)
       new TestCallTree(Left { announce(); run }) // leaf: forcing runs the body
     else
-      new TestCallTree(Right { run; children.map(_.callTree).toIndexedSeq }) // group: setup, then descend
+      new TestCallTree(Right { announce(); run; children.map(_.callTree).toIndexedSeq }) // group: setup, then descend
 
   /** Convert this tree into a utest suite value. */
   def toTests(using exceptionContext: ExceptionContext): Tests = Tests(nameTree, callTree)
-
-  @deprecated
-  def dump() = println(nameTree)
 
   /** Execute the whole tree depth-first (group `run` as setup, then its children; a leaf's `run` is
    * the test body), propagating the first failure. Used for the headless self-test run
@@ -50,14 +49,17 @@ final class Test(val name: String, val run: ExceptionContext ?=> Unit,
     given ExceptionContext =
       if (name.isEmpty) exceptionContext
       else ExceptionContext.addToExceptionContext(s"Running test '$name'")
-    if (children.isEmpty) announce()
+    announce()
     run
     children.foreach(_.runAll())
   }
 
   def appendChild(test: Test): Test = new Test(name, run, children.appended(test), declaredAt)
-  def withName(name: String)(using file: File, line: Line): Test =
+  def withName(name: String): Test =
+    new Test(name, run, children, declaredAt)
+  def there(file: File, line: Line): Test =
     new Test(name, run, children, s"${file.value}:${line.value}")
+  def here(using file: File, line: Line): Test = there(file, line)
 }
 
 object Test {

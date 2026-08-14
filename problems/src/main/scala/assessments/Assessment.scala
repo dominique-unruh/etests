@@ -88,20 +88,25 @@ class Assessment (val name: String,
     (body, fileMapBuilder.result())
   }
 
+  def pointsReached(answers: Map[ElementName, String], registrationNumber: Option[String]): Future[Points] = {
+    val pointIterFuture =
+      Future.traverse(pageElements.values.collect { case e: SolutionElement => e }) {
+        _.pointsReached(this, registrationNumber, answers)
+      }
+    for (points <- pointIterFuture) yield
+      points.map(_.getOrElse(0: Points)).sum
+  }
+
   private object PointsReached extends DynamicElement {
     override val name: ElementName = ElementName.pointsReached
 
     private val processing = JsObject(Seq(("processing", JsBoolean(true))))
 
     override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsObject] = {
-      val registrationNumber = state.get(ElementName.registrationNumber).map(_.asInstanceOf[JsString].value)
-      val pointIterFuture =
-        Future.traverse(assessment.pageElements.values.collect { case e : SolutionElement => e })
-          { _.pointsReached(assessment, registrationNumber, assessment.webappStateToAnswers(state)) }
-
-      for (points <- pointIterFuture) yield {
-        val sum = points.map(_.getOrElse(0 : Points)).sum
-        JsObject(Seq(("points", JsNumber(sum.toBigDecimal))))
+      val pointsFuture = assessment.pointsReached(assessment.webappStateToAnswers(state),
+        state.get(ElementName.registrationNumber).map(_.asInstanceOf[JsString].value))
+      for (points <- pointsFuture) yield {
+        JsObject(Seq(("points", JsNumber(points.toBigDecimal))))
       }
     }
 
