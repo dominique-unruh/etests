@@ -32,6 +32,7 @@ abstract class MarkdownAssessment extends TestSuite {
 
   // Root node; created in `initTests`
   private var testCases: Test = _
+  def getTests: Test = { initDefaultTests; testCases }
 
   @deprecated("Use inline graders")
   def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {}
@@ -161,15 +162,14 @@ abstract class MarkdownAssessment extends TestSuite {
 
   override def tests: Tests = {
     given ExceptionContext = initialExceptionContext(s"Running tests for problem '$name'")
-    initDefaultTests
-    testCases.toTests
+    getTests.toTests
   }
 
   /** Run selftests of this assessment */
   def runTests()(using exceptionContext: ExceptionContext): Unit = {
     given ExceptionContext = addToExceptionContext(s"Running tests for question $name")
     initDefaultTests
-//    testCases.runAll()
+    getTests.runAll()
   }
 
   def main(args: Array[String]): Unit = {

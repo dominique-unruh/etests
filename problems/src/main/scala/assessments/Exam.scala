@@ -7,6 +7,7 @@ import com.typesafe.scalalogging.Logger
 import externalsystems.Dynexite
 import io.github.classgraph.ClassGraph
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
+import utest.{TestSuite, Tests}
 import utils.{IndentedInterpolator, Tag, Utils}
 import utils.Tag.Tags
 import utils.Utils.awaitResult
@@ -18,7 +19,7 @@ import scala.jdk.CollectionConverters.IterableHasAsScala
 import scala.util.Try
 
 case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownAssessment*)
-               (using sourceFileImplicit: sourcecode.File) {
+               (using sourceFileImplicit: sourcecode.File) extends TestSuite {
   val id: String = getClass.getName.stripSuffix("$")
   val sourceFile: Path = Path.of(sourceFileImplicit.value)
   assert(problems.map(_.name).distinct.length == problems.length)
@@ -52,17 +53,7 @@ case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownA
 
   def runTests(): Unit = {
     given ExceptionContext = initialExceptionContext(s"Running tests for exam $name")
-    for (assessment <- problems) {
-      given ExceptionContext = addToExceptionContext(s"Running tests for question ${assessment.name}")
-      assessment.runTests()
-    }
-
-    for (points <- tags.get(Exam.reachablePoints))
-        if (points != reachablePoints)
-          throw AssertionError(s"Exam has ${reachablePoints} reachable points, but you specified tag \"reachablePoints := ${points}\".")
-    
-    for (scale <- tags.get(Exam.gradingScale))
-      scale.assertCorrect(reachable = tags(Exam.reachablePoints))
+    testCases.runAll()
   }
 
   def mainUploadDynexite()(implicit exceptionContext: ExceptionContext): Unit = {
@@ -131,6 +122,29 @@ case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownA
 
     val pdf = Utils.htmlToPdfAsync(html).awaitResult()
     Files.write(outputFile, pdf)
+  }
+
+  private def testCases: Test = {
+    val children = Seq.newBuilder[Test]
+
+    for (points <- tags.get(Exam.reachablePoints))
+      children += Test("checking reachable points", {
+          if (points != reachablePoints)
+            throw AssertionError(s"Exam has ${reachablePoints} reachable points, but you specified tag \"reachablePoints := ${points}\".")
+      })
+
+    for (scale <- tags.get(Exam.gradingScale))
+      children += Test("checking grading scale", {
+      scale.assertCorrect(reachable = tags(Exam.reachablePoints)) })
+
+    children ++= problems.map(_.getTests)
+
+    Test(s"Exam $name", {}, children.result())
+  }
+
+  override def tests: Tests = {
+    given ExceptionContext = initialExceptionContext(s"Tests for exam $name")
+    testCases.toTests
   }
 }
 
