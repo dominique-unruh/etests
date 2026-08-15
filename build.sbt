@@ -48,7 +48,7 @@ lazy val problems = (project in file("problems"))
     libraryDependencies += "com.lihaoyi" %% "upickle" % "4.2.1",
     // utest on the MAIN classpath: every MarkdownAssessment is a utest.TestSuite, so problem
     // objects are runnable as tests (their self-tests from getTests) in IDE and `sbt test`.
-    libraryDependencies += "com.lihaoyi" %% "utest" % "0.8.5",
+    libraryDependencies += "com.lihaoyi" %% "utest" % "0.10.0-RC1",
     testFrameworks += new TestFramework("utest.runner.Framework"),
     // Problem objects (utest suites) live in the Compile scope, so enable test detection there and
     // fold those suites into `test`/`testOnly`, letting every problem run as a test.

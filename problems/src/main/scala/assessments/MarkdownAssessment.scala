@@ -22,6 +22,7 @@ import utils.Utils.awaitResult
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import scala.collection.{SeqMap, mutable}
+import scala.compiletime.uninitialized
 import scala.concurrent.duration.Duration
 import scala.util.Try
 import scala.util.matching.Regex
@@ -34,7 +35,7 @@ abstract class MarkdownAssessment extends TestSuite {
   lazy val question: InterpolatedMarkdown[Element | HtmlConvertible]
 
   // Root node; created in `initTests`
-  private var testCases: Test = _
+  private var testCases: Test = uninitialized
   def getTests: Test = { initDefaultTests; testCases }
 
   @deprecated("Use inline graders")
@@ -72,7 +73,8 @@ abstract class MarkdownAssessment extends TestSuite {
   val tags: Tags[Assessment] = Tags.empty
 
   protected def testSolution(expected: Points = reachablePoints,
-                   changes: Seq[(DynamicElement, String)] = Seq.empty): Test = Test(s"solution: $changes, expected: $expected", {
+                   changes: Seq[(DynamicElement, String)] = Seq.empty): Test =
+    Test(s"solution: $changes, expected: $expected") {
     println(s"Testing $name with ${if (changes.nonEmpty) "modified " else ""}reference solution, expected: $expected points.")
     val originalReference = for (case (name, answerElement: AnswerElement) <- assessment.pageElements)
       yield name -> answerElement.reference
@@ -86,14 +88,14 @@ abstract class MarkdownAssessment extends TestSuite {
     println(s"Resulting number of points: $points (expected points: $expected)")
     if (points != expected)
         throw ExceptionWithContext("Mismatch with expectation")
-  });
+  }
 
   private def defaultTests(): Unit = {
     val problemElements = question.args.collect { case e : ProblemElement => e }
     if (problemElements.nonEmpty)
-      addTest(Test("checking for ProblemElement's", {
+      addTest(Test("checking for ProblemElement's") {
             throw ExceptionWithContext(s"Encountered problems/todos: ${problemElements.mkString(", ")}")
-      }))
+      })
 
     if (!tags(graderIncomplete))
       addTest(testSolution().withName("Reference solution, full points?"))
@@ -103,7 +105,7 @@ abstract class MarkdownAssessment extends TestSuite {
         yield answerElement -> ""
     addTest(testSolution(changes = emptyReference.toSeq, expected = 0).withName("No answers, no points?"))
 
-    addTest(Test("Class name", {
+    addTest(Test("Class name") {
       def cleanup(input: String): String = {
         val words = input.replaceAll("[^\\w\\d]", " ").split("\\s+").filter(_.nonEmpty)
         words.map(_.toLowerCase.capitalize).mkString
@@ -111,12 +113,12 @@ abstract class MarkdownAssessment extends TestSuite {
       val className = MarkdownAssessment.this.getClass.getSimpleName.stripSuffix("$")
       if (className.replaceAll("[^\\w\\d]", "").toLowerCase != name.replaceAll("[^\\w\\d]", "").toLowerCase)
         throw ExceptionWithContext(s"Name ($name) and class name ($className) don't match. Use, e.g., ${cleanup(name)} as the class name, so $className (with extra spaces) as name")
-    }))
+    })
   }
 
   private lazy val initTests: Unit = {
     assert(name != null)
-    testCases = Test(name, {}) // `name` is safe to read now (lazy val ⇒ forced post-construction)
+    testCases = Test(name, Seq.empty) // `name` is safe to read now (lazy val ⇒ forced post-construction)
   }
 
   private lazy val initDefaultTests: Unit = {

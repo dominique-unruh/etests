@@ -7,7 +7,7 @@ import com.typesafe.scalalogging.Logger
 import externalsystems.Dynexite
 import io.github.classgraph.ClassGraph
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
-import utest.{TestSuite, Tests}
+import utest.{TestSuite, Tests, test}
 import utils.{IndentedInterpolator, Tag, UsingWrapper, Utils}
 import utils.Tag.Tags
 import utils.Utils.awaitResult
@@ -18,11 +18,11 @@ import java.time.LocalDate
 import scala.jdk.CollectionConverters.IterableHasAsScala
 import scala.util.Try
 
-
-class XXX
-
 case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownAssessment*)
                (using sourceFileImplicit: UsingWrapper[sourcecode.File, tags.type]) extends TestSuite {
+  val tests2 = Tests {
+    test("hello") {???}
+  }
   val id: String = getClass.getName.stripSuffix("$")
   val sourceFile: Path = Path.of(sourceFileImplicit.value.value)
   assert(problems.map(_.name).distinct.length == problems.length)
@@ -131,18 +131,18 @@ case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownA
     val children = Seq.newBuilder[Test]
 
     for (points <- tags.get(Exam.reachablePoints))
-      children += Test("checking reachable points", {
+      children += Test("checking reachable points") {
           if (points != reachablePoints)
             throw AssertionError(s"Exam has ${reachablePoints} reachable points, but you specified tag \"reachablePoints := ${points}\".")
-      })
+      }
 
     for (scale <- tags.get(Exam.gradingScale))
-      children += Test("checking grading scale", {
-      scale.assertCorrect(reachable = tags(Exam.reachablePoints)) })
+      children += Test("checking grading scale") {
+      scale.assertCorrect(reachable = tags(Exam.reachablePoints)) }
 
     children ++= problems.map(_.getTests)
 
-    Test(s"Exam $name", {}, children.result())
+    Test(s"Exam $name", children.result())
   }
 
   override def tests: Tests = {
