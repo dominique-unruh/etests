@@ -21,6 +21,7 @@ export class Solution extends InteractiveElement<null, SolutionFeedback> {
         this.outcome.classList.add("solution-outcome");
         this.appendChild(this.outcome);
         this.body = document.createElement("div")
+        this.body.classList.add("solution-body");
         this.appendChild(this.body);
         this.classList.add("solution");
         const styling = this.getAttribute("styling");

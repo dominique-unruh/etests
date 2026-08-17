@@ -6,12 +6,22 @@
   background-color: lightgray;
   border: solid gray;
   padding: 0.5em;
+
+  .solution-body::before {
+    content: "Explanation: ";
+    font-weight: bold;
+  }
 }
 
 .solution-grading {
   background-color: lightblue;
   border: solid #4a6fa5;
   padding: 0.5em;
+
+  .solution-body::before {
+    content: "Grading rule: ";
+    font-weight: bold;
+  }
 }
 
 .solution-points {

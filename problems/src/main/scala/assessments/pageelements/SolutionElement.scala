@@ -36,7 +36,7 @@ abstract class SolutionElement(val name: ElementName,
       val outcomeHtml =
         if (fb.outcome == Outcome.unspecified) ""
         else s"""<div class="solution-outcome outcome-${escapeHtml4(fb.outcome.toString)}">${escapeHtml4(fb.outcome.toString)}</div>"""
-      return Html(s"""<div class="solution solution-${escapeHtml4(styling.toString)}">$pointsHtml$outcomeHtml${fb.text.html}</div>""")
+      return Html(s"""<div class="solution solution-${escapeHtml4(styling.toString)}">$pointsHtml$outcomeHtml<div class="solution-body">${fb.text.html}</div></div>""")
     }
     Html(ind"""<etest-solution id="${name.htmlComponentNameEscaped}" styling="${escapeHtml4(styling.toString)}"></etest-solution>""")
 

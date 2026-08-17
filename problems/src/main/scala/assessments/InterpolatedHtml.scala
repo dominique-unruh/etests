@@ -3,6 +3,10 @@ package assessments
 import assessments.Points.PointsWrapper
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
+import org.jsoup.Jsoup
+import org.jsoup.nodes.TextNode
+
+import scala.jdk.CollectionConverters.*
 
 final class InterpolatedHtml[+T](val interpolatedString: InterpolatedString[T])
   extends InterpolatedText[T, Html, InterpolatedHtml] {
@@ -74,6 +78,22 @@ final case class Html(html: String) extends HtmlConvertible {
   def isEmpty: Boolean = html.isEmpty
   override def toHtml: Html = this
   def +(other: HtmlConvertible) = Html(html + other.toHtml.html)
+
+  /** If the whole content is a single surrounding `<p>...</p>` (ignoring blank text nodes),
+   * returns its inner html; otherwise returns this unchanged. Used to avoid the paragraph
+   * margins Markdown adds around explanation/grading/comment content shown inline. */
+  def stripSurroundingParagraph: Html = {
+    val body = Jsoup.parseBodyFragment(html).body()
+    body.children().asScala.toList match {
+      case List(p) if p.tagName == "p" &&
+        body.childNodes().asScala.forall {
+          case t: TextNode => t.isBlank
+          case n => n eq p
+        } =>
+        Html(p.html())
+      case _ => this
+    }
+  }
   def toPlaintext: Plaintext = {
     // These are not implemented
     assert(!html.contains("<"))

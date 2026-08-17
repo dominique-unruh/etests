@@ -33,7 +33,8 @@ final class InterpolatedMarkdown[+T](val interpolatedString: InterpolatedString[
     new InterpolatedMarkdown[U](interpolatedString ++ other.interpolatedString)
 
   def toHtml: InterpolatedHtml[T] =
-    new InterpolatedHtml(interpolatedString.mapCompleteText(markdownToHtml))
+    new InterpolatedHtml(interpolatedString.mapCompleteText(s =>
+      Html(markdownToHtml(s)).stripSurroundingParagraph.html))
 }
 
 object InterpolatedMarkdown extends InterpolatedTextC[Markdown, InterpolatedMarkdown] {
@@ -66,5 +67,5 @@ object InterpolatedMarkdown extends InterpolatedTextC[Markdown, InterpolatedMark
  * @see [[Html]], [[Plaintext]]
  **/
 final case class Markdown(markdown: String) extends AnyVal {
-  def toHtml: Html = Html(markdownToHtml(markdown))
+  def toHtml: Html = Html(markdownToHtml(markdown)).stripSurroundingParagraph
 }
