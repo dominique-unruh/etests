@@ -22,7 +22,7 @@ abstract class SolutionElement(val name: ElementName,
                                val styling: Styling,
                                val tags: Tag.Tags[SolutionElement] = Tags.empty) extends DynamicElement {
   override def timeoutFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue =
-    DynamicElement.hourglass
+    JsObject(Seq("text" -> DynamicElement.hourglass))
 
   override def renderHtml(context: RenderContext, files: FileMapBuilder): Html =
     if (!context(RenderContext.dynamic)) {
