@@ -102,6 +102,7 @@ if (parsed != None && checkSomeMathProperty(parsed.get)) points += 3
 
 When developing a grader, do not edit the problem file, only the graders.
 The only exception is to add the import of the grader function, and to plug in the name of the grader function in the `grader=...` argument to `grading(...)`.
+And to edit CLAUDE.md (see below).
 If in doubt about the interpretation of the human readable grading rule, ask.
 Be very precise in your thinking, always rethink whether your approach to the grader is correcting the problem correctly.
 As the first step, write a docstring for the grader that describes (human readable) the algorithm to decide the grading rule.
@@ -114,3 +115,10 @@ Grading via testcases is ok. (E.g., to check whether an algebraic expression in 
 As long as it is unlikely that this corrects incorrectly.
 However, the grader must be deterministic. (No use of random generator in the grader code.
 If "random" testcases are needed, they should be chosen randomly and then hardcoded in the grader code.)
+
+Before writing a grader, read the problem as a whole; and understand also the explanations of the reference solution.
+You can also read information about the lecture (e.g., online lecture script) if this is needed for 
+correctly interpreting the grader. You can ask for URLs etc.
+
+Collect information that is relevant for later AI runs in CLAUDE.md in the exam directory.
+(E.g., information or guidance received. from the user)
