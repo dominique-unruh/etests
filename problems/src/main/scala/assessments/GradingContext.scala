@@ -20,12 +20,17 @@ case class GradingContext private (private val answers: mutable.Map[ElementName,
                                    private val reachable: Points, private val label: Option[Label[GradeBlockExit]]) {
   val points = Points.Mutable(0)
 
+  /** Grader-set verdict for this (sub)context. Defaults to [[GradingContext.Outcome.unspecified]]. */
+  var outcome: GradingContext.Outcome = GradingContext.Outcome.unspecified
+
   private [GradingContext] def subcontext(reachable: Points, label: Label[GradeBlockExit]): GradingContext =
     copy(answers=answers.clone(), registrationNumber = registrationNumber, reachable = reachable, label = Some(label))
 
   private [GradingContext] def mergeSubcontext(context: GradingContext): Unit = {
     points += context.points
     comments += NestedComment(context.comments.toSeq, kind=feedback)
+    if (context.outcome != GradingContext.Outcome.unspecified)
+      outcome = context.outcome
   }
 
   private [GradingContext] def assertLabel(label: Label[GradeBlockExit])
@@ -39,9 +44,17 @@ case class GradingContext private (private val answers: mutable.Map[ElementName,
 object GradingContext {
   case class GradeBlockExit private[GradingContext] (abort: Boolean)
 
+  /** A grader's verdict about a student's answer, independent of the awarded points.
+   * Set inside a grader via `outcome = Outcome.correct` (etc.); surfaced as a badge in the webapp. */
+  enum Outcome {
+    case unspecified, missing, inapplicable, correct, incorrect, partiallyCorrect, partiallyCorrectFullPoints
+  }
+
   def comments(using context: GradingContext): mutable.IndexedBuffer[Comment] = context.comments
   def points(using context: GradingContext): Points.Mutable = context.points
   def points_=(points: Points)(using context: GradingContext): Unit = context.points := points
+  def outcome(using context: GradingContext): Outcome = context.outcome
+  def outcome_=(outcome: Outcome)(using context: GradingContext): Unit = context.outcome = outcome
   def answers(using context: GradingContext): mutable.Map[ElementName | AnswerElement, String] = new mutable.Map {
     private val answers = context.answers
     private def toName(name: ElementName | AnswerElement): ElementName = name match

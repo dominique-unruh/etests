@@ -19,6 +19,11 @@ top-level grading element). The old single `grade()` method still exists but is
 * `comments += "hello"` adds a comment `hello` (interpreted as markdown)
 * `answers(element) = ...` can **change** an answer given by the student
   (useful for doing some cleanup like trimming whitespaces or replacing special cases)
+* `outcome = Outcome.correct` sets a verdict flag independent of the points
+  (`Outcome`: `unspecified` (default), `missing`, `inapplicable`, `correct`, `incorrect`,
+  `partiallyCorrect`, `partiallyCorrectFullPoints`). Shown as a colored badge in the webapp
+  grading view. When set
+  inside a nested grade block, the last non-`unspecified` value propagates to the enclosing grader.
 
 ### Try using grade blocks for individual questions
 

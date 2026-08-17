@@ -1,5 +1,6 @@
 package assessments
 
+import assessments.GradingContext.Outcome.{correct, inapplicable, incorrect, missing}
 import assessments.GradingContext.{GradeBlockExit, comments}
 import assessments.math.Math
 import assessments.math.Math.Ops
@@ -180,8 +181,13 @@ object DynexiteDefaults {
     throw ExceptionWithContext("Grader not implemented")
 
   def equalsReference(element: AnswerElement, points: Points)(using context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]): Unit = {
-    if (element.stringValue == element.reference)
+    if (element.stringValue == "")
+      context.outcome = missing
+    else if (element.stringValue == element.reference) {
+      context.outcome = correct
       context.points += points
+    } else
+      context.outcome = incorrect
   }
 
   /** Checks for equality of two Sympy expressions (`x==y`?)

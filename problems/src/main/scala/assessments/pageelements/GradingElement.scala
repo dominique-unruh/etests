@@ -44,7 +44,8 @@ class GradingElement(name: ElementName,
       else textAsHtml + Html("<hr>") + report
       val feedback = Feedback(
         points = Some(context.points),
-        text = textAndReport)
+        text = textAndReport,
+        outcome = context.outcome)
       feedback
     }
   }
