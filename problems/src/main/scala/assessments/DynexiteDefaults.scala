@@ -176,8 +176,12 @@ object DynexiteDefaults {
     GradingElement(implicitName.name, text, grader)
   }
 
-  def missingGrader(using context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]): Unit = {
+  def missingGrader(using context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]): Unit =
     throw ExceptionWithContext("Grader not implemented")
+
+  def equalsReference(element: AnswerElement, points: Points)(using context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]): Unit = {
+    if (element.stringValue == element.reference)
+      context.points += points
   }
 
   /** Checks for equality of two Sympy expressions (`x==y`?)

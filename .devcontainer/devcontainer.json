@@ -23,8 +23,8 @@
       "socketPath": "/var/run/docker-host.sock"
     }
   },
-  "forwardPorts": [9000],
-  "appPort": [9000],
+  "forwardPorts": [9001],
+  "appPort": [9001],
 /*  "forwardPorts": [9000],
   "appPort": [9000],
   "portsAttributes": {
