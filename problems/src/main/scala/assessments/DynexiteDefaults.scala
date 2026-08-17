@@ -20,6 +20,7 @@ import utils.Utils
 
 import java.io.IOException
 import scala.collection.{SeqMap, immutable}
+import scala.util.Random
 import scala.util.boundary.Label
 
 object DynexiteDefaults {
@@ -161,11 +162,13 @@ object DynexiteDefaults {
   }
 
 
-  def explain(text: InterpolatedMarkdown[HtmlConvertible])(using name: sourcecode.Name): ExplanationElement = {
-    if (name.value == "question") // Inlined in the markdown, not a good default
-      throw RuntimeException("expl called inside question markdown. Put into own val.")
-    val name2 = ElementName(name.value)
-    ExplanationElement(name2, text)
+  def explain(text: InterpolatedMarkdown[HtmlConvertible], name: String = null)
+             (using implicitName: ImplicitName[ElementName, name.type]): ExplanationElement = {
+    val actualName = if (implicitName.name.name == "question") // Inlined in the markdown, not a good default
+      ElementName(s"explanation-element-${Random.alphanumeric.take(10).mkString}")
+    else
+      implicitName.name
+    ExplanationElement(actualName, text)
   }
 
   def grading(text: InterpolatedMarkdown[HtmlConvertible],
