@@ -72,21 +72,24 @@ abstract class MarkdownAssessment extends TestSuite {
 
   val tags: Tags[Assessment] = Tags.empty
 
+  lazy val referenceSolution : Answers =
+    Answers(
+      answers = (for (case (name, answerElement: AnswerElement) <- assessment.pageElements) yield name -> answerElement.reference).toMap,
+      description = "reference solution")
+
+  /** The values of all `val`/`lazy val`s of type [[Answers]] declared in this class (found via reflection). */
+  lazy val testingSolutions: Seq[Answers] =
+    for (method <- getClass.getDeclaredMethods.toSeq
+         if method.getParameterCount == 0 && method.getReturnType == classOf[Answers])
+      yield method.invoke(this).asInstanceOf[Answers]
+
   protected def testSolution(expected: Points = reachablePoints,
-                   changes: Seq[(DynamicElement, String)] = Seq.empty): Test =
+                   changes: Seq[(AnswerElement, String)] = Seq.empty): Test =
     Test(s"solution: $changes, expected: $expected") {
     println(s"Testing $name with ${if (changes.nonEmpty) "modified " else ""}reference solution, expected: $expected points.")
-    val originalReference = for (case (name, answerElement: AnswerElement) <- assessment.pageElements)
-      yield name -> answerElement.reference
-    val changedReference = mutable.Map(originalReference.toSeq *)
-    for ((pageElement, value) <- changes)
-      if (pageElement == null)
-        throw ExceptionWithContext(s"Changed contain a null (the changed answer element)", value, changedReference)
-      else
-        changedReference(pageElement.name) = value
-
-    println(s"Reference solution: ${changedReference.map((k, v) => s"$k -> $v").mkString(", ")}")
-    val points = assessment.pointsReached(changedReference.toMap, None).awaitResult()
+    val changedReference = referenceSolution.update(changes)
+    println(s"Reference solution: ${changedReference}")
+    val points = assessment.pointsReached(changedReference.answers, None).awaitResult()
     println(s"Resulting number of points: $points (expected points: $expected)")
     if (points != expected)
         throw ExceptionWithContext("Mismatch with expectation")

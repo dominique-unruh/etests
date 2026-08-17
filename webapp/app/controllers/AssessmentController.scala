@@ -73,12 +73,15 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     val exam = Exam.getExamById(examName)
     val assessment = getAssessment(exam, assessmentName)
     val (body, files) = assessment.renderHtml
+    val testingSolutionDescriptions =
+      assessment.testingSolutions.map(a => if (a.description.isEmpty) "testing solution" else a.description)
     val html = views.html.assessment(
       examName = examName,
       assessmentName = assessmentName,
       title = assessment.name,
 //      initialState = JsObject(assessment.pageElements.map{ (name, element) => (name.toString, element.initialState) }),
       reachablePoints = assessment.reachablePoints.decimalFractionString,
+      testingSolutionDescriptions = testingSolutionDescriptions,
       body = Html(body.html))
     Ok(html)
 
@@ -127,6 +130,8 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
       val answers = kind match {
         case "reference" =>
           assessment.assessment.referenceSolution
+        case s"testing:$index" =>
+          assessment.testingSolutions(index.toInt).answers
         case "student" =>
           val registrationNumber = request.body.asJson.get.asInstanceOf[JsObject].apply(ElementName.registrationNumber.htmlComponentName).asInstanceOf[JsString].value
           Dynexite.getDynexiteAnswers(problem = assessment, exam = exam, registrationNumber = registrationNumber)

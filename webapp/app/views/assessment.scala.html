@@ -8,6 +8,7 @@
     assessmentName: String,
     title: String,
     reachablePoints: String,
+    testingSolutionDescriptions: Seq[String],
     body: Html)(implicit requestHeader: RequestHeader)
 
 <!DOCTYPE html>
@@ -47,13 +48,15 @@
                 <label for="registration">Registration number</label>
                 <etest-registration-number id="etest-registration-number"></etest-registration-number>
                 <br>
-                <a href="javascript:window.stateManager.randomStudent()">Random student...</a> |
-                <a href="javascript:window.stateManager.showDynexitePdf()">Show Dynexite PDF...</a> |
-                <a href="javascript:window.stateManager.showDynexiteLink()">Show Dynexite preview...</a>
-                <br>
-                <a href="javascript:window.stateManager.askForAnswers('student') ">Load answers...</a> |
-                <a href="javascript:window.stateManager.askForAnswers('reference') ">Load reference...</a> |
-                <a href="javascript:window.stateManager.showDynexiteAnswers()">Raw Dynexite answers...</a>
+                <div><a href="javascript:window.stateManager.randomStudent()">Random student...</a></div>
+                <div><a href="javascript:window.stateManager.showDynexitePdf()">Show Dynexite PDF...</a></div>
+                <div><a href="javascript:window.stateManager.showDynexiteLink()">Show Dynexite preview...</a></div>
+                <div><a href="javascript:window.stateManager.askForAnswers('student') ">Load answers...</a></div>
+                <div><a href="javascript:window.stateManager.askForAnswers('reference') ">Load reference...</a></div>
+                @for((description, index) <- testingSolutionDescriptions.zipWithIndex) {
+                <div><a href="javascript:window.stateManager.askForAnswers('testing:@index')">Load @description...</a></div>
+                }
+                <div><a href="javascript:window.stateManager.showDynexiteAnswers()">Raw Dynexite answers...</a></div>
 
                 <etest-points-reached id="etest-points-reached" reachable="@(reachablePoints)"></etest-points-reached>
 

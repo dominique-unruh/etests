@@ -13,7 +13,7 @@ final case class ElementName private[ElementName] (val name: String) {
 
 object ElementName {
   private[ElementName] def assertValidElementName(name: String): Unit = {
-    assert(validElementNameRegex.matches(name))
+    assert(validElementNameRegex.matches(name), name)
   }
 
   private val validElementNameRegex = "(__)?[a-zA-Z][a-zA-Z0-9_-]*".r.anchored

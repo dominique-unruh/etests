@@ -158,6 +158,7 @@ object Exam {
     val classgraph = new ClassGraph()
       .enableClassInfo()
       .scan()
+    try {
     val results = Seq.newBuilder[Exam]
 
     // Only discover exams whose package is a single level (e.g. `y2025_pqc1`, `example_exam`);
@@ -192,6 +193,8 @@ object Exam {
       throw AssertionError(s"Exam classes ${x.getClass.getName} and ${y.getClass.getName} have same id \"${x.id}\""))
 
     exams
+    } finally
+      classgraph.close()
   }
 
   /** Subdirectories of `exams/` whose entry under `exams:` in `exams/exams.yaml` has

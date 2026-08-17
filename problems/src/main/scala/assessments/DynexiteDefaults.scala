@@ -173,7 +173,7 @@ object DynexiteDefaults {
 
 
   def grading(text: GradingContext ?=> InterpolatedMarkdown[HtmlConvertible],
-              reachablePoints: Points = 0,
+              reachablePoints: Points,
               grader: (context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]) ?=> Unit,
               name: String = null)
              (using implicitName: ImplicitName[ElementName, name.type]) : GradingElement = {

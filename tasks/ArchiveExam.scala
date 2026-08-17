@@ -21,7 +21,7 @@ object ArchiveExam extends Task {
   def problemHTML(problem: MarkdownAssessment) =
     val renderContext = RenderContext(
       RenderContext.dynamic := false,
-      RenderContext.studentAnswers := problem.referenceSolution,
+      RenderContext.studentAnswers := problem.referenceSolution.answers,
       RenderContext.problem := problem)
     val body =
       problem.renderStaticHtml(renderContext)
