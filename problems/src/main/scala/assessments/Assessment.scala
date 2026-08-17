@@ -31,6 +31,7 @@ class Assessment (val name: String,
                   val questionTemplate: InterpolatedHtml[Element],
                   val pageElements: SeqMap[ElementName, DynamicElement],
                   val reachablePoints: Points,
+                  val sourceAssessment: MarkdownAssessment = null,
                   val tags: Tags[Assessment] = Tags.empty) {
   checkValid()
 
@@ -70,7 +71,7 @@ class Assessment (val name: String,
     // Add "extra data" to the rendering if exists
     val body2 = renderContext
       .get(RenderContext.studentAnswers)
-      .flatMap(_.get(ElementName.extraData)) match {
+      .flatMap(_.answers.get(ElementName.extraData)) match {
       case Some(value) if value.trim.nonEmpty =>
         body + Html(s"""<div class="extra-data"><b>Extra data:</b> ${escapeHtml4(value)}""")
       case _ => body
@@ -88,7 +89,7 @@ class Assessment (val name: String,
     (body, fileMapBuilder.result())
   }
 
-  def pointsReached(answers: Map[ElementName, String], registrationNumber: Option[String]): Future[Points] = {
+  def pointsReached(answers: Answers, registrationNumber: Option[String]): Future[Points] = {
     val pointIterFuture =
       Future.traverse(pageElements.values.collect { case e: SolutionElement => e }) {
         _.pointsReached(this, registrationNumber, answers)
@@ -149,7 +150,7 @@ class Assessment (val name: String,
     Map.from(for (case (name: ElementName, element: AnswerElement) <- pageElements.iterator)
       yield name -> element.reference)
 
-  def webappStateToAnswers(state: Map[ElementName, JsValue]) : Map[ElementName, String] = {
+  def webappStateToAnswers(state: Map[ElementName, JsValue]) : Answers = {
     val result = Map.newBuilder[ElementName, String]
     for (case element : AnswerElement <- pageElements.values) {
       val answer = state.get(element.name) match {
@@ -158,7 +159,7 @@ class Assessment (val name: String,
       }
       result += ((element.name, answer))
     }
-    result.result()
+    Answers(result.result())
   }
 }
 

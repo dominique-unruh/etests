@@ -1,6 +1,6 @@
 package assessments.pageelements
 
-import assessments.{Assessment, ElementName}
+import assessments.{Answers, Assessment, ElementName}
 import utils.Tag
 import utils.Tag.Tags
 
@@ -11,7 +11,7 @@ final case class RenderContext(tags: Tags[RenderContext]) {
     tags.get(tag).getOrElse(default)
     
   def studentAnswer(name: ElementName): Option[String] =
-    get(RenderContext.studentAnswers).flatMap(_.get(name))
+    get(RenderContext.studentAnswers).flatMap(_.answers.get(name))
 }
 
 object RenderContext {
@@ -20,7 +20,7 @@ object RenderContext {
   /** Whether to render dynamic or static HTML */
   val dynamic: Tag[RenderContext, Boolean] = Tag(default = true)
   /** The answers the student gave */
-  val studentAnswers: Tag[RenderContext, Map[ElementName, String]] = Tag()
+  val studentAnswers: Tag[RenderContext, Answers] = Tag()
   /** The [[Assessment]] object we are rendering */
   val problem: Tag[RenderContext, Assessment] = Tag()
   /** Registration number of the student */

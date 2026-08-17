@@ -17,7 +17,8 @@ import scala.util.boundary.{Break, Label, break}
  * Not thread safe!
  * */
 case class GradingContext private (private val answers: mutable.Map[ElementName, String], val registrationNumber: String,
-                                   private val reachable: Points, private val label: Option[Label[GradeBlockExit]]) {
+                                   private val reachable: Points, private val label: Option[Label[GradeBlockExit]],
+                                   val assessment: MarkdownAssessment) {
   val points = Points.Mutable(0)
 
   /** Grader-set verdict for this (sub)context. Defaults to [[GradingContext.Outcome.unspecified]]. */
@@ -72,9 +73,12 @@ object GradingContext {
       answers.subtractOne(toName(elem)); this
     }
   }
+  def answersImmutable(using context: GradingContext): Answers =
+    Answers(answers.toMap.map { (k,v) => (k match { case k:ElementName => k; case k:AnswerElement => k.name }, v) })
 
-  def apply(answers: Map[ElementName, String], registrationNumber: String, reachable: Points): GradingContext =
-    new GradingContext(answers.to(mutable.Map), registrationNumber, reachable, label = None)
+  def apply(answers: Map[ElementName, String], registrationNumber: String, reachable: Points,
+            assessment: MarkdownAssessment): GradingContext =
+    new GradingContext(answers.to(mutable.Map), registrationNumber, reachable, label = None, assessment = assessment)
 
   /** To be used inside [[GradingContext.gradeBlock]] */
   def max(using context: GradingContext): Points = context.reachable

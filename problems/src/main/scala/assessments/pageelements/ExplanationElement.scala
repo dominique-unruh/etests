@@ -13,6 +13,6 @@ import scala.concurrent.Future
 class ExplanationElement(name: ElementName, text: InterpolatedMarkdown[HtmlConvertible]) extends SolutionElement(name = name, styling = explanation) {
   lazy val html: Html = text.toHtml.flatMapArgs(_.toHtml)
 
-  override protected def feedback(assessment: Assessment, registrationNumber: Option[String], answers: Map[ElementName, String]): Future[Feedback] =
+  override def computeFeedback(assessment: Assessment, registrationNumber: Option[String], answers: Answers): Future[Feedback] =
     Future.successful(Feedback(text = html))
 }

@@ -4,7 +4,7 @@ import assessments.ExceptionContext.initialExceptionContext
 import assessments.GradingContext.{GradeBlockExit, bareGradeBlock, gradeBlock}
 import assessments.pageelements.GradingElement.{graderExecutionContext, logger}
 import assessments.pageelements.SolutionElement.Feedback
-import assessments.{Assessment, Comment, ElementName, ExceptionContext, ExceptionWithContext, GradingContext, Html, HtmlConvertible, InterpolatedMarkdown, Points}
+import assessments.{Answers, Assessment, Comment, ElementName, ExceptionContext, ExceptionWithContext, GradingContext, Html, HtmlConvertible, InterpolatedMarkdown, Points}
 import com.typesafe.scalalogging.Logger
 import play.api.libs.json.{JsString, JsValue}
 import utils.Utils
@@ -25,18 +25,18 @@ import scala.util.boundary.Label
  * is rejected) under the `grading.timeout` via [[utils.Utils.runWithTimeoutFuture]]. The resulting
  * points and the rule text (plus any comments as a report) form this element's feedback. */
 class GradingElement(name: ElementName,
-                     reachablePoints: Points,
+                     val reachablePoints: Points,
                      text: GradingContext ?=> InterpolatedMarkdown[HtmlConvertible],
                      grader: (context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]) ?=> Unit)
   extends SolutionElement(name = name, styling = SolutionElement.Styling.grading) {
 
-  override protected def feedback(assessment: Assessment, registrationNumber: Option[String], answers: Map[ElementName, String]): Future[SolutionElement.Feedback] = {
+  override def computeFeedback(assessment: Assessment, registrationNumber: Option[String], answers: Answers): Future[SolutionElement.Feedback] = {
     given ExceptionContext = initialExceptionContext(s"Recomputing grading based on change of inputs in webapp")
     val duration = Utils.getSystemProperty("grading.timeout", "timeout for graders, e.g., 10s, 1m")
     logger.debug(s"Running grader $name, $registrationNumber: $answers")
     Utils.runWithTimeoutFuture(Duration(duration), s"${assessment.name}-$name-${registrationNumber}") {
       val (exit, context) = bareGradeBlock(reachablePoints, allowExitWithoutDone = true) {
-        grader }(using context = GradingContext(answers.toMap, registrationNumber.getOrElse("NO_STUDENT"), assessment.reachablePoints))
+        grader }(using context = GradingContext(answers.answers, registrationNumber.getOrElse("NO_STUDENT"), assessment.reachablePoints, assessment.sourceAssessment))
       if (exit.abort) throw ExceptionWithContext("abort() not allowed in this grader")
       val points = context.points
       import assessments.GradingContext.Outcome
