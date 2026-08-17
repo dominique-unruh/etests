@@ -26,7 +26,7 @@ import scala.util.boundary.Label
  * points and the rule text (plus any comments as a report) form this element's feedback. */
 class GradingElement(name: ElementName,
                      reachablePoints: Points,
-                     text: InterpolatedMarkdown[HtmlConvertible],
+                     text: GradingContext ?=> InterpolatedMarkdown[HtmlConvertible],
                      grader: (context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]) ?=> Unit)
   extends SolutionElement(name = name, styling = SolutionElement.Styling.grading) {
 
@@ -55,7 +55,7 @@ class GradingElement(name: ElementName,
       }
       val pointsString = context.points.decimalFractionString(precision = 2)
       val report = Comment.seqToHtml(GradingContext.comments(using context).toSeq)
-      val textAsHtml = text.toHtml.flatMapArgs(_.toHtml)
+      val textAsHtml = text(using context).toHtml.flatMapArgs(_.toHtml)
       val textAndReport = if (report.isEmpty) textAsHtml
       else textAsHtml + Html("<hr>") + report
       val feedback = Feedback(

@@ -165,14 +165,15 @@ object DynexiteDefaults {
   def explain(text: InterpolatedMarkdown[HtmlConvertible], name: String = null)
              (using implicitName: ImplicitName[ElementName, name.type]): ExplanationElement = {
     val actualName = if (implicitName.name.name == "question") // Inlined in the markdown, not a good default
-      ElementName(s"explanation-element-${Random.alphanumeric.take(10).mkString}")
+      ElementName(s"explanation-element-${Utils.uniqueId()}")
     else
       implicitName.name
     ExplanationElement(actualName, text)
   }
 
-  def grading(text: InterpolatedMarkdown[HtmlConvertible],
-              reachablePoints: Points,
+
+  def grading(text: GradingContext ?=> InterpolatedMarkdown[HtmlConvertible],
+              reachablePoints: Points = 0,
               grader: (context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]) ?=> Unit,
               name: String = null)
              (using implicitName: ImplicitName[ElementName, name.type]) : GradingElement = {
