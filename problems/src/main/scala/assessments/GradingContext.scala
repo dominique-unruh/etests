@@ -51,7 +51,7 @@ object GradingContext {
   /** A grader's verdict about a student's answer, independent of the awarded points.
    * Set inside a grader via `outcome = Outcome.correct` (etc.); surfaced as a badge in the webapp. */
   enum Outcome {
-    case unspecified, missing, inapplicable, correct, incorrect, partiallyCorrect, partiallyCorrectFullPoints
+    case unspecified, missing, notApplicable, correct, incorrect, partiallyCorrect, partiallyCorrectFullPoints
   }
 
   def comments(using context: GradingContext): mutable.IndexedBuffer[Comment] = context.comments

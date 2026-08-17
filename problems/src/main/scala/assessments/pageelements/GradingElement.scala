@@ -49,7 +49,7 @@ class GradingElement(name: ElementName,
           throw ExceptionWithContext(s"outcome=${context.outcome} but $points points awarded (expected $reachablePoints)")
         case Outcome.partiallyCorrect if points < Points.zero =>
           throw ExceptionWithContext(s"outcome=partiallyCorrect but negative $points points awarded")
-        case Outcome.inapplicable if points != Points.zero =>
+        case Outcome.notApplicable if points != Points.zero =>
           throw ExceptionWithContext(s"outcome=inapplicable but $points points awarded (expected 0)")
         case _ =>
       }

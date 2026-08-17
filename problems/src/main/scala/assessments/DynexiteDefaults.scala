@@ -1,6 +1,6 @@
 package assessments
 
-import assessments.GradingContext.Outcome.{correct, inapplicable, incorrect, missing}
+import assessments.GradingContext.Outcome.{correct, notApplicable, incorrect, missing}
 import assessments.GradingContext.{GradeBlockExit, answers, answersImmutable, comments}
 import assessments.math.Math
 import assessments.math.Math.Ops
