@@ -169,23 +169,24 @@ object DynexiteDefaults {
   }
 
   def grading(text: InterpolatedMarkdown[HtmlConvertible],
+              reachablePoints: Points,
               grader: (context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]) ?=> Unit,
               name: String = null)
              (using implicitName: ImplicitName[ElementName, name.type]) : GradingElement = {
     if (implicitName.name.name == "question") // Inlined in the markdown, not a good default
       throw RuntimeException("grading called inside question markdown. Put into own val or pass name parameter.")
-    GradingElement(implicitName.name, text, grader)
+    GradingElement(implicitName.name, reachablePoints, text, grader)
   }
 
   def missingGrader(using context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]): Unit =
     throw ExceptionWithContext("Grader not implemented")
 
-  def equalsReference(element: AnswerElement, points: Points)(using context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]): Unit = {
+  def equalsReference(element: AnswerElement)(using context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]): Unit = {
     if (element.stringValue == "")
       context.outcome = missing
     else if (element.stringValue == element.reference) {
       context.outcome = correct
-      context.points += points
+      context.points += context.reachablePoints
     } else
       context.outcome = incorrect
   }

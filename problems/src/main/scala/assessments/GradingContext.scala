@@ -23,6 +23,9 @@ case class GradingContext private (private val answers: mutable.Map[ElementName,
   /** Grader-set verdict for this (sub)context. Defaults to [[GradingContext.Outcome.unspecified]]. */
   var outcome: GradingContext.Outcome = GradingContext.Outcome.unspecified
 
+  /** Reachable points for this (sub)context (the current grade block / inline grader). */
+  def reachablePoints: Points = reachable
+
   private [GradingContext] def subcontext(reachable: Points, label: Label[GradeBlockExit]): GradingContext =
     copy(answers=answers.clone(), registrationNumber = registrationNumber, reachable = reachable, label = Some(label))
 

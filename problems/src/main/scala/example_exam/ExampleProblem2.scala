@@ -37,7 +37,7 @@ $gradingRules
 
   lazy val gradingRules = grading(md"""
     * Anything that evaluates to 10: full points.
-  """, {
+  """, reachablePoints, {
     given MathContext = MathContext.default
 
     val parsed = answer.mathTry

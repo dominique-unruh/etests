@@ -41,7 +41,7 @@ $gradingRule2
 
   lazy val gradingRule1 = grading(md"""
     * Anything that evaluates to 10 and isn't the string 10 (after trimming whitespace): full points.
-  """, {
+  """, reachablePoints, {
     given MathContext = MathContext.default
 
     // TODO: it should be possible to check whether gradingRule2 triggered instead
@@ -59,7 +59,7 @@ $gradingRule2
       comments += raw"Doesn't evaluate to 10, but to \(${parsed.toSympyMC().simplify.latex}\)"
   })
 
-  lazy val gradingRule2 = grading(md"""The number 10: half points.""", {
+  lazy val gradingRule2 = grading(md"""The number 10: half points.""", reachablePoints, {
     if (answer.stringValue.trim == "10")
       comments += "You entered 10 literally. Half points"
       points += reachablePoints / 2
