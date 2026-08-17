@@ -82,6 +82,8 @@ abstract class MarkdownAssessment extends TestSuite {
     for ((pageElement, value) <- changes)
       if (pageElement == null)
         throw ExceptionWithContext(s"Changed contain a null (the changed answer element)", value, changedReference)
+      else
+        changedReference(pageElement.name) = value
 
     println(s"Reference solution: ${changedReference.map((k, v) => s"$k -> $v").mkString(", ")}")
     val points = assessment.pointsReached(changedReference.toMap, None).awaitResult()
