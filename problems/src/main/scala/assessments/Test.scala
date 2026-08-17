@@ -66,7 +66,7 @@ final class Test(val name: String, val run: Option[ExceptionContext ?=> Unit],
       if (name.isEmpty) exceptionContext
       else ExceptionContext.addToExceptionContext(s"Running test '$name'")
     announce()
-    run
+    run.foreach { r => r }
     children.foreach(_.runAll())
   }
 

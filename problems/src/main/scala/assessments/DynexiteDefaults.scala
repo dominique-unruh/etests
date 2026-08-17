@@ -167,12 +167,17 @@ object DynexiteDefaults {
     ExplanationElement(name2, text)
   }
 
-  def grading(text: InterpolatedMarkdown[HtmlConvertible])(using name: sourcecode.Name)
-             (grader: (context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]) ?=> Unit) : GradingElement = {
-    if (name.value == "question") // Inlined in the markdown, not a good default
-      throw RuntimeException("grading called inside question markdown. Put into own val.")
-    val name2 = ElementName(name.value)
-    GradingElement(name2, text)(grader)
+  def grading(text: InterpolatedMarkdown[HtmlConvertible],
+              grader: (context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]) ?=> Unit,
+              name: String = null)
+             (using implicitName: ImplicitName[ElementName, name.type]) : GradingElement = {
+    if (implicitName.name.name == "question") // Inlined in the markdown, not a good default
+      throw RuntimeException("grading called inside question markdown. Put into own val or pass name parameter.")
+    GradingElement(implicitName.name, text, grader)
+  }
+
+  def missingGrader(using context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]): Unit = {
+    throw ExceptionWithContext("Grader not implemented")
   }
 
   /** Checks for equality of two Sympy expressions (`x==y`?)

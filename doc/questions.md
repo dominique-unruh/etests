@@ -26,12 +26,12 @@ object ProblemName extends MarkdownAssessment {
   lazy val explanation = explain(md"""...""")
 
   // A grading rule: its Markdown text is the rule shown to students, and the
-  // trailing `{ ... }` block is the grader that awards the points for that rule.
-  lazy val gradingRule = grading(md"""...""") {
+  // second argument is the grader that awards the points for that rule.
+  lazy val gradingRule = grading(md"""...""", {
     if (answer.stringValue.trim == "10")
       points += reachablePoints
       done()
-  }
+  })
 
   // Additional configuration options (optional)
   override val tags = Tags(tagname := content, tagname2 := content2)  
@@ -43,7 +43,7 @@ shown in the **solution** view (after the exam / while authoring), not to studen
 the exam. They must be placed in the `question` markdown with `$` where you want them to
 appear; there is no longer a fixed layout that renders them in separate boxes.
 
-Grading is done by **inline graders**: each `grading(...) { ... }` element carries both a
+Grading is done by **inline graders**: each `grading(..., { ... })` element carries both a
 rule text and the grader block that scores it. Points are summed across all grading
 elements. (The old single `grade()` method still exists but is `@deprecated`.)
 
@@ -121,9 +121,9 @@ wherever you want them displayed:
 ```scala
 lazy val explanation = explain(md"""...""")   // styled as an explanation box
 
-lazy val gradingRule = grading(md"""...""") {  // styled as a grading-rules box
+lazy val gradingRule = grading(md"""...""", {  // styled as a grading-rules box
   ... grader block, see below ...
-}
+})
 ```
 
 `explain(...)` produces an `ExplanationElement` (styling `explanation`); `grading(...)`
@@ -131,7 +131,7 @@ produces a `GradingElement` (styling `grading`), which selects the CSS class
 `solution-explanation` / `solution-grading`. Put `$explanation`, `$gradingRule` into the
 `question` markdown to place them.
 
-A `grading(text) { grader }` element carries both the rule text *and* the grader that awards
+A `grading(text, grader)` element carries both the rule text *and* the grader that awards
 its points (see [graders.md](graders.md)). A problem typically has several, one per rule.
 During feedback each element runs its grader (under `grading.timeout`), and the points
 reached across all grading elements are summed and displayed by the `etest-points-reached`

@@ -1,6 +1,6 @@
 # How to write graders?
 
-Graders are written **inline** in grading elements. Each `grading(text) { grader }` (see
+Graders are written **inline** in grading elements. Each `grading(text, grader)` (see
 [questions.md](questions.md)) is a page element carrying a rule text plus the grader block
 that awards its points; interpolate it into the `question` markdown to show its live grading
 box. A problem usually has several, one per rule, and their points are summed.

@@ -16,7 +16,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.boundary.Label
 
 /** An inline grader: a [[SolutionElement]] (styled as a `grading` box) that carries both a rule
- * `text` and the `grader` block scoring it. Created via `grading(text) { grader }` in
+ * `text` and the `grader` block scoring it. Created via `grading(text, grader)` in
  * [[assessments.DynexiteDefaults]]; a problem usually has several, and their points are summed by
  * `Assessment`'s `PointsReached`.
  *
@@ -25,8 +25,8 @@ import scala.util.boundary.Label
  * is rejected) under the `grading.timeout` via [[utils.Utils.runWithTimeoutFuture]]. The resulting
  * points and the rule text (plus any comments as a report) form this element's feedback. */
 class GradingElement(name: ElementName,
-                    text: InterpolatedMarkdown[HtmlConvertible])
-                    (grader: (context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]) ?=> Unit)
+                    text: InterpolatedMarkdown[HtmlConvertible],
+                    grader: (context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]) ?=> Unit)
   extends SolutionElement(name = name, styling = SolutionElement.Styling.grading) {
 
   override protected def feedback(assessment: Assessment, registrationNumber: Option[String], answers: Map[ElementName, String]): Future[SolutionElement.Feedback] = {

@@ -70,7 +70,7 @@ values (page elements, HTML) into templates. `ElementName` identifies interpolat
 
 **Grading**: `GradingContext` (`import assessments.GradingContext.*`). Inside a grader,
 `points += n`, `comments += "..."`, `answers(element) = ...`. Grading is done by **inline graders**:
-each `grading(text) { grader }` builds a `GradingElement` (a `SolutionElement`, styled `grading`)
+each `grading(text, grader)` builds a `GradingElement` (a `SolutionElement`, styled `grading`)
 that holds a rule text plus its grader block, interpolated into `question` with `$`. The grader
 block is a grade block (finish with `done()`; `abort()` disallowed at top level) run under a timeout
 (`grading.timeout`) via `Utils.runWithTimeoutFuture`. Grade blocks and `combinatorialGrader` give

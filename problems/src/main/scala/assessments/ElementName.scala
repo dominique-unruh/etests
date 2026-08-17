@@ -26,7 +26,9 @@ object ElementName {
     assert(name.startsWith("etest-"))
     ElementName(name.stripPrefix("etest-"))
   }
-  
+
+  given ImplicitName.FromString[ElementName] = { name => ElementName(name) }
+
   val grader: ElementName = ElementName("grader")
   val pointsReached: ElementName = ElementName("points-reached")
   val errordisplay: ElementName = ElementName("errorDisplay")

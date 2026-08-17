@@ -37,7 +37,7 @@ $gradingRules
 
   lazy val gradingRules = grading(md"""
     * Anything that evaluates to 10: full points.
-  """) {
+  """, {
     given MathContext = MathContext.default
 
     val parsed = answer.mathTry
@@ -49,5 +49,5 @@ $gradingRules
       points += reachablePoints
     else
       comments += raw"Doesn't evaluate to 10, but to \(${parsed.toSympyMC().simplify.latex}\)"
-  }
+  })
 }
