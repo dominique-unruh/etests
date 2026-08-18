@@ -79,11 +79,20 @@ abstract class MarkdownAssessment extends TestSuite {
       answers = (for (case (name, answerElement: AnswerElement) <- assessment.pageElements) yield name -> answerElement.reference).toMap,
       description = "reference solution")
 
-  /** The values of all `val`/`lazy val`s of type [[Answers]] declared in this class (found via reflection). */
+  lazy val emptySolution : Answers =
+    Answers(
+      answers = (for (name <- assessment.pageElements.keys) yield name -> "").toMap,
+      description = "empty solution")
+
+  /** The values of all `val`/`lazy val`s of type [[Answers]] declared in this class (found via reflection),
+   * prefixed with the inherited [[referenceSolution]] and [[emptySolution]] (which reflection over
+   * `getDeclaredMethods` does not pick up, since they are declared in [[MarkdownAssessment]]). */
   lazy val testingSolutions: Seq[Answers] =
-    for (method <- getClass.getDeclaredMethods.toSeq
-         if method.getParameterCount == 0 && method.getReturnType == classOf[Answers])
-      yield method.invoke(this).asInstanceOf[Answers]
+    val declared =
+      for (method <- getClass.getDeclaredMethods.toSeq
+           if method.getParameterCount == 0 && method.getReturnType == classOf[Answers])
+        yield method.invoke(this).asInstanceOf[Answers]
+    (Seq(referenceSolution, emptySolution) ++ declared).distinct
 
   @deprecated("Use testGrader instead to test a single grading element")
   protected def testSolution(expected: Points = reachablePoints,
@@ -237,7 +246,87 @@ abstract class MarkdownAssessment extends TestSuite {
     }
     addTest(testCase)
   }
+
+  /** Registers a test (or one test per solution) that checks the assessment as a whole, rather than a
+   * single grading element.
+   *
+   * @param solution the answers to grade against. If `null` (default), the test is run once for **each**
+   *                 [[Answers]] `val`/`lazy val` declared in this class (see [[testingSolutions]]),
+   *                 producing one sub-test per solution grouped under `name`.
+   * @param points   if non-null, asserts that the total points reached (summed over all grading
+   *                 elements) equal this value.
+   * @param test     an optional extra check, run with a [[GradingContext]] for the current solution in
+   *                 scope; use it for assertions the built-in `points` check cannot express.
+   * @param name     the (mandatory) test name; also the group name when running over multiple solutions.
+   */
+  def testOverall(solution: Answers = null,
+                  points: Points = null,
+                  test: (GradingContext, ExceptionContext) ?=> Unit = null,
+                  name: String): Unit = {
+    val solutions = if (solution == null) testingSolutions else Seq(solution)
+    val testCases = for (solution <- solutions) yield Test(solution.description) {
+      given context: GradingContext = GradingContext(solution.answers, "NO STUDENT", reachablePoints, this)
+      if (points != null) {
+        val pointsReached = this.pointsReached(answersImmutable, Some(context.registrationNumber)).awaitResult()
+        assert(points == pointsReached)
+      }
+      test
+    }
+    assert(testCases.nonEmpty)
+    val testCase =
+      if (testCases.length == 1)
+        testCases.head.withName(name)
+      else
+        Test(name, testCases)
+    addTest(testCase)
+  }
+
+  /** Tests whether at most one of the given graders triggers.
+   * More specifically: if one is correct or partially correct or partially correct full points or has nonzero points,
+   *      then all later ones need to be notApplicable. And if a grader is notApplicable,
+   *      at least one earlier in the chain needs to have triggered.
+   *
+   * The graders are considered in the given order, which must be their priority order (highest first).
+   * A grader "triggers" if its outcome is `correct`, `partiallyCorrect`, or `partiallyCorrectFullPoints`,
+   * or it awards nonzero points.
+   *
+   * @param solution the answers to grade against. If `null` (default), the check is run once for **each**
+   *                 [[Answers]] `val`/`lazy val` declared in this class (see [[testOverall]] / [[testingSolutions]]).
+   * @param name     the test name; defaults to `"grader chain: <grader1>, <grader2>, ..."`.
+   * @param graders  the grading elements (by name or directly), in descending priority order.
+   */
+  def testGraderChain(solution: Answers = null,
+                      name: String = null,
+                      graders: Seq[String | GradingElement]): Unit = {
+    def graderNames = graders.map { case e : GradingElement => e.name.toString; case e : String => e }
+    val testName = Option(name).getOrElse(s"grader chain: ${graderNames.mkString(", ")}")
+    def testChain(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
+      val answers = answersImmutable
+      val elements = graders.map {
+        case e: GradingElement => e
+        case n: String => grader(n)
+      }
+      val feedbacks = elements.map { element =>
+        (element, element.computeFeedback(assessment = this, registrationNumber = None, answers = answers).awaitResult())
+      }
+      def triggered(feedback: Feedback): Boolean =
+        feedback.outcome == Outcome.correct ||
+          feedback.outcome == Outcome.partiallyCorrect ||
+          feedback.outcome == Outcome.partiallyCorrectFullPoints ||
+          feedback.points.exists(_ != Points.zero)
+      // If a grader triggered, every later grader must be notApplicable.
+      for (i <- feedbacks.indices if triggered(feedbacks(i)._2); j <- (i + 1) until feedbacks.length)
+        assert(feedbacks(j)._2.outcome == Outcome.notApplicable,
+          s"Grader ${feedbacks(i)._1.name} triggered, but later grader ${feedbacks(j)._1.name} is ${feedbacks(j)._2.outcome} (expected notApplicable) for ${answers}.")
+      // If a grader is notApplicable, some earlier grader must have triggered.
+      for (i <- feedbacks.indices if feedbacks(i)._2.outcome == Outcome.notApplicable)
+        assert(feedbacks.take(i).exists { case (_, fb) => triggered(fb) },
+          s"Grader ${feedbacks(i)._1.name} is notApplicable, but no earlier grader triggered for ${answers}.")
+    }
+    testOverall(solution = solution, test = testChain, name = testName)
+  }
 }
+
 
 object MarkdownAssessment {
   private val tagFindingRegex: Regex = """(?s)\{\{(.*?)}}""".r
