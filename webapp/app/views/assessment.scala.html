@@ -52,7 +52,6 @@
                 <div><a href="javascript:window.stateManager.showDynexitePdf()">Show Dynexite PDF...</a></div>
                 <div><a href="javascript:window.stateManager.showDynexiteLink()">Show Dynexite preview...</a></div>
                 <div><a href="javascript:window.stateManager.askForAnswers('student') ">Load answers...</a></div>
-                <div><a href="javascript:window.stateManager.askForAnswers('reference') ">Load reference...</a></div>
                 @for((description, index) <- testingSolutionDescriptions.zipWithIndex) {
                 <div><a href="javascript:window.stateManager.askForAnswers('testing:@index')">Load @description...</a></div>
                 }
