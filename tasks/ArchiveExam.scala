@@ -21,8 +21,9 @@ object ArchiveExam extends Task {
   def problemHTML(problem: MarkdownAssessment) =
     val renderContext = RenderContext(
       RenderContext.dynamic := false,
-      RenderContext.studentAnswers := problem.referenceSolution.answers,
-      RenderContext.problem := problem)
+      RenderContext.studentAnswers := problem.referenceSolution,
+      RenderContext.problem := problem,
+      RenderContext.catchExceptions := true)
     val body =
       problem.renderStaticHtml(renderContext)
     ind"""<h1>${escapeHtml4(problem.name)}</h1>

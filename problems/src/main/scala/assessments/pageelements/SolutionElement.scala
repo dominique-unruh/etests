@@ -1,6 +1,6 @@
 package assessments.pageelements
 
-import assessments.pageelements.RenderContext.studentAnswers
+import assessments.pageelements.RenderContext.{catchExceptions, studentAnswers}
 import assessments.pageelements.SolutionElement.{Feedback, Styling}
 import assessments.pageelements.SolutionElement.Styling.explanation
 import assessments.GradingContext.Outcome
@@ -26,18 +26,25 @@ abstract class SolutionElement(val name: ElementName,
 
   override def renderHtml(context: RenderContext, files: FileMapBuilder): Html =
     if (!context(RenderContext.dynamic)) {
-      val fb = computeFeedback(
-        context(RenderContext.problem),
-        context.get(RenderContext.registrationNumber),
-        context(RenderContext.studentAnswers)).awaitResult()
-      val pointsHtml = fb.points match {
-        case Some(points) => s"""<div class="solution-points">${escapeHtml4(points.decimalFractionString(precision = 2))} points</div>"""
-        case None => ""
+      try {
+        val fb = {
+          computeFeedback(
+            context(RenderContext.problem),
+            context.get(RenderContext.registrationNumber),
+            context(RenderContext.studentAnswers)).awaitResult()
+        }
+        val pointsHtml = fb.points match {
+          case Some(points) => s"""<div class="solution-points">${escapeHtml4(points.decimalFractionString(precision = 2))} points</div>"""
+          case None => ""
+        }
+        val outcomeHtml =
+          if (fb.outcome == Outcome.unspecified) ""
+          else s"""<div class="solution-outcome outcome-${escapeHtml4(fb.outcome.toString)}">${escapeHtml4(fb.outcome.toString)}</div>"""
+        return Html(s"""<div class="solution solution-${escapeHtml4(styling.toString)}">$pointsHtml$outcomeHtml<div class="solution-body">${fb.text.html}</div></div>""")
+      } catch {
+        case e : Exception if context(catchExceptions) =>
+          return Html(s"""<div class="solution solution-${escapeHtml4(styling.toString)}"><div class="solution-error">${escapeHtml4(e.toString)}</div></div>""")
       }
-      val outcomeHtml =
-        if (fb.outcome == Outcome.unspecified) ""
-        else s"""<div class="solution-outcome outcome-${escapeHtml4(fb.outcome.toString)}">${escapeHtml4(fb.outcome.toString)}</div>"""
-      return Html(s"""<div class="solution solution-${escapeHtml4(styling.toString)}">$pointsHtml$outcomeHtml<div class="solution-body">${fb.text.html}</div></div>""")
     }
     Html(ind"""<etest-solution id="${name.htmlComponentNameEscaped}" styling="${escapeHtml4(styling.toString)}"></etest-solution>""")
 

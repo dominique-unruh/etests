@@ -485,7 +485,13 @@ object Utils {
   }
 
   extension[A] (awaitable: Awaitable[A]) {
-    def awaitResult(duration: Duration = Duration.Inf): A = Await.result(awaitable, duration)
+    def awaitResult(duration: Duration = Duration.Inf): A =
+      try Await.result(awaitable, duration)
+      catch {
+        case e: Throwable =>
+          e.addSuppressed(new Exception("awaitResult call site"))
+          throw e
+      }
   }
 
   def isIncreasing[A: Ordering](seq: IterableOnce[A], strict: Boolean = false): Boolean = {
