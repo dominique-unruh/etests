@@ -8,10 +8,12 @@ import org.scalatest.funsuite.AnyFunSuiteLike
 class DynexiteDefaultsTest extends AnyFunSuiteLike {
   given ExceptionContext = ExceptionContext.initialExceptionContext(s"Test suite $getClass")
 
+  val dummyAssessment = DummyAssessment("dummy")
+
   private def gc(x: String = null): GradingContext = {
     val map = Map.newBuilder[ElementName, String]
     if (x != null) map += ElementName("x") -> x
-    GradingContext(map.result(), "123456", 10)
+    GradingContext(map.result(), "123456", 10, dummyAssessment)
   }
 
   test("mathTry, valid parse") {

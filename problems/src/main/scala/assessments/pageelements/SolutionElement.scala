@@ -4,7 +4,7 @@ import assessments.pageelements.RenderContext.studentAnswers
 import assessments.pageelements.SolutionElement.{Feedback, Styling}
 import assessments.pageelements.SolutionElement.Styling.explanation
 import assessments.GradingContext.Outcome
-import assessments.{Assessment, ElementName, FileMapBuilder, Html, HtmlConvertible, InterpolatedMarkdown, Points, SyntaxError}
+import assessments.{Answers, Assessment, ElementName, FileMapBuilder, Html, HtmlConvertible, InterpolatedMarkdown, Points, SyntaxError}
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import play.api.libs.json.{JsNumber, JsObject, JsString, JsValue}
 import utils.{IndentedInterpolator, Tag}
@@ -25,7 +25,7 @@ abstract class SolutionElement(val name: ElementName,
 
   override def renderHtml(context: RenderContext, files: FileMapBuilder): Html =
     if (!context(RenderContext.dynamic)) {
-      val fb = feedback(
+      val fb = computeFeedback(
         context(RenderContext.problem),
         context.get(RenderContext.registrationNumber),
         context(RenderContext.studentAnswers)).awaitResult()
@@ -40,14 +40,14 @@ abstract class SolutionElement(val name: ElementName,
     }
     Html(ind"""<etest-solution id="${name.htmlComponentNameEscaped}" styling="${escapeHtml4(styling.toString)}"></etest-solution>""")
 
-  protected def feedback(assessment: Assessment, registrationNumber: Option[String], answers: Map[ElementName, String]): Future[Feedback]
+  def computeFeedback(assessment: Assessment, registrationNumber: Option[String], answers: Answers): Future[Feedback]
 
-  def pointsReached(assessment: Assessment, registrationNumber: Option[String], answers: Map[ElementName, String]): Future[Option[Points]] =
-    feedback(assessment, registrationNumber, answers).map(_.points)
+  def pointsReached(assessment: Assessment, registrationNumber: Option[String], answers: Answers): Future[Option[Points]] =
+    computeFeedback(assessment, registrationNumber, answers).map(_.points)
 
   override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsObject] = {
     val registrationNumber = state.get(ElementName.registrationNumber).map(_.asInstanceOf[JsString].value)
-    for (fb <- feedback(assessment, registrationNumber, assessment.webappStateToAnswers(state))) yield {
+    for (fb <- computeFeedback(assessment, registrationNumber, assessment.webappStateToAnswers(state))) yield {
       val builder = Map.newBuilder[String, JsValue]
       builder.addOne(("text", JsString(fb.text.html)))
       for (points <- fb.points)

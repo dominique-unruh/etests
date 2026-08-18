@@ -3,9 +3,10 @@ package assessments
 import assessments.Assessment.graderIncomplete
 import assessments.Exam.{ExamMainRun, runOption}
 import assessments.ExceptionContext.{addToExceptionContext, initialExceptionContext}
-import assessments.GradingContext.comments
+import assessments.GradingContext.{Outcome, answersImmutable, comments}
 import assessments.InterpolatedMarkdown.md
-import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, ProblemElement, StaticElement}
+import assessments.pageelements.SolutionElement.Feedback
+import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, GradingElement, ProblemElement, StaticElement}
 import example_exam.ExampleProblem.question
 import externalsystems.{Dynexite, MoodleStack}
 import org.apache.commons.text.StringEscapeUtils
@@ -67,6 +68,7 @@ abstract class MarkdownAssessment extends TestSuite {
     Assessment(name = name,
       questionTemplate = questionTemplate,
       reachablePoints = reachablePoints,
+      sourceAssessment = this,
       pageElements = elements.result(), tags = tags)
   }
 
@@ -83,13 +85,14 @@ abstract class MarkdownAssessment extends TestSuite {
          if method.getParameterCount == 0 && method.getReturnType == classOf[Answers])
       yield method.invoke(this).asInstanceOf[Answers]
 
+  @deprecated("Use testGrader instead to test a single grading element")
   protected def testSolution(expected: Points = reachablePoints,
                    changes: Seq[(AnswerElement, String)] = Seq.empty): Test =
     Test(s"solution: $changes, expected: $expected") {
     println(s"Testing $name with ${if (changes.nonEmpty) "modified " else ""}reference solution, expected: $expected points.")
     val changedReference = referenceSolution.update(changes)
     println(s"Reference solution: ${changedReference}")
-    val points = assessment.pointsReached(changedReference.answers, None).awaitResult()
+    val points = assessment.pointsReached(changedReference, None).awaitResult()
     println(s"Resulting number of points: $points (expected points: $expected)")
     if (points != expected)
         throw ExceptionWithContext("Mismatch with expectation")
@@ -202,6 +205,37 @@ abstract class MarkdownAssessment extends TestSuite {
     uploadToDynexite()
     if (testResult.isFailure)
       println("*** WARNING: tests failed ***")
+  }
+
+  def grader(name: String): GradingElement =
+    this.pageElements(ElementName(name)).asInstanceOf[GradingElement]
+  def testGrader(grader: String | GradingElement,
+                 solution: Answers,
+                 outcome: Outcome = null,
+                 points: Points = null,
+                 test: Feedback => (GradingContext, ExceptionContext) ?=> Unit = null,
+                 name: String = null): Unit = {
+    val gradingElement = grader match {
+      case name: String => this.grader(name)
+      case element: GradingElement => element
+    }
+    val testName =
+      if (name != null) name
+      else s"Grader ${gradingElement.name} with ${solution.description}"
+    val testCase = Test(testName) {
+      given context: GradingContext = GradingContext(solution.answers, "NO STUDENT", reachablePoints, this)
+      val feedback = gradingElement.computeFeedback(
+        assessment = this,
+        registrationNumber = None,
+        answers = solution).awaitResult()
+      if (outcome != null)
+        assert(outcome == feedback.outcome)
+      if (points != null)
+        assert(points == feedback.points.get)
+      if (test != null)
+        test(feedback)
+    }
+    addTest(testCase)
   }
 }
 

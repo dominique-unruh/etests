@@ -1,7 +1,7 @@
 package assessments
 
-import assessments.GradingContext.Outcome.{correct, inapplicable, incorrect, missing}
-import assessments.GradingContext.{GradeBlockExit, comments}
+import assessments.GradingContext.Outcome.{correct, notApplicable, incorrect, missing}
+import assessments.GradingContext.{GradeBlockExit, answers, answersImmutable, comments}
 import assessments.math.Math
 import assessments.math.Math.Ops
 
@@ -17,6 +17,7 @@ import assessments.stack.{SympyAssumption, SympyExpr}
 import com.typesafe.scalalogging.Logger
 import utils.Tag.Tags
 import utils.Utils
+import utils.Utils.awaitResult
 
 import java.io.IOException
 import scala.collection.{SeqMap, immutable}
@@ -193,6 +194,14 @@ object DynexiteDefaults {
       context.points += context.reachablePoints
     } else
       context.outcome = incorrect
+  }
+
+
+  extension (ge: GradingElement) {
+    def feedback(using context: GradingContext): SolutionElement.Feedback =
+      ge.computeFeedback(assessment = context.assessment,
+        registrationNumber = Some(context.registrationNumber),
+        answers = answersImmutable).awaitResult()
   }
 
   /** Checks for equality of two Sympy expressions (`x==y`?)
