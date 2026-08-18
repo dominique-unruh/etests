@@ -34,9 +34,11 @@ class GradingElement(name: ElementName,
     given ExceptionContext = initialExceptionContext(s"Recomputing grading based on change of inputs in webapp")
     val duration = Utils.getSystemProperty("grading.timeout", "timeout for graders, e.g., 10s, 1m")
     logger.debug(s"Running grader $name, $registrationNumber: $answers")
+    given GradingContext = GradingContext(answers.answers, registrationNumber.getOrElse("NO_STUDENT"), assessment.reachablePoints, assessment.sourceAssessment)
+    val textAsHtml = text.toHtml.flatMapArgs(_.toHtml)
     Utils.runWithTimeoutFuture(Duration(duration), s"${assessment.name}-$name-${registrationNumber}") {
       val (exit, context) = bareGradeBlock(reachablePoints, allowExitWithoutDone = true) {
-        grader }(using context = GradingContext(answers.answers, registrationNumber.getOrElse("NO_STUDENT"), assessment.reachablePoints, assessment.sourceAssessment))
+        grader }
       if (exit.abort) throw ExceptionWithContext("abort() not allowed in this grader")
       val points = context.points
       import assessments.GradingContext.Outcome
@@ -55,7 +57,6 @@ class GradingElement(name: ElementName,
       }
       val pointsString = context.points.decimalFractionString(precision = 2)
       val report = Comment.seqToHtml(GradingContext.comments(using context).toSeq)
-      val textAsHtml = text(using context).toHtml.flatMapArgs(_.toHtml)
       val textAndReport = if (report.isEmpty) textAsHtml
       else textAsHtml + Html("<hr>") + report
       val feedback = Feedback(
@@ -63,6 +64,9 @@ class GradingElement(name: ElementName,
         text = textAndReport,
         outcome = context.outcome)
       feedback
+    }.recover {
+      case e: Exception => Feedback(text = textAsHtml, error = Some(e))
+      case t: Throwable => Feedback(text = textAsHtml, error = Some(t.toString))
     }
   }
 }
