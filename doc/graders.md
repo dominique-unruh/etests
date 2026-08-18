@@ -106,6 +106,7 @@ And to edit CLAUDE.md (see below).
 If in doubt about the interpretation of the human readable grading rule, ask.
 Be very precise in your thinking, always rethink whether your approach to the grader is correcting the problem correctly.
 As the first step, write a docstring for the grader that describes (human readable) the algorithm to decide the grading rule.
+Before continuing, ask the user whether the plan in that docstring is ok.
 Inside the grader, make sure to add comments.
 Develop defensively: in unexpected situations, the grader code should rather throw an exception than answer incorrectly.
 Exceptions will be noticed during the grading process, and the grader can still be adapted; 

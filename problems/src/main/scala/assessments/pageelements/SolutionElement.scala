@@ -4,7 +4,8 @@ import assessments.pageelements.RenderContext.studentAnswers
 import assessments.pageelements.SolutionElement.{Feedback, Styling}
 import assessments.pageelements.SolutionElement.Styling.explanation
 import assessments.GradingContext.Outcome
-import assessments.{Answers, Assessment, ElementName, FileMapBuilder, Html, HtmlConvertible, InterpolatedMarkdown, Points, SyntaxError}
+import assessments.InterpolatedMarkdown.md
+import assessments.{Answers, Assessment, ElementName, FileMapBuilder, Html, HtmlConvertible, InterpolatedMarkdown, Plaintext, Points, SyntaxError}
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import play.api.libs.json.{JsNumber, JsObject, JsString, JsValue}
 import utils.{IndentedInterpolator, Tag}
@@ -21,7 +22,7 @@ abstract class SolutionElement(val name: ElementName,
                                val styling: Styling,
                                val tags: Tag.Tags[SolutionElement] = Tags.empty) extends DynamicElement {
   override def timeoutFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue =
-    DynamicElement.hourglass
+    JsObject(Seq("text" -> DynamicElement.hourglass))
 
   override def renderHtml(context: RenderContext, files: FileMapBuilder): Html =
     if (!context(RenderContext.dynamic)) {
@@ -47,7 +48,7 @@ abstract class SolutionElement(val name: ElementName,
 
   override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsObject] = {
     val registrationNumber = state.get(ElementName.registrationNumber).map(_.asInstanceOf[JsString].value)
-    for (fb <- computeFeedback(assessment, registrationNumber, assessment.webappStateToAnswers(state))) yield {
+    val result = for (fb <- computeFeedback(assessment, registrationNumber, assessment.webappStateToAnswers(state))) yield {
       val builder = Map.newBuilder[String, JsValue]
       builder.addOne(("text", JsString(fb.text.html)))
       for (points <- fb.points)
@@ -55,6 +56,13 @@ abstract class SolutionElement(val name: ElementName,
       if (fb.outcome != Outcome.unspecified)
         builder.addOne(("outcome", JsString(fb.outcome.toString)))
       JsObject(builder.result())
+    }
+    result.recover {
+      case e : Throwable =>
+        e.printStackTrace()
+        JsObject(Seq(
+          "text" -> JsString(md"**ERROR**: ${Plaintext(e.toString)}".toHtml.flatten.html),
+          "points" -> JsNumber(0), "outcome" -> JsString("error")))
     }
   }
 }
