@@ -512,9 +512,9 @@ object Dynexite {
     learners(index)
   }
 
-  /** Path of the file holding the Dynexite auth cookie (temporary, for testing). Kept in a
-   * user-private directory; see [[Utils.readOrPromptUserSecret]]. */
-  private val authCookieFile = Path.of("/tmp/etests-tmp/dynexite-authcookie")
+  /** Path of the file holding the Dynexite auth cookie (temporary, for testing). Kept in the
+   * user-private [[Utils.tempDir]]; see [[Utils.readOrPromptUserSecret]]. */
+  private lazy val authCookieFile = Utils.tempDir.resolve("dynexite-authcookie")
 
   /** Name of the Dynexite session cookie. */
   private val cookieName = "dyn-orbit-teacher"

@@ -106,7 +106,7 @@ answers, feedback, Dynexite links/PDFs). Config in `webapp/conf/application.conf
 Root-level `java.properties` (gitignored; contains credentials) holds runtime options read via
 `Utils.loadSystemProperties()`. Format: `option.name = value` per line. Key options (full list in
 `doc/java-properties.md`): `current.exam` (fully-qualified Exam class the single-exam tools operate
-on), `grading.timeout`, `cache.file` (path for the persistent cache — created on first run),
+on), `grading.timeout`,
 `sciebo.username`/`sciebo.password`, `run.option.for.problem` (`extractStack` or `runTests`; chosen
 when running an individual problem object from the IDE).
 

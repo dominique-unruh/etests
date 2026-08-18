@@ -77,12 +77,18 @@ object Utils {
     true
   }
   
-  private lazy val tempDir = {
-    val dir = os.temp.dir(prefix = "assessments", deleteOnExit = true)
+  /** Per-user temp directory `$TMP/etests-$USER-tmp` (where `$TMP` is the system temp dir and
+   * `$USER` the current user name). Created (if needed) and verified user-private via
+   * [[ensureUserPrivateDir]], so it is safe for holding secrets (see [[readOrPromptUserSecret]])
+   * and the persistent cache. Persistent across runs (not deleted on exit). */
+  lazy val tempDir: Path = {
+    val user = System.getProperty("user.name")
+    val dir = Path.of(System.getProperty("java.io.tmpdir"), s"etests-$user-tmp")
+    ensureUserPrivateDir(dir)
     println(s"Temp directory: $dir")
     dir
   }
-  def getTempDir(implicit enclosing: FileName): Path = os.temp.dir(dir = tempDir, prefix = enclosing.value, deleteOnExit = false).toNIO
+  def getTempDir(implicit enclosing: FileName): Path = os.temp.dir(dir = os.Path(tempDir), prefix = enclosing.value, deleteOnExit = false).toNIO
   
   def dataUrl(mimeType: String, data: Array[Byte]): String = {
     val base64 = Base64.getEncoder.encodeToString(data)
@@ -129,7 +135,16 @@ object Utils {
       Files.createDirectory(dir, PosixFilePermissions.asFileAttribute(ownerOnly))
     catch
       case _: java.nio.file.FileAlreadyExistsException => // exists already: verify below
+    verifyUserPrivateDir(dir)
+  }
 
+  /** Verify that `dir` is an existing directory private to the current user: a real directory (not
+   * a symlink), owned by the current user, with POSIX mode 0700 (no group/other access). Throws if
+   * it does not exist or fails any of these checks. Unlike [[ensureUserPrivateDir]], this never
+   * creates the directory. */
+  def verifyUserPrivateDir(dir: Path): Unit = {
+    if (!Files.exists(dir, LinkOption.NOFOLLOW_LINKS))
+      throw new RuntimeException(s"$dir does not exist; refusing to use it for private data.")
     val attrs = Files.readAttributes(dir, classOf[PosixFileAttributes], LinkOption.NOFOLLOW_LINKS)
     if (attrs.isSymbolicLink)
       throw new RuntimeException(s"$dir is a symbolic link; refusing to use it for private data.")
@@ -149,16 +164,18 @@ object Utils {
         s"private data. Fix with: chmod 700 $dir")
   }
 
-  /** Read a per-user secret stored in `file`. The containing directory is first made / verified
-   * user-private via [[ensureUserPrivateDir]]. If `file` exists (as a regular, non-symlink file)
-   * its trimmed contents are returned. If it does not exist, `prompt` is evaluated to obtain the
-   * secret, which is stored in `file` with POSIX mode 0600 and returned (trimmed).
+  /** Read a per-user secret stored in `file`. The containing directory must already exist and is
+   * verified user-private via [[verifyUserPrivateDir]] (it is not created here; use
+   * [[Utils.tempDir]] or [[ensureUserPrivateDir]] to create it). If `file` exists (as a regular,
+   * non-symlink file) its trimmed contents are returned. If it does not exist, `prompt` is
+   * evaluated to obtain the secret, which is stored in `file` with POSIX mode 0600 and returned
+   * (trimmed).
    *
    * `description` is used only in log/error messages. */
   def readOrPromptUserSecret(file: Path, description: String)(prompt: => String): String = {
     val dir = Option(file.getParent)
       .getOrElse(throw new RuntimeException(s"Secret file $file has no parent directory."))
-    ensureUserPrivateDir(dir)
+    verifyUserPrivateDir(dir)
 
     if (Files.exists(file, LinkOption.NOFOLLOW_LINKS)) {
       val fattrs = Files.readAttributes(file, classOf[PosixFileAttributes], LinkOption.NOFOLLOW_LINKS)
