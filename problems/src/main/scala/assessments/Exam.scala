@@ -95,9 +95,14 @@ case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownA
     }
   }
 
-  def renderExam(outputFile: Path): Unit = {
+  /** Render the whole exam to a single PDF at `outputFile` (no student answers).
+   *
+   * @param showSolutions whether solution-only content ([[assessments.pageelements.SolutionElement]]:
+   *                      explanations, grading rules, graders) is included. `false` gives a blank
+   *                      question sheet (student printout); `true` includes the solutions. */
+  def renderExam(outputFile: Path, showSolutions: Boolean = true): Unit = {
     // TODO Make this all configurable
-    val renderContext = RenderContext(RenderContext.dynamic := false)
+    val renderContext = RenderContext(RenderContext.dynamic := false, RenderContext.showSolutions := showSolutions)
 
     def problemHTML(problem: MarkdownAssessment) =
       val body =

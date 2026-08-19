@@ -1,6 +1,7 @@
 package assessments
 
 import assessments.Assessment.feedbackTimeout
+import assessments.pageelements.RenderContext.problem
 import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, ErrorElement, ImageElement, InputElement, RenderContext, SolutionElement, StaticElement}
 import com.eed3si9n.eval.Eval
 import io.github.classgraph.ClassGraph
@@ -61,15 +62,16 @@ class Assessment (val name: String,
   }
 
   def renderStaticHtml(renderContext: RenderContext): Html = {
+    val renderContext2 = renderContext + (problem := this)
 //    val renderContext = RenderContext(RenderContext.dynamic := false, RenderContext.studentAnswers := solution)
     val fileMapBuilder = DataUrlFileMapBuilder()
-    def render(element: Element) = element.renderHtml(renderContext, fileMapBuilder)
+    def render(element: Element) = element.renderHtml(renderContext2, fileMapBuilder)
     
     val body = renderHtml(render)
     assert(fileMapBuilder.result().isEmpty)
 
     // Add "extra data" to the rendering if exists
-    val body2 = renderContext
+    val body2 = renderContext2
       .get(RenderContext.studentAnswers)
       .flatMap(_.answers.get(ElementName.extraData)) match {
       case Some(value) if value.trim.nonEmpty =>

@@ -26,6 +26,9 @@ abstract class SolutionElement(val name: ElementName,
 
   override def renderHtml(context: RenderContext, files: FileMapBuilder): Html =
     if (!context(RenderContext.dynamic)) {
+      // Blank question sheet (e.g. a student printout): omit solution-only content entirely.
+      if (!context.getOrElse(RenderContext.showSolutions, true))
+        return Html("")
       val fb = {
         computeFeedback(
           context(RenderContext.problem),

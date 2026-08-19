@@ -13,5 +13,5 @@ Existing options:
 * `current.exam = CLASS` The "current" exam. Some tools in this project operate on one exam, they use this option to decide which. CLASS is the long name of the Exam class (e.g., `example_exam.ExampleExam`).
 * `sciebo.username = username` For automated Sciebo uploads.
 * `sciebo.password = password` For automated Sciebo uploads.
-* `run.option.for.problem = OPTION` Can be `extractStack` or `runTests`. Decides what to do when an individual problem is executed (Ctrl-Shift-F10 in IDEA).
+* `run.option.for.problem = OPTION` Can be `runTests`, `extractStack`, or `uploadDynexite`. Decides what to do when an individual problem (or exam) object is executed (Ctrl-Shift-F10 in IDEA). See `doc/exporting.md`.
 * `grading.timeout = 60s` Timeout when grading (grader fails then, better than just waiting forever)
