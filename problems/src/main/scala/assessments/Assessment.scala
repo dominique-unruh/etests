@@ -188,7 +188,6 @@ object Assessment {
          |  $staticCSS
          |</style>
          |<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>""")
-  val graderIncomplete = Tag[Assessment, Boolean](default=false)
 }
 
 class UserError(message: String) extends Exception(message)

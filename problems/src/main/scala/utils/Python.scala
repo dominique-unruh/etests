@@ -8,7 +8,22 @@ import scala.collection.mutable
 import scala.util.Random
 
 object Python {
+  /** Fails early (with a clear message) if the in-process Python is too old. We require Python >= 3.13
+   * because [[exec_local]] calls `exec(code, locals=locals)`, and the `locals` keyword argument to
+   * `exec` was only added in Python 3.13 (on 3.12 it raises `TypeError`, which would otherwise surface
+   * as an obscure `ExceptionInInitializerError`). */
+  private def requirePythonVersion(): Unit = {
+    val ok = py.eval("__import__('sys').version_info[:2] >= (3, 13)").as[Boolean]
+    if (!ok) {
+      val version = py.eval("__import__('sys').version.split()[0]").as[String]
+      throw new RuntimeException(
+        s"etests requires the in-process Python interpreter to be >= 3.13, but found $version. " +
+          "ScalaPy loads libpython3.so; point it at a Python >= 3.13 (with sympy available).")
+    }
+  }
+
   private lazy val exec_local = {
+    requirePythonVersion()
     //    py.exec("def exec_local(code): locals = dict(); exec(code, locals=locals); return locals")
     py.exec("def exec_local(code, locals): exec(code, locals=locals); return locals")
     py.Dynamic.global.exec_local

@@ -1,6 +1,5 @@
 package assessments
 
-import assessments.Assessment.graderIncomplete
 import assessments.Exam.{ExamMainRun, runOption}
 import assessments.ExceptionContext.{addToExceptionContext, initialExceptionContext}
 import assessments.GradingContext.{Outcome, answersImmutable, comments}
@@ -114,8 +113,7 @@ abstract class MarkdownAssessment extends TestSuite {
             throw ExceptionWithContext(s"Encountered problems/todos: ${problemElements.mkString(", ")}")
       })
 
-    if (!tags(graderIncomplete))
-      addTest(testSolution().withName("Reference solution, full points?"))
+    addTest(testSolution().withName("Reference solution, full points?"))
 
     val emptyReference =
       for (case (answerElement: AnswerElement) <- assessment.pageElements.values)
