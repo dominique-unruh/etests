@@ -161,7 +161,7 @@ object DynexiteDefaults {
   }
 
 
-  def explain(text: InterpolatedMarkdown[HtmlConvertible]): ExplanationElement =
+  def explain(text: InterpolatedMarkdown[StaticElement | HtmlConvertible]): ExplanationElement =
     ExplanationElement(text)
 
 
