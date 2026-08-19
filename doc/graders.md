@@ -33,11 +33,17 @@ Helper functions must not be shared between different exams!
 
 A grader should determine the following:
 - The number of points added (or removed).
-- The outcome type:
-  - Is the rule satisfied positively (makes sense for rules giving points): `correct`.
-  - If the rule determines that an answer is not fully correct but still gives full points: `partiallyCorrectFullPoint`
-  - If the rule determined the answer is not fully correct and partial points are given: `partiallyCorrect`
-  - If the answer is incorrect, zero points (or point substraction, depending on the kind of rule): `wrong`
+- The outcome type. **`correct` means the answer to the task is fully correct** — not merely that
+  this rule fired. A partial-credit rule that fires positively (e.g. "correct up to sign", "correct
+  but not normalized", "any quantum state") does **not** return `correct`; the answer is not fully
+  correct, so it returns `partiallyCorrect` (or `partiallyCorrectFullPoints`, see below).
+  - The answer is fully correct: `correct`. Typically only the top-priority rule that captures the
+    fully-correct answer and awards full points.
+  - The answer is not fully correct but this rule gives full points anyway: `partiallyCorrectFullPoints`.
+    E.g. a follow-up mistake that we choose not to penalize a second time (the sub-answer is wrong,
+    but full points are awarded because it is consistent with an earlier, already-penalized mistake).
+  - The answer is not fully correct and partial points are given: `partiallyCorrect`.
+  - If the answer is incorrect, zero points (or point subtraction, depending on the kind of rule): `incorrect`
   - If the rule is not applicable: `notApplicable`. E.g., if there's a rule "correct answer: 3 points",
     followed by a rule "correct up to sign: 2 points", then the second rule would return `notApplicable` if the first
     one triggers.
@@ -58,7 +64,7 @@ For simple cases, they are not necessary.
 * `answers(element) = ...` can **change** an answer given by the student
   (useful for doing some cleanup like trimming whitespaces or replacing special cases)
 * `outcome = Outcome.correct` sets a verdict flag independent of the points
-  (`Outcome`: `unspecified` (default), `missing`, `inapplicable`, `correct`, `incorrect`,
+  (`Outcome`: `unspecified` (default), `missing`, `notApplicable`, `correct`, `incorrect`,
   `partiallyCorrect`, `partiallyCorrectFullPoints`). Shown as a colored badge in the webapp
   grading view. When set
   inside a nested grade block, the last non-`unspecified` value propagates to the enclosing grader.

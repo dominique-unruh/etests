@@ -236,7 +236,7 @@ abstract class MarkdownAssessment extends TestSuite {
         registrationNumber = None,
         answers = solution).awaitResult()
       if (outcome != null)
-        assert(outcome == feedback.outcome)
+        assert(outcome == feedback.outcome, s"Expected: $outcome, got: ${feedback.outcome}")
       if (points != null)
         assert(points == feedback.points.get)
       if (test != null)
