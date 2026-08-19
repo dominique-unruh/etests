@@ -42,8 +42,10 @@ object Tag {
     @targetName("add")
     def +[O, Value](tagged: Tagged[O, Value]): Tags[Owner & O] = {
       assert(!map.contains(tagged.tag))
-      new Tags(map + (tagged.tag.asInstanceOf[Tag[?, ?]] -> tagged.value))
+      update(tagged)
     }
+    def update[O, Value](tagged: Tagged[O, Value]): Tags[Owner & O] =
+      new Tags(map + (tagged.tag.asInstanceOf[Tag[?, ?]] -> tagged.value))
     def contains(tag: Tag[?, ?]): Boolean = map.contains(tag)
   }
   /** A tag/value pair with matching types. */

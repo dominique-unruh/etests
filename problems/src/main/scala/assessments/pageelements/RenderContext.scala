@@ -10,7 +10,8 @@ final case class RenderContext(tags: Tags[RenderContext]) {
   def getOrElse[Value](tag: Tag[RenderContext, Value], default: => Value): Value = 
     tags.get(tag).getOrElse(default)
   def +[Value](tag: Tagged[RenderContext, Value]) = RenderContext(tags + tag)
-    
+  def update[Value](tag: Tagged[RenderContext, Value]) = RenderContext(tags `update` tag)
+
   def studentAnswer(name: ElementName): Option[String] =
     get(RenderContext.studentAnswers).flatMap(_.answers.get(name))
 }

@@ -62,7 +62,7 @@ class Assessment (val name: String,
   }
 
   def renderStaticHtml(renderContext: RenderContext): Html = {
-    val renderContext2 = renderContext + (problem := this)
+    val renderContext2 = renderContext `update` (problem := this)
 //    val renderContext = RenderContext(RenderContext.dynamic := false, RenderContext.studentAnswers := solution)
     val fileMapBuilder = DataUrlFileMapBuilder()
     def render(element: Element) = element.renderHtml(renderContext2, fileMapBuilder)
