@@ -3,6 +3,7 @@ import {InteractiveElement} from "./interactive-element.js";
 type SolutionFeedback = {
     points?: number,
     outcome?: string,
+    error?: string,
     text: string,
 }
 
@@ -10,6 +11,7 @@ type SolutionFeedback = {
 export class Solution extends InteractiveElement<null, SolutionFeedback> {
     private points: HTMLSpanElement;
     private outcome: HTMLSpanElement;
+    private error: HTMLDivElement;
     private body: HTMLSpanElement;
 
     constructor() {
@@ -20,6 +22,9 @@ export class Solution extends InteractiveElement<null, SolutionFeedback> {
         this.outcome = document.createElement("div")
         this.outcome.classList.add("solution-outcome");
         this.appendChild(this.outcome);
+        this.error = document.createElement("div")
+        this.error.classList.add("solution-error");
+        this.appendChild(this.error);
         this.body = document.createElement("div")
         this.body.classList.add("solution-body");
         this.appendChild(this.body);
@@ -44,6 +49,7 @@ export class Solution extends InteractiveElement<null, SolutionFeedback> {
             this.outcome.innerText = newValue.outcome;
             this.outcome.classList.add("outcome-" + newValue.outcome);
         }
+        this.error.innerText = newValue.error == null ? "" : newValue.error;
         // @ts-ignore
         MathJax.typesetClear([this.body]);
         this.body.innerHTML = newValue.text;

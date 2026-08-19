@@ -4,8 +4,7 @@ import assessments.pageelements.RenderContext.{catchExceptions, studentAnswers}
 import assessments.pageelements.SolutionElement.{Feedback, Styling}
 import assessments.pageelements.SolutionElement.Styling.explanation
 import assessments.GradingContext.Outcome
-import assessments.InterpolatedMarkdown.md
-import assessments.{Answers, Assessment, ElementName, FileMapBuilder, Html, HtmlConvertible, InterpolatedMarkdown, Plaintext, Points, SyntaxError}
+import assessments.{Answers, Assessment, ElementName, FileMapBuilder, Html, HtmlConvertible, InterpolatedMarkdown, Points, SyntaxError}
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import play.api.libs.json.{JsNumber, JsObject, JsString, JsValue}
 import utils.{IndentedInterpolator, Tag}
@@ -70,8 +69,7 @@ abstract class SolutionElement(val name: ElementName,
       if (fb.outcome != Outcome.unspecified)
         builder.addOne(("outcome", JsString(fb.outcome.toString)))
       for (error <- fb.error) {
-        val errorHtml = md"**ERROR**: ${Plaintext(SolutionElement.errorToString(error))}".toHtml.flatten.html
-        builder.addOne(("text", JsString(fb.text.html + errorHtml)))
+        builder.addOne(("error", JsString(SolutionElement.errorToString(error))))
         builder.addOne(("points", JsNumber(0)))
         builder.addOne(("outcome", JsString("error")))
       }
@@ -81,7 +79,8 @@ abstract class SolutionElement(val name: ElementName,
       case e : Throwable =>
         e.printStackTrace()
         JsObject(Seq(
-          "text" -> JsString(md"**ERROR**: ${Plaintext(e.toString)}".toHtml.flatten.html),
+          "text" -> JsString(""),
+          "error" -> JsString(e.toString),
           "points" -> JsNumber(0), "outcome" -> JsString("error")))
     }
   }
