@@ -196,14 +196,6 @@ object DynexiteDefaults {
       context.outcome = incorrect
   }
 
-
-  extension (ge: GradingElement) {
-    def feedback(using context: GradingContext): SolutionElement.Feedback =
-      ge.computeFeedback(assessment = context.assessment,
-        registrationNumber = Some(context.registrationNumber),
-        answers = answersImmutable).awaitResult()
-  }
-
   /** Checks for equality of two Sympy expressions (`x==y`?)
    * Up to mathematical equivalence, as far as can be figured out (somewhat heuristic).
    *

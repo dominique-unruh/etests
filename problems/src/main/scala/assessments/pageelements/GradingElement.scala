@@ -30,7 +30,8 @@ class GradingElement(name: ElementName,
                      grader: (context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]) ?=> Unit)
   extends SolutionElement(name = name, styling = SolutionElement.Styling.grading) {
 
-  override def computeFeedback(assessment: Assessment, registrationNumber: Option[String], answers: Answers): Future[SolutionElement.Feedback] = {
+  override def computeFeedback(assessment: Assessment, registrationNumber: Option[String], answers: Answers,
+                               catchExceptions: Boolean): Future[SolutionElement.Feedback] = {
     given ExceptionContext = initialExceptionContext(s"Recomputing grading based on change of inputs in webapp")
     val duration = Utils.getSystemProperty("grading.timeout", "timeout for graders, e.g., 10s, 1m")
     logger.debug(s"Running grader $name, $registrationNumber: $answers")
@@ -65,8 +66,7 @@ class GradingElement(name: ElementName,
         outcome = context.outcome)
       feedback
     }.recover {
-      case e: Exception => Feedback(text = textAsHtml, error = Some(e))
-      case t: Throwable => Feedback(text = textAsHtml, error = Some(t.toString))
+      case e: Exception if catchExceptions => Feedback(text = textAsHtml, error = Some(e))
     }
   }
 }

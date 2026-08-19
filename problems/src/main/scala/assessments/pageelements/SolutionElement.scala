@@ -32,7 +32,8 @@ abstract class SolutionElement(val name: ElementName,
         computeFeedback(
           context(RenderContext.problem),
           context.get(RenderContext.registrationNumber),
-          context(RenderContext.studentAnswers)).awaitResult()
+          context(RenderContext.studentAnswers),
+          catchExceptions = context(catchExceptions)).awaitResult()
       }
       val pointsHtml = fb.points match {
         case Some(points) => s"""<div class="solution-points">${escapeHtml4(points.decimalFractionString(precision = 2))} points</div>"""
@@ -54,14 +55,15 @@ abstract class SolutionElement(val name: ElementName,
     }
     Html(ind"""<etest-solution id="${name.htmlComponentNameEscaped}" styling="${escapeHtml4(styling.toString)}"></etest-solution>""")
 
-  def computeFeedback(assessment: Assessment, registrationNumber: Option[String], answers: Answers): Future[Feedback]
+  def computeFeedback(assessment: Assessment, registrationNumber: Option[String], answers: Answers,
+                      catchExceptions: Boolean): Future[Feedback]
 
   def pointsReached(assessment: Assessment, registrationNumber: Option[String], answers: Answers): Future[Option[Points]] =
-    computeFeedback(assessment, registrationNumber, answers).map(_.points)
+    computeFeedback(assessment, registrationNumber, answers, catchExceptions = false).map(_.points)
 
   override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsObject] = {
     val registrationNumber = state.get(ElementName.registrationNumber).map(_.asInstanceOf[JsString].value)
-    val result = for (fb <- computeFeedback(assessment, registrationNumber, assessment.webappStateToAnswers(state))) yield {
+    val result = for (fb <- computeFeedback(assessment, registrationNumber, assessment.webappStateToAnswers(state), catchExceptions = true)) yield {
       val builder = Map.newBuilder[String, JsValue]
       builder.addOne(("text", JsString(fb.text.html)))
       for (points <- fb.points)

@@ -234,7 +234,8 @@ abstract class MarkdownAssessment extends TestSuite {
       val feedback = gradingElement.computeFeedback(
         assessment = this,
         registrationNumber = None,
-        answers = solution).awaitResult()
+        answers = solution,
+        catchExceptions = false).awaitResult()
       if (outcome != null)
         assert(outcome == feedback.outcome, s"Expected: $outcome, got: ${feedback.outcome}")
       if (points != null)
@@ -259,7 +260,7 @@ abstract class MarkdownAssessment extends TestSuite {
    */
   def testOverall(solution: Answers = null,
                   points: Points = null,
-                  test: (GradingContext, ExceptionContext) ?=> Unit = null,
+                  test: (GradingContext, ExceptionContext) ?=> Unit = {},
                   name: String): Unit = {
     val solutions = if (solution == null) testingSolutions else Seq(solution)
     val testCases = for (solution <- solutions) yield Test(solution.description) {
@@ -305,7 +306,7 @@ abstract class MarkdownAssessment extends TestSuite {
         case n: String => grader(n)
       }
       val feedbacks = elements.map { element =>
-        (element, element.computeFeedback(assessment = this, registrationNumber = None, answers = answers).awaitResult())
+        (element, element.computeFeedback(assessment = this, registrationNumber = None, answers = answers, catchExceptions = false).awaitResult())
       }
       def triggered(feedback: Feedback): Boolean =
         feedback.outcome == Outcome.correct ||
