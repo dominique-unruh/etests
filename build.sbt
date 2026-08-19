@@ -9,6 +9,10 @@ version := "1.0-SNAPSHOT"
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
+// ideExcludedDirectories is consumed only by IntelliJ's sbt import, never by an sbt task, so sbt's
+// lintUnused check flags it — exempt it.
+Global / excludeLintKeys += ideExcludedDirectories
+
 ThisBuild / scalaVersion := "3.6.4"
 ThisBuild / scalacOptions += "-language:implicitConversions"
 
@@ -121,6 +125,13 @@ lazy val exams = (project in file("exams"))
         new SimpleFileFilter(f => f.toPath.normalize.startsWith(d.toPath.normalize))
       ("*.scala": FileFilter) || under(base / "target") || under(base / ".git") || HiddenFileFilter
     },
+    // IntelliJ (via sbt-ide-settings) marks the archived exam folders as excluded on sbt reload, so
+    // it stops indexing/compiling their (non-compiling) sources — mirrors the compile excludeFilter.
+    ideExcludedDirectories := archivedExams.map(baseDirectory.value / _) :+ (baseDirectory.value / "target"),
+    // ...but keep each archived exam's archive/ (static HTML/PDF/YAML snapshots) visible by declaring
+    // it a resource root; IntelliJ resolves nested content-root markings innermost-first, so a
+    // resource root inside an excluded folder stays browsable. (archive/ is already on the classpath.)
+    Compile / unmanagedResourceDirectories ++= archivedExams.map(baseDirectory.value / _ / "archive"),
     // Problem objects (MarkdownAssessment = utest.TestSuite) are discovered as test suites here too.
     testFrameworks += new TestFramework("utest.runner.Framework"),
     inConfig(Compile)(Defaults.testTasks),
