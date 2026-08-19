@@ -1,6 +1,6 @@
 package assessments.pageelements
 
-import assessments.pageelements.RenderContext.studentAnswers
+import assessments.pageelements.RenderContext.{catchExceptions, studentAnswers}
 import assessments.pageelements.SolutionElement.{Feedback, Styling}
 import assessments.pageelements.SolutionElement.Styling.explanation
 import assessments.GradingContext.Outcome
@@ -26,10 +26,12 @@ abstract class SolutionElement(val name: ElementName,
 
   override def renderHtml(context: RenderContext, files: FileMapBuilder): Html =
     if (!context(RenderContext.dynamic)) {
-      val fb = computeFeedback(
-        context(RenderContext.problem),
-        context.get(RenderContext.registrationNumber),
-        context(RenderContext.studentAnswers)).awaitResult()
+      val fb = {
+        computeFeedback(
+          context(RenderContext.problem),
+          context.get(RenderContext.registrationNumber),
+          context(RenderContext.studentAnswers)).awaitResult()
+      }
       val pointsHtml = fb.points match {
         case Some(points) => s"""<div class="solution-points">${escapeHtml4(points.decimalFractionString(precision = 2))} points</div>"""
         case None => ""
@@ -37,7 +39,16 @@ abstract class SolutionElement(val name: ElementName,
       val outcomeHtml =
         if (fb.outcome == Outcome.unspecified) ""
         else s"""<div class="solution-outcome outcome-${escapeHtml4(fb.outcome.toString)}">${escapeHtml4(fb.outcome.toString)}</div>"""
-      return Html(s"""<div class="solution solution-${escapeHtml4(styling.toString)}">$pointsHtml$outcomeHtml<div class="solution-body">${fb.text.html}</div></div>""")
+      for (error <- fb.error if !context(catchExceptions))
+        error match {
+          case e: Exception => throw e
+          case s: String => throw new RuntimeException(s)
+        }
+      val errorHtml = fb.error match {
+        case Some(error) => s"""<div class="solution-error">${escapeHtml4(SolutionElement.errorToString(error))}</div>"""
+        case None => ""
+      }
+      return Html(s"""<div class="solution solution-${escapeHtml4(styling.toString)}">$pointsHtml$outcomeHtml$errorHtml<div class="solution-body">${fb.text.html}</div></div>""")
     }
     Html(ind"""<etest-solution id="${name.htmlComponentNameEscaped}" styling="${escapeHtml4(styling.toString)}"></etest-solution>""")
 
@@ -55,6 +66,12 @@ abstract class SolutionElement(val name: ElementName,
         builder.addOne(("points", JsNumber(points.toBigDecimal)))
       if (fb.outcome != Outcome.unspecified)
         builder.addOne(("outcome", JsString(fb.outcome.toString)))
+      for (error <- fb.error) {
+        val errorHtml = md"**ERROR**: ${Plaintext(SolutionElement.errorToString(error))}".toHtml.flatten.html
+        builder.addOne(("text", JsString(fb.text.html + errorHtml)))
+        builder.addOne(("points", JsNumber(0)))
+        builder.addOne(("outcome", JsString("error")))
+      }
       JsObject(builder.result())
     }
     result.recover {
@@ -73,5 +90,10 @@ object SolutionElement {
     case grading
   }
 
-  case class Feedback(text: Html, points: Option[Points] = None, outcome: Outcome = Outcome.unspecified)
+  case class Feedback(text: Html, points: Option[Points] = None, outcome: Outcome = Outcome.unspecified, error: Option[String | Exception] = None)
+
+  def errorToString(error: String | Exception): String = error match {
+    case s: String => s
+    case e: Exception => e.toString
+  }
 }

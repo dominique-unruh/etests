@@ -2,7 +2,7 @@ package externalsystems
 
 import scala.language.implicitConversions
 import assessments.pageelements.{AnswerElement, InputElement, MultipleChoice}
-import assessments.{Assessment, ElementName, Exam, ExceptionContext, ExceptionWithContext, MarkdownAssessment, Points}
+import assessments.{Answers, Assessment, ElementName, Exam, ExceptionContext, ExceptionWithContext, MarkdownAssessment, Points}
 import com.typesafe.scalalogging.Logger
 import externalsystems.Dynexite.ResultInputFieldKey
 import upickle.core.AbortException
@@ -255,14 +255,13 @@ object Dynexite {
   def getDynexiteAnswers(problem: Assessment,
                          exam: Exam,
                          registrationNumber: String)
-                        (implicit exceptionContext: ExceptionContext):
-  Map[ElementName, String] = {
+                        (implicit exceptionContext: ExceptionContext): Answers = {
     given ExceptionContext = ExceptionContext.addToExceptionContext(s"Matching Dynexite answers up with our exam implementation for $registrationNumber, ${problem.name}", registrationNumber, problem)
     val item = getDynexiteItem(problem, exam, registrationNumber)
     val (answers, points, reachable) = getDynexiteAnswers(item = item, assessment = problem)
     if (reachable != problem.reachablePoints)
       throw ExceptionWithContext(s"Dynexite says there are $reachable reachable points, we say ${problem.reachablePoints}")
-    answers
+    Answers(answers)
   }
 
 /*  def blockNumberAnswers(block: Block): Int = block match
@@ -513,9 +512,9 @@ object Dynexite {
     learners(index)
   }
 
-  /** Path of the file holding the Dynexite auth cookie (temporary, for testing). Kept in a
-   * user-private directory; see [[Utils.readOrPromptUserSecret]]. */
-  private val authCookieFile = Path.of("/tmp/etests-tmp/dynexite-authcookie")
+  /** Path of the file holding the Dynexite auth cookie (temporary, for testing). Kept in the
+   * user-private [[Utils.tempDir]]; see [[Utils.readOrPromptUserSecret]]. */
+  private lazy val authCookieFile = Utils.tempDir.resolve("dynexite-authcookie")
 
   /** Name of the Dynexite session cookie. */
   private val cookieName = "dyn-orbit-teacher"

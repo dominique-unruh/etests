@@ -1,4 +1,4 @@
-FROM node:22-slim
+FROM docker.io/library/node:22-slim
 
 RUN apt-get update && apt-get install -y chromium fonts-liberation fonts-noto fonts-noto-cjk python3-pip --no-install-recommends \
  && pip3 install pikepdf --break-system-packages \

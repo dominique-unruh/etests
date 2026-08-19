@@ -10,7 +10,7 @@ import play.api.mvc.*
 import java.nio.file.{Files, Path}
 import javax.script.{ScriptEngine, ScriptEngineManager}
 import scala.util.matching.Regex
-import assessments.{Assessment, ElementName, Exam, ExceptionContext, MarkdownAssessment}
+import assessments.{Answers, Assessment, ElementName, Exam, ExceptionContext, MarkdownAssessment}
 import play.api.libs.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, JsValue}
 import play.mvc.BodyParser.Json
 import play.twirl.api.{Html, HtmlFormat}
@@ -19,7 +19,7 @@ import externalsystems.Dynexite
 import io.github.classgraph.{ClassGraph, ClassInfoList}
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.commons.text.StringEscapeUtils
-import utils.{PersistentCache, IndentedInterpolator, Utils}
+import utils.{IndentedInterpolator, PersistentCache, Utils}
 
 import scala.annotation.experimental
 import scala.jdk.CollectionConverters.CollectionHasAsScala
@@ -127,17 +127,17 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     try {
       val exam = Exam.getExamById(examName)
       val assessment = getAssessment(exam, assessmentName)
-      val answers = kind match {
+      val answers: Answers = kind match {
         case "reference" =>
-          assessment.assessment.referenceSolution
+          assessment.referenceSolution
         case s"testing:$index" =>
-          assessment.testingSolutions(index.toInt).answers
+          assessment.testingSolutions(index.toInt)
         case "student" =>
           val registrationNumber = request.body.asJson.get.asInstanceOf[JsObject].apply(ElementName.registrationNumber.htmlComponentName).asInstanceOf[JsString].value
           Dynexite.getDynexiteAnswers(problem = assessment, exam = exam, registrationNumber = registrationNumber)
       }
-      assert(answers.forall(_._2 != null))
-      Ok(JsObject(answers.map((e,t) => (e.htmlComponentName, JsString(t)))))
+      assert(answers.answers.forall(_._2 != null))
+      Ok(JsObject(answers.answers.map((e,t) => (e.htmlComponentName, JsString(t)))))
     } catch {
       case e: Throwable =>
         Ok(JsString(Utils.exceptionMessage(e)))
@@ -191,7 +191,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
       case e: Throwable => result ++= ExceptionUtils.getStackTrace(e)
     result ++= "\n\n\n"
     try {
-      result ++= Dynexite.getDynexiteAnswers(assessment, exam, regno).toSeq.mkString("\n")
+      result ++= Dynexite.getDynexiteAnswers(assessment, exam, regno).answers.toSeq.mkString("\n")
     } catch
       case e: Throwable => result ++= ExceptionUtils.getStackTrace(e)
 

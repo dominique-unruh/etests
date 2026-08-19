@@ -35,7 +35,7 @@ object LaTeX {
 
     val dockerResult = runInDocker(
       shortDescription = "Latex to PDF",
-      image = "aergus/latex:latest",
+      image = "docker.io/aergus/latex:latest",
       command = Seq("/bin/bash", "script.sh"),
       files = Map("script.sh" -> script, "latex.tex" -> document) ++ files,
       requestedOutputs = Seq("latex.pdf", "latex.log")
@@ -74,7 +74,7 @@ object LaTeX {
 
     val dockerResult = runInDocker(
       shortDescription = "Latex to PNG",
-      image = "aergus/latex:latest",
+      image = "docker.io/aergus/latex:latest",
       command = Seq("/bin/bash", "script.sh"),
       files = Map("script.sh" -> script, "latex.tex" -> document),
       requestedOutputs = Seq("result.png", "latex.log", "convert.log")

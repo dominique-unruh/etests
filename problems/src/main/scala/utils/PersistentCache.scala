@@ -15,8 +15,7 @@ object PersistentCache {
     MessageDigest.getInstance("SHA-256").digest(bytes)
 
   private lazy val connection: Connection = synchronized {
-    val cachePath =
-      Utils.getSystemPropertyPath("cache.file", "cache file (e.g., /tmp/etests.cache), doesn't have to exist yet")
+    val cachePath = Utils.tempDir.resolve("cache")
     logger.debug("Opening SQLite cache")
 
     val conn = try

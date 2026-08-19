@@ -25,4 +25,7 @@ object RenderContext {
   val problem: Tag[RenderContext, Assessment] = Tag()
   /** Registration number of the student */
   val registrationNumber: Tag[RenderContext, String] = Tag()
+  /** Whether to try and catch exceptions when rendering (and replace the failed elements by error messages),
+   * or just throw the exceptions. */
+  val catchExceptions: Tag[RenderContext, Boolean] = Tag(default = false)
 }

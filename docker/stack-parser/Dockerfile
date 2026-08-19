@@ -1,5 +1,5 @@
-#FROM ubuntu
-FROM archlinux
+#FROM docker.io/library/ubuntu
+FROM docker.io/library/archlinux
 LABEL authors="unruh"
 RUN pacman --noconfirm -Sy maxima git base-devel php composer
 RUN git clone --filter blob:none https://github.com/dominique-unruh/moodle-qtype_stack-for-parsing.git moodle-qtype_stack && \

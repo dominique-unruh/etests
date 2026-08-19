@@ -24,6 +24,19 @@
   }
 }
 
+.solution-error {
+  margin-top: 0.5em;
+  padding: 0.4em;
+  border: solid #c62828;
+  background-color: #ffebee;
+  font-weight: bold;
+  white-space: pre-wrap;
+
+  &::before {
+    content: "Error: ";
+  }
+}
+
 .solution-points {
   float: right;
   font-weight: bold;
@@ -63,5 +76,9 @@
 
   &.outcome-inapplicable {
     background-color: #9e9e9e;
+  }
+
+  &.outcome-error {
+    background-color: #c62828;
   }
 }
