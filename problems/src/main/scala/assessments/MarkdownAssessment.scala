@@ -4,7 +4,7 @@ import assessments.Exam.{ExamMainRun, runOption}
 import assessments.ExceptionContext.{addToExceptionContext, initialExceptionContext}
 import assessments.GradingContext.{Outcome, answersImmutable, comments}
 import assessments.InterpolatedMarkdown.md
-import assessments.pageelements.SolutionElement.Feedback
+import assessments.pageelements.GradingElement.Feedback
 import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, GradingElement, ProblemElement, StaticElement}
 import example_exam.ExampleProblem.question
 import externalsystems.{Dynexite, MoodleStack}

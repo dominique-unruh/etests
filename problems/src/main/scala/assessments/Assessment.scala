@@ -2,7 +2,7 @@ package assessments
 
 import assessments.Assessment.feedbackTimeout
 import assessments.pageelements.RenderContext.problem
-import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, ErrorElement, ImageElement, InputElement, RenderContext, SolutionElement, StaticElement}
+import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, ErrorElement, GradingElement, ImageElement, InputElement, RenderContext, StaticElement}
 import com.eed3si9n.eval.Eval
 import io.github.classgraph.ClassGraph
 import org.apache.commons.text.StringEscapeUtils
@@ -93,7 +93,7 @@ class Assessment (val name: String,
 
   def pointsReached(answers: Answers, registrationNumber: Option[String]): Future[Points] = {
     val pointIterFuture =
-      Future.traverse(pageElements.values.collect { case e: SolutionElement => e }) {
+      Future.traverse(pageElements.values.collect { case e: GradingElement => e }) {
         _.pointsReached(this, registrationNumber, answers)
       }
     for (points <- pointIterFuture) yield

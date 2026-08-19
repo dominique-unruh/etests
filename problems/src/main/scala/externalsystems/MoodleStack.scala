@@ -298,10 +298,10 @@ object MoodleStack {
           val name = pageElement.name.toString
           inputs += multipleChoiceElementToMoodle(pageElement)
           Html(s"[[input:$name]]")
-        case element: StaticElement =>
-          element.renderHtml(renderContext, fileMapBuilder)
         case _: SolutionElement =>
           Html.empty
+        case element: StaticElement =>
+          element.renderHtml(renderContext, fileMapBuilder)
         case _ =>
           throw RuntimeException(s"Unknown page element (type ${element.getClass.getName}): $element")
       }

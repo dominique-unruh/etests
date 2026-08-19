@@ -1,18 +1,17 @@
 package assessments.pageelements
 
-import assessments.pageelements.SolutionElement.Feedback
-import assessments.pageelements.SolutionElement.Styling.explanation
 import assessments.*
-import play.api.libs.json.JsValue
 
-import scala.concurrent.Future
-
-/** A [[SolutionElement]] that shows static explanation text (styled as an `explanation` box).
- * Created via `explain(...)` in [[assessments.DynexiteDefaults]]. It awards no points; its
- * feedback is just the rendered `text`. For a grading element that also scores, see [[GradingElement]]. */
-class ExplanationElement(name: ElementName, text: InterpolatedMarkdown[HtmlConvertible]) extends SolutionElement(name = name, styling = explanation) {
+/** A [[SolutionElement]] that shows static explanation text. Created via `explain(...)` in
+ * [[assessments.DynexiteDefaults]]. It awards no points and produces plain static HTML; it is
+ * omitted from blank question sheets (`showSolutions = false`). For a solution element that also
+ * scores, see [[GradingElement]]. */
+class ExplanationElement(text: InterpolatedMarkdown[HtmlConvertible]) extends StaticElement, SolutionElement {
   lazy val html: Html = text.toHtml.flatMapArgs(_.toHtml)
 
-  override def computeFeedback(assessment: Assessment, registrationNumber: Option[String], answers: Answers, catchException: Boolean): Future[Feedback] =
-    Future.successful(Feedback(text = html))
+  override def renderHtml(context: RenderContext, associatedFiles: FileMapBuilder): Html =
+    if (!context.getOrElse(RenderContext.showSolutions, true))
+      Html("")
+    else
+      Html(s"""<div class="explanation"><div class="explanation-body">${html.html}</div></div>""")
 }

@@ -32,6 +32,6 @@ object RenderContext {
   /** Whether solution-only content ([[assessments.pageelements.SolutionElement]]: explanations,
    * grading rules, graders) is included. Default `true`. Set `false` for a blank question sheet (e.g.
    * a student printout). Only affects **static** rendering (`dynamic := false`); in dynamic rendering
-   * the `<etest-solution>` web component is always emitted and visibility is handled client-side. */
+   * the `<etest-grading>` web component is always emitted and visibility is handled client-side. */
   val showSolutions: Tag[RenderContext, Boolean] = Tag(default = true)
 }

@@ -9,8 +9,6 @@ import scala.language.implicitConversions
 import assessments.pageelements.*
 import assessments.pageelements.DynamicElement.humanName
 import assessments.pageelements.MultipleChoice.Style.select
-import assessments.pageelements.SolutionElement.Styling
-import assessments.pageelements.SolutionElement.Styling.{explanation, grading}
 import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
 import assessments.stack.{SympyAssumption, SympyExpr}
@@ -163,14 +161,8 @@ object DynexiteDefaults {
   }
 
 
-  def explain(text: InterpolatedMarkdown[HtmlConvertible], name: String = null)
-             (using implicitName: ImplicitName[ElementName, name.type]): ExplanationElement = {
-    val actualName = if (implicitName.name.name == "question") // Inlined in the markdown, not a good default
-      ElementName(s"explanation-element-${Utils.uniqueId()}")
-    else
-      implicitName.name
-    ExplanationElement(actualName, text)
-  }
+  def explain(text: InterpolatedMarkdown[HtmlConvertible]): ExplanationElement =
+    ExplanationElement(text)
 
 
   def grading(text: GradingContext ?=> InterpolatedMarkdown[HtmlConvertible],
