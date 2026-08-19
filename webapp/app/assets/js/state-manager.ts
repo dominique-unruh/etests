@@ -203,6 +203,12 @@ export class StateManager {
         window.open(url, "_blank")
     }
 
+    showDynexiteQuestionLink() {
+        // @ts-ignore
+        let url = jsRoutes.controllers.AssessmentController.dynexiteQuestionLink(this.examName, this.assessmentName).url
+        window.open(url, "_blank")
+    }
+
     async showDynexiteAnswers() {
         this.clearErrors()
         // @ts-ignore

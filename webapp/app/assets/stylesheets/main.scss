@@ -15,6 +15,18 @@
         padding: 15px;
         border-left: 2px solid #dee2e6;
         height: fit-content;
+        position: sticky;
+        top: 10px;
+        max-height: calc(100vh - 20px);
+        overflow-y: auto;
+    }
+
+    details.testing-solutions > summary {
+        display: list-item; /* keep the disclosure triangle */
+    }
+
+    details.testing-solutions > summary > a {
+        margin-left: 4px;
     }
 
     /* Make it responsive */
@@ -27,6 +39,8 @@
         .right-column {
             border-left: none;
             border-top: 2px solid #dee2e6;
+            position: static;
+            max-height: none;
         }
     }
 }

@@ -10,7 +10,7 @@ import play.api.mvc.*
 import java.nio.file.{Files, Path}
 import javax.script.{ScriptEngine, ScriptEngineManager}
 import scala.util.matching.Regex
-import assessments.{Answers, Assessment, ElementName, Exam, ExceptionContext, MarkdownAssessment}
+import assessments.{Answers, Assessment, ElementName, Exam, ExceptionContext, ExceptionWithContext, MarkdownAssessment}
 import play.api.libs.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, JsValue}
 import play.mvc.BodyParser.Json
 import play.twirl.api.{Html, HtmlFormat}
@@ -207,6 +207,15 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
   def dynexiteLink(examName: String, regno: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     val exam = Exam.getExamById(examName)
     Redirect(Dynexite.getLinkForLearner(exam, regno))
+  }
+
+  def dynexiteQuestionLink(examName: String, assessmentName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    given ExceptionContext = ExceptionContext.initialExceptionContext(s"Responding to web-request $request")
+    val exam = Exam.getExamById(examName)
+    val assessment = getAssessment(exam, assessmentName)
+    val questionId = assessment.assessment.tags.getOrElse(Dynexite.dynexiteQuestionId,
+      throw ExceptionWithContext(s"Problem '$assessmentName' has no tag dynexiteQuestionId; cannot link to Dynexite."))
+    Redirect(Dynexite.editUrl(questionId))
   }
 
   def defaultRedirect(): Action[AnyContent] = Action {
