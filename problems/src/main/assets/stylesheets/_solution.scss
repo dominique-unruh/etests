@@ -32,6 +32,10 @@
   font-weight: bold;
   white-space: pre-wrap;
 
+  &:empty {
+    display: none;
+  }
+
   &::before {
     content: "Error: ";
   }

@@ -34,7 +34,7 @@ class GradingElement(name: ElementName,
     given ExceptionContext = initialExceptionContext(s"Recomputing grading based on change of inputs in webapp")
     val duration = Utils.getSystemProperty("grading.timeout", "timeout for graders, e.g., 10s, 1m")
     logger.debug(s"Running grader $name, $registrationNumber: $answers")
-    given GradingContext = GradingContext(answers.answers, registrationNumber.getOrElse("NO_STUDENT"), assessment.reachablePoints, assessment.sourceAssessment)
+    given GradingContext = GradingContext(answers.answers, registrationNumber.getOrElse("NO_STUDENT"), reachablePoints, assessment.sourceAssessment)
     val textAsHtml = text.toHtml.flatMapArgs(_.toHtml)
     Utils.runWithTimeoutFuture(Duration(duration), s"${assessment.name}-$name-${registrationNumber}") {
       val (exit, context) = bareGradeBlock(reachablePoints, allowExitWithoutDone = true) {
