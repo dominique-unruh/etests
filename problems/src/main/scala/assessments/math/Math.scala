@@ -1,7 +1,7 @@
 package assessments.math
 
 import assessments.MathContext.FunctionResult
-import assessments.math.Math.{Bool, Foreign, Funcall, Integer, Operation, Ops, Sympy, Variable, addToStringBuilderCommaSep}
+import assessments.math.Math.{Bool, Foreign, Funcall, Integer, Operation, Ops, StringLiteral, Sympy, Variable, addToStringBuilderCommaSep}
 import assessments.stack.SympyExpr.sympy
 import assessments.stack.{StackUtils, SympyExpr}
 import assessments.{ExceptionContext, ExceptionWithContext, MathContext, UserError}
@@ -24,7 +24,7 @@ sealed trait Math {
       case Funcall(name, arguments*) => arguments.foreach(collect)
       case Sympy(op, arguments*) => arguments.foreach(collect)
       case Variable(name) => builder += name
-      case Integer(_) | Bool(_) | Foreign(_) =>
+      case Integer(_) | Bool(_) | Foreign(_) | StringLiteral(_) =>
     collect(this)
     builder.result()
   }
@@ -54,6 +54,7 @@ sealed trait Math {
     case Variable(name) => builder ++= name
     case Integer(int) => builder ++= int.toString
     case Bool(bool) => builder ++= bool.toString
+    case StringLiteral(string) => builder ++= s""""$string""""
     case Foreign(value) =>
       builder ++= "[" ++= value.toString ++= "]"
   }
@@ -63,7 +64,7 @@ sealed trait Math {
     case Funcall(name, arguments*) => Funcall(f(name), arguments.map(_.mapIdentifiers(f))*)
     case Sympy(op, arguments*) => Sympy(op, arguments.map(_.mapIdentifiers(f))*)
     case Variable(name) => Variable(f(name))
-    case Integer(_) | Bool(_) | Foreign(_) => this
+    case Integer(_) | Bool(_) | Foreign(_) | StringLiteral(_) => this
   }
 
   def mapVariables(f: String => Option[Math]): Math = this match
@@ -71,7 +72,7 @@ sealed trait Math {
     case Sympy(op, arguments*) => Sympy(op, arguments.map(_.mapVariables(f))*)
     case Funcall(name, arguments*) => Funcall(name, arguments.map(_.mapVariables(f))*)
     case Variable(name) => f(name).getOrElse(this)
-    case Integer(_) | Bool(_) | Foreign(_) => this
+    case Integer(_) | Bool(_) | Foreign(_) | StringLiteral(_) => this
 
   def mapVariables(map: Map[String, Math]): Math = mapVariables(map.get)
 
@@ -143,6 +144,7 @@ sealed trait Math {
       case Foreign(sympy: SympyExpr) => sympy
       case Foreign(value) =>
         throw RuntimeException(s"Encountered Foreign($value) in .toSympyMC. Not supported.")
+      case StringLiteral(string) => SympyExpr(sympy.Symbol(s""""$string""""))
 
     to(this.fixValues)
   }
@@ -188,7 +190,7 @@ sealed trait Math {
       f.applyOrElse(mappedArgs, _ => Funcall(fname, mappedArgs*))
     case Funcall(fname, arguments*) =>
       Funcall(fname, arguments.map(_.mapFunction(name, f))*)
-    case Variable(_) | Integer(_) | Bool(_) | Foreign(_) => this
+    case Variable(_) | Integer(_) | Bool(_) | Foreign(_) | StringLiteral(_) => this
 
   def eval[A](using exceptionContext: ExceptionContext, mathContext: MathContext, typeChecker: TypeChecker[A])
              (debug: Boolean = false): A = {
@@ -234,6 +236,7 @@ sealed trait Math {
           throw EvalEncounteredVariable(name)
         case Math.Integer(int) => mathContext.integerConversion(int)
         case Math.Bool(bool) => bool // TODO configurable
+        case Math.StringLiteral(string) => string  // TODO configurable
         case Math.Sympy(op, arguments*) =>
           throw ExceptionWithContext(s"Encountered sympy operation $op")
         case Math.Foreign(value) => value
@@ -318,6 +321,7 @@ object Math {
   @deprecated
   case class Sympy(op: SympyOperator, arguments: Math*) extends Math
   case class Foreign(value: Any) extends Math
+  case class StringLiteral(string: String) extends Math
 
   @deprecated
   class SympyOperator(val name: String, val function: MathContext ?=> Seq[SympyExpr] => SympyExpr) {

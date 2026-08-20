@@ -45,7 +45,9 @@ object StackParser {
           case "%e" => Math.eulerConstant
           case "%pi" => Math.pi
           case _ => throw ExceptionWithContext(s"Unknown maxima special symbol '$name' encountered in $maximaTerm")
-      case MaximaAtom(name) => ???
+      case MaximaAtom(name) =>
+        if (name.startsWith("\"") && name.endsWith("\"")) Math.StringLiteral(name.stripSuffix("\"").stripPrefix("\""))
+        else throw ExceptionWithContext(s"Unknown maxima atom '$name' encountered in $maximaTerm")
       case MaximaInteger(int) => Math.Integer(int)
       case MaximaOperation(MaximaAtom(name), args*) =>
         val nameStripped = name.stripSuffix("\"").stripPrefix("\"")
