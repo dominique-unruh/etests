@@ -5,6 +5,7 @@ import assessments.pageelements.{AnswerElement, InputElement, MultipleChoice}
 import assessments.{Answers, Assessment, ElementName, Exam, ExceptionContext, ExceptionWithContext, MarkdownAssessment, Points}
 import com.typesafe.scalalogging.Logger
 import externalsystems.Dynexite.ResultInputFieldKey
+import externalsystems.MoodleStack.InputType.matrix
 import upickle.core.AbortException
 
 import java.nio.file.{Files, Path}
@@ -363,9 +364,34 @@ object Dynexite {
 
     for (element <- elements) {
       val answer = element match {
+        case input: InputElement if input.tags(MoodleStack.moodleInputType) == matrix =>
+          // STACK renders a matrix input as sub-inputs named `<name>_sub_<row>_<col>` (0-based).
+          val subRegex = s"${java.util.regex.Pattern.quote(element.name.name)}_sub_([0-9]+)_([0-9]+)".r
+          val entries = mutable.Map[(Int, Int), String]()
+          for (case (key @ subRegex(row, col), value) <- block.answers) {
+            markProcessed(key, element.name)
+            val cell = (row.toInt, col.toInt)
+            if (entries.contains(cell))
+              throw ExceptionWithContext(s"Matrix input ${element.name.name} has duplicate entry at $cell")
+            entries.put(cell, value)
+          }
+          val answerString =
+            if (entries.isEmpty) ""
+            else {
+              val minRow = entries.keys.map(_._1).min; val maxRow = entries.keys.map(_._1).max
+              val minCol = entries.keys.map(_._2).min; val maxCol = entries.keys.map(_._2).max
+              val string = StringBuilder()
+              for (row <- minRow to maxRow) {
+                if (row > minRow) string += '\n'
+                for (col <- minCol to maxCol) {
+                  if (col > minCol) string += ' '
+                  string ++= entries.getOrElse((row, col), "").replaceAll("\\s", "")
+                }
+              }
+              string.result()
+            }
+          answers += element.name -> answerString
         case input: InputElement =>
-          // TODO: For certain matrices, this will not work properly, see commented code below instead
-//          logger.warn(block.answers.toString())
           markProcessed(element.name.name, element.name)
           answers += element.name -> block.answers.getOrElse(element.name.name, "")
         case choice: MultipleChoice => choice.style match {
@@ -402,39 +428,6 @@ object Dynexite {
       throw ExceptionWithContext(s"Unprocessed answers in Dynexite data: ${unprocessed.map(n => s"$n=${block.answers(n)}").mkString(", ")}")
 
     answers.result()
-/*
-    val subRegex = "(.*)_sub_([0-9]+)_([0-9]+)".r
-
-    var comment = ""
-
-    val matrices: mutable.Map[String, mutable.Map[(Int, Int), String]] = mutable.Map()
-    for (case (`subRegex`(name, row, col), value) <- block.answers) {
-      // Input with name name_sub_row_col
-      val matrix = matrices.getOrElseUpdate(name, mutable.Map())
-      val r = row.toInt
-      val c = col.toInt
-      assert(!matrix.contains((r,c)))
-      matrix.put((r,c), value)
-    }
-    
-    for ((matrixName, content) <- matrices) {
-      assert(!answers.contains(ElementName(matrixName)))
-      val maxRow = content.keys.map(_._1).max
-      val maxCol = content.keys.map(_._2).max
-      val string = StringBuilder()
-      for (row <- 0 to maxRow) {
-        if (row > 0) string += '\n'
-        for (col <- 0 to maxCol) {
-          if (col > 0) string += ' '
-          val entry = content((row,col))
-          val cleanedEntry = entry.replaceAll("\\s", "")
-          string ++= cleanedEntry
-        }
-      }
-      answers(ElementName(matrixName)) = string.result()
-    }
-    
- */
   }
 
   private def getDynexiteAnswersClassification(block: Dynexite.ClassificationBlock, elements: Seq[AnswerElement])
