@@ -188,6 +188,21 @@ object DynexiteDefaults {
       context.outcome = incorrect
   }
 
+  //noinspection AccessorLikeMethodIsUnit
+  def isOneOf(element: AnswerElement, options: String*)(using context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]): Unit = {
+    assert(!options.contains(""))
+    for (case mc : MultipleChoice <- Some(element))
+        assert(options.toSet.subsetOf(mc.options.keySet))
+    if (element.stringValue == "")
+      context.outcome = missing
+    else if (options contains element.stringValue) {
+      context.outcome = correct
+      context.points += context.reachablePoints
+    } else
+      context.outcome = incorrect
+  }
+
+
   /** Checks for equality of two Sympy expressions (`x==y`?)
    * Up to mathematical equivalence, as far as can be figured out (somewhat heuristic).
    *
