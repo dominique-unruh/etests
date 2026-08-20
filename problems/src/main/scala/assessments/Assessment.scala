@@ -168,13 +168,27 @@ class Assessment (val name: String,
 object Assessment {
   val feedbackTimeout = Duration("1 second")
 
+  /** The stylesheet embedded into every static (non-webapp) render — archives, exported PDFs, and
+   *  the standalone HTML produced by [[htmlHeaderStatic]] (used by `ArchiveExam`, `TaskGradeEveryone`,
+   *  and [[Exam]]'s static HTML). Compiled from `problems/src/main/assets/stylesheets/static.scss`.
+   *
+   *  sbt-web/sbt-sassify emits it as a *webjar* resource
+   *  (`META-INF/resources/webjars/problems/<version>/stylesheets/static.css`), whose version segment
+   *  is chosen by the build, so it is located by its trailing path rather than a fixed classpath
+   *  path. (A hard-coded `/stylesheets/static.css` only ever matched stale leftover artifacts, or
+   *  nothing on a clean build, causing static renders to ship outdated or missing styling.)
+   *
+   *  The webapp does not use this; it serves its own compiled `main.css`. */
   lazy val staticCSS: String = {
-    val resource = "/stylesheets/static.css"
-    val stream = getClass.getResourceAsStream(resource)
-    if (stream == null)
-      throw new RuntimeException(s"Could not find $resource on the classpath")
-    try new String(stream.readAllBytes(), StandardCharsets.UTF_8)
-    finally stream.close()
+    val scanResult = new ClassGraph().acceptPaths("META-INF/resources", "stylesheets").scan()
+    try {
+      val resources = scanResult.getResourcesWithLeafName("static.css")
+        .filter(_.getPath.endsWith("stylesheets/static.css"))
+      if (resources.isEmpty)
+        throw new RuntimeException(
+          "Could not find stylesheets/static.css on the classpath (is the sbt-sassify build output present?)")
+      resources.get(0).getContentAsString
+    } finally scanResult.close()
   }
   lazy val htmlHeaderStatic: Html = Html(
     ind"""<meta charset="UTF-8">
