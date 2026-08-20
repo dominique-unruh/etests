@@ -4,6 +4,7 @@ import assessments.math.Math
 import assessments.{ElementName, ExceptionContext, ExceptionWithContext, Html, SyntaxError}
 import assessments.pageelements.InputElement
 import assessments.math.Math.{Operation, Ops}
+import externalsystems.MoodleStack
 import externalsystems.MoodleStack.{Question, Quiz, inputElementToMoodle}
 import ujson.{Arr, Str, transform}
 import utils.Docker
@@ -93,7 +94,17 @@ object StackParser {
     if (expression.trim.isEmpty)
       throw SyntaxError("empty string is not a valid math expression")
 
-    val inputMoodle = inputElementToMoodle(inputElement.copy(ElementName("ans1")))
+    // A STACK `matrix` input reads per-cell sub-fields (`ans1_sub_i_j`) and needs its size derived from
+    // the teacher answer via `adapt_to_model_answer`; the parsing harness does neither (it validates a
+    // single `ans1` value), so a matrix input always yields an empty parse. A `varmatrix` input reads the
+    // whole value as one string (rows split by newline, columns by whitespace) and needs no sizing, which
+    // is exactly the grid format matrix answers arrive in. So parse matrix inputs as varmatrix.
+    val inputMoodleRaw = inputElementToMoodle(inputElement.copy(ElementName("ans1")))
+    val inputMoodle =
+      if (inputMoodleRaw.typ == MoodleStack.InputType.matrix)
+        inputMoodleRaw.copy(typ = MoodleStack.InputType.varmatrix)
+      else
+        inputMoodleRaw
     val quiz = Quiz(Question(name = "dummy",
       questionText = Html("dummy"),
       inputs = Seq(inputMoodle),
