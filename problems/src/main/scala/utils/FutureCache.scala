@@ -26,6 +26,17 @@ object FutureCache {
     future.asInstanceOf[Future[Try[A]]].transform(_.flatten)
   }
 
+  /** Like [[evaluate]], but if a cached value is found and `guard` returns true for it,
+   * the cached value is discarded, the entry recomputed via `body`, and the new value cached. */
+  def evaluateGuarded[A](key: Any)(guard: A => Boolean)(body: => A): Future[A] =
+    evaluate(key)(body).flatMap { value =>
+      if (guard(value)) {
+        cache.synchronous().invalidate(key)
+        evaluate(key)(body)
+      } else
+        Future.successful(value)
+    }
+
   def evaluateFuture[A](key: Any)(body: => Future[A]): Future[A] = {
     val future = cache.getFuture(key, _ => body.transform(scala.util.Success.apply))
 

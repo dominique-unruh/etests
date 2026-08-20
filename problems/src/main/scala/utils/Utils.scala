@@ -433,10 +433,15 @@ object Utils {
       image = Path.of("docker/html-to-pdf"),
       files = Map("input.html" -> html.getBytes(StandardCharsets.UTF_8)),
       //      command = Seq("ls", "-lh", "/workdir"),
-      requestedOutputs = Seq("output.pdf")
+      requestedOutputs = Seq("output.pdf"),
+      // A network failure (e.g. MathJax failing to load) can produce a cached failure that must not
+      // be reused; discard such cached results so the conversion is retried.
+      cacheGuard = result => result.exitCode != 0 && result.output.contains("ERR_SOCKET_NOT_CONNECTED")
     ) map { result =>
-      if (result.exitCode != 0)
+      if (result.exitCode != 0) {
+        print(result.output)
         throw new IOException(s"Could not convert $htmlFile to PDF. Conversion script returned ${result.exitCode}")
+      }
       result.files("output.pdf")
     }
   }
