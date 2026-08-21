@@ -3,6 +3,7 @@ package utils
 import assessments.{ExceptionContext, ExceptionWithContext}
 import com.typesafe.scalalogging.Logger
 import sourcecode.FileName
+import utils.Docker.DockerResult
 
 import java.awt.Toolkit
 import java.awt.datatransfer.{Clipboard, StringSelection}
@@ -427,6 +428,12 @@ object Utils {
     htmlToPdfAsync(htmlFile, pdfOutputFile).awaitResult()
 
   def htmlToPdfAsync(html: String, htmlFile: String = "HTML"): Future[Array[Byte]] = {
+    def cacheGuard(result: DockerResult): Boolean = {
+      if (result.exitCode == 0) return false
+      if (result.output.contains("ERR_SOCKET_NOT_CONNECTED")) return true
+      if (result.output.contains("ERR_CERT_VERIFIER_CHANGED")) return true
+      false
+    }
     Docker.runInDocker(
 //            invalidateCache = true,
       shortDescription = s"HTML to PDF, $htmlFile",
@@ -436,7 +443,7 @@ object Utils {
       requestedOutputs = Seq("output.pdf"),
       // A network failure (e.g. MathJax failing to load) can produce a cached failure that must not
       // be reused; discard such cached results so the conversion is retried.
-      cacheGuard = result => result.exitCode != 0 && result.output.contains("ERR_SOCKET_NOT_CONNECTED")
+      cacheGuard = cacheGuard
     ) map { result =>
       if (result.exitCode != 0) {
         print(result.output)
