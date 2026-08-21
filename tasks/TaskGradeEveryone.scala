@@ -22,8 +22,8 @@ object TaskGradeEveryone extends Task {
   val stopAfterFirst = false
   val generatePDFs = true
   val generateHTMLs = true
-  /** For quicker processing, only a single student (or few) */
-  lazy val onlyTheseStudents: Option[Seq[String]] = None
+  /** For quicker processing, only a single student (or few). Empty Seq = all students. */
+  lazy val onlyTheseStudents: Seq[String] = Seq()
 
   val exam = Utils.getSystemPropertyObject[assessments.Exam]("current.exam", "the current exam")
 
@@ -123,9 +123,10 @@ object TaskGradeEveryone extends Task {
   }
 
   private def makeErrorReport(errors: mutable.Queue[(String, Assessment, String)], reportPath: Path): Unit = {
+    val onlyStudentsCaveat = if (onlyTheseStudents.isEmpty) "" else s"<p><strong>Note: Only students ${onlyTheseStudents.mkString(", ")} processed in this run.</strong></p>"
     Using.resource(new PrintWriter(reportPath.toFile)) { writer =>
       if (errors.isEmpty)
-        writer.println("<h1>No errors</h1>")
+        writer.println(s"<h1>No errors</h1>$onlyStudentsCaveat")
       else {
         def e(str: String) = escapeHtml4(str)
         writer.println(
@@ -137,6 +138,7 @@ object TaskGradeEveryone extends Task {
             |""".stripMargin)
         writer.println(s"<h1>Errors</h1>")
         writer.println(s"There were ${errors.length} errors and warnings")
+        writer.println(onlyStudentsCaveat)
         writer.println("<ul>")
         for ((student, question, message) <- errors) {
           writer.println(s"""<li>${e(student)}<sl-copy-button value=\"${e(student)}\"></sl-copy-button>, <b>${question.name}</b>""")
@@ -179,14 +181,15 @@ object TaskGradeEveryone extends Task {
   private def makeReports(): Unit = {
     val targetDir = exam.tags.getOrElse(gradingReportDir, throw RuntimeException(s"Specify gradingReportDir-tag in exam ${exam.name}"))
 //    val targetDir = Utils.getSystemPropertyPath("student.report.dir", "the directory where to write the student reports")
+    Files.writeString(targetDir.resolve("errors.html"), "Grading task in progress.")
     val errors = mutable.Queue[(String, Assessment, String)]()
     if (onlyTheseStudents.isEmpty) // Don't run time consuming things if we only want to test grade a student
       tryWithError[Unit](errors, label = "Exam tests failed") {
         exam.runTests() }
 
     val students = onlyTheseStudents match {
-      case Some(value) => value
-      case None => Dynexite.resultsByLearner(exam).toSeq.collect { case (student, results) if results.nonEmpty => student }
+      case Seq() => Dynexite.resultsByLearner(exam).toSeq.collect { case (student, results) if results.nonEmpty => student }
+      case seq => seq
     }
 
 
@@ -205,6 +208,6 @@ object TaskGradeEveryone extends Task {
     if (errors.nonEmpty)
       println("***** THERE WERE ERRORS *****")
     if (onlyTheseStudents.nonEmpty)
-      println(s"***** ONLY ${onlyTheseStudents.get.mkString(", ")} GRADED *****")
+      println(s"***** ONLY ${onlyTheseStudents.mkString(", ")} GRADED *****")
   }
 }
