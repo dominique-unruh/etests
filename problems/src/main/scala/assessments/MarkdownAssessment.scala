@@ -246,6 +246,36 @@ abstract class MarkdownAssessment extends TestSuite {
     addTest(testCase)
   }
 
+  /** Registers a test asserting that grading `solution` with the given grader THROWS (rather than
+   * producing a feedback). Graders throw to flag a case they deliberately do not handle (see
+   * `doc/graders.md`), e.g. an unrecognized input token; this pins that behavior down.
+   *
+   * @param grader   the grading element, by name or directly.
+   * @param solution the answers to grade against.
+   * @param name     the test name; defaults to `"Grader <name> throws with <solution>"`.
+   */
+  def testGraderThrows(grader: String | GradingElement,
+                       solution: Answers,
+                       name: String = null): Unit = {
+    val gradingElement = grader match {
+      case name: String => this.grader(name)
+      case element: GradingElement => element
+    }
+    val testName =
+      if (name != null) name
+      else s"Grader ${gradingElement.name} throws with ${solution.description}"
+    val testCase = Test(testName) {
+      given context: GradingContext = GradingContext(solution.answers, "NO STUDENT", reachablePoints, this)
+      val result = Try(gradingElement.computeFeedback(
+        assessment = this,
+        registrationNumber = None,
+        answers = solution,
+        catchExceptions = false).awaitResult())
+      assert(result.isFailure)
+    }
+    addTest(testCase)
+  }
+
   /** Registers a test (or one test per solution) that checks the assessment as a whole, rather than a
    * single grading element.
    *
