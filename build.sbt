@@ -16,6 +16,8 @@ Global / excludeLintKeys += ideExcludedDirectories
 ThisBuild / scalaVersion := "3.6.4"
 ThisBuild / scalacOptions += "-language:implicitConversions"
 
+ideExcludedDirectories := Seq(baseDirectory.value / ".devcontainer" / "persistent")
+
 //lazy val root = project in file(".")
 
 lazy val webapp = (project in file("webapp"))
