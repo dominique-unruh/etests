@@ -143,7 +143,7 @@ object TaskGradeEveryone extends Task {
         for ((student, question, message) <- errors) {
           writer.println(s"""<li>${e(student)}<sl-copy-button value=\"${e(student)}\"></sl-copy-button>, <b>${question.name}</b>""")
           writer.println(s"""[<a target="_blank" href="${e(student)}/grading.html">Document</a> |""")
-          writer.println(s"""<a target="_blank" href="http://localhost:9000/preview/${e(exam.id)}/${e(question.name)}/">Webapp</a>]<br>""")
+          writer.println(s"""<a target="_blank" href="http://localhost:9000/preview/${e(exam.id)}/${e(question.name)}/#regno=${e(student)}">Webapp</a>]<br>""")
           writer.println(s"""<span style="color:red">${message}</span></li>""")
         }
         writer.println("</ul></body>")

@@ -37,6 +37,17 @@ export class StateManager {
         window.setInterval(() => { this.askForFeedbackIfNeeded() }, 1000);
         this.needFeedbackUpdate = 1;
         this.lastFeedbackUpdateRequest = 0
+        this.applyRegnoFromUrl()
+    }
+
+    // Support links like .../Stabilizer%20Set/#regno=123
+    private applyRegnoFromUrl() {
+        const regno = (new URLSearchParams(window.location.hash.replace(/^#/, '')).get('regno') ?? "").trim()
+        if (regno === "")
+            return
+        // @ts-ignore
+        document.getElementById("etest-registration-number").content = regno;
+        this.askForAnswers('student')
     }
 
     private elementContentChanged(event: ContentChangeEvent<JsonValue>) {
