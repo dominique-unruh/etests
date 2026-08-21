@@ -123,7 +123,7 @@ object TaskGradeEveryone extends Task {
   }
 
   private def makeErrorReport(errors: mutable.Queue[(String, Assessment, String)], reportPath: Path): Unit = {
-    val onlyStudentsCaveat = if (onlyTheseStudents.isEmpty) "" else s"<p><strong>Note: Only students ${onlyTheseStudents.mkString(", ")} processed in this run.</strong></p>"
+    val onlyStudentsCaveat = if (onlyTheseStudents.isEmpty) "" else s"<p><strong>Note: Only ${if (onlyTheseStudents.length==1) "student" else "students"} ${onlyTheseStudents.mkString(", ")} processed in this run.</strong></p>"
     Using.resource(new PrintWriter(reportPath.toFile)) { writer =>
       if (errors.isEmpty)
         writer.println(s"<h1>No errors</h1>$onlyStudentsCaveat")
