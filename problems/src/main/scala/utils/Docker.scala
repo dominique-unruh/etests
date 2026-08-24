@@ -191,7 +191,7 @@ object Docker {
 //      }
 
 //      val newFuture = Future[DockerResult] {
-    FutureCache.evaluateGuarded(("DOCKER",argsJsonBytes))(cacheGuard) {
+    FutureCache.evaluateGuarded(("DOCKER",argsJsonBytes), cacheGuard) {
       logger.debug(s"Looking for cached docker result for: $shortDescription")
       val cached = PersistentCache.get(argsJsonBytes.bytes) match
         case Some(cached) if !invalidateCache =>
@@ -213,6 +213,7 @@ object Docker {
           PersistentCache.put(argsJsonBytes.bytes, result.asJson.noSpaces.getBytes)
           result
     }
+
 
 //      currentlyRunning.update(argsJsonBytes, (Instant.now(), newFuture, shortDescription))
 //      garbageCollection()

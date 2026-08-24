@@ -2,6 +2,7 @@ package utils
 
 import assessments.MathContext.FunctionResult.Success
 import com.github.blemale.scaffeine.{AsyncLoadingCache, Scaffeine}
+import com.typesafe.scalalogging.Logger
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
@@ -19,6 +20,8 @@ object FutureCache {
         ))
       }
 
+  def invalidate(key: Any): Unit =
+    cache.synchronous().invalidate(key)
 
   def evaluate[A](key: Any)(body: => A): Future[A] = {
     val future = cache.get(key, _ => Try(body))
@@ -26,16 +29,17 @@ object FutureCache {
     future.asInstanceOf[Future[Try[A]]].transform(_.flatten)
   }
 
-  /** Like [[evaluate]], but if a cached value is found and `guard` returns true for it,
-   * the cached value is discarded, the entry recomputed via `body`, and the new value cached. */
-  def evaluateGuarded[A](key: Any)(guard: A => Boolean)(body: => A): Future[A] =
-    evaluate(key)(body).flatMap { value =>
-      if (guard(value)) {
-        cache.synchronous().invalidate(key)
+  def evaluateGuarded[A](key: Any, cacheGuard: A => Boolean)(body: => A): Future[A] = {
+    val future = evaluate(key)(body)
+    future.value match {
+      case Some(util.Success(value)) if cacheGuard(value) =>
+        logger.debug("Invalidating cache key (fails guard)")
+        invalidate(key)
         evaluate(key)(body)
-      } else
-        Future.successful(value)
+      case None =>
+        future
     }
+  }
 
   def evaluateFuture[A](key: Any)(body: => Future[A]): Future[A] = {
     val future = cache.getFuture(key, _ => body.transform(scala.util.Success.apply))
@@ -45,4 +49,6 @@ object FutureCache {
 
   def clear(): Unit =
     cache.synchronous().invalidateAll()
+
+  private val logger = Logger[this.type]
 }
