@@ -4,6 +4,7 @@ import scala.language.implicitConversions
 import assessments.Comment.Kind
 import assessments.ExceptionContext.initialExceptionContext
 import assessments.GradingContext.comments
+import com.typesafe.scalalogging.Logger
 import externalsystems.Spreadsheet.Index
 import externalsystems.{Dynexite, RWTHOnlineGrades, Sciebo, Spreadsheet}
 import org.apache.commons.lang3.exception.ExceptionUtils
@@ -18,6 +19,8 @@ import scala.collection.mutable
 import scala.util.Using
 
 abstract class Task extends App {
+  protected val logger = Logger[Task]
+
   Utils.loadSystemProperties()
 /*  lazy val optionValues = {
     val module = getClass.getField("MODULE$")

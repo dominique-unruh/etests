@@ -5,6 +5,7 @@ import assessments.ExceptionContext.{addToExceptionContext, initialExceptionCont
 import assessments.pageelements.RenderContext
 import com.typesafe.scalalogging.Logger
 import externalsystems.Dynexite
+import externalsystems.Schein.Student
 import io.github.classgraph.ClassGraph
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import utest.{TestSuite, Tests, test}
@@ -245,10 +246,4 @@ object Exam {
    * matches the total of the reachable points of the problems. */
   val reachablePoints: Tag[Exam, Points] = Tag[Exam, Points]()
   val gradingScale: Tag[Exam, GradingScale] = Tag()
-  /** Directory where grading reports should be written to */
-  val gradingReportDir: Tag[Exam, Path] = Tag()
-  /** Relative to Sciebo root */
-  val scieboReportDir: Tag[Exam, Path] = Tag()
-  val rwthOnlineExportImportFile: Tag[Exam, Path] = Tag()
-  val scheinStudents: Tag[Exam, Map[String, String]] = Tag()
 }

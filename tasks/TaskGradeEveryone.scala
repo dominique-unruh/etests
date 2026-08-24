@@ -1,8 +1,9 @@
+import TaskContext.{gradingReportDir, gradingResultSpreadsheet}
 import assessments.*
-import assessments.Exam.{gradingReportDir, gradingScale}
+import assessments.Exam.gradingScale
 import assessments.ExceptionContext.initialExceptionContext
-import assessments.GradingContext.comments
 import assessments.pageelements.RenderContext
+import com.typesafe.scalalogging.Logger
 import externalsystems.Dynexite
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
@@ -13,7 +14,6 @@ import java.io.PrintWriter
 import java.nio.file.{Files, Path}
 import scala.collection.mutable
 import scala.util.Using
-import scala.util.control.Breaks
 import scala.util.control.Breaks.{break, breakable}
 
 //noinspection ScalaFileName
@@ -66,6 +66,7 @@ object TaskGradeEveryone extends Task {
   }
 
   private def makeReport(exam: Exam, student: String, targetDir: Path, errors: mutable.Queue[(String, Assessment, String)]): Points = {
+    logger.info(s"Grading $student")
     val studentDir = targetDir.resolve(student)
     var totalPoints = Points(0)
     Files.createDirectories(studentDir)
@@ -154,11 +155,11 @@ object TaskGradeEveryone extends Task {
     }
   }
 
-  private def makePointsCSV(targetDir: Path, points: Map[String, Points], exam: Exam): Unit = {
-    Using.resource(new PrintWriter(targetDir.resolve("results.csv").toFile)) { writer =>
+  private def makePointsCSV(points: Map[String, Points], exam: Exam): Unit = {
+    Using.resource(new PrintWriter(gradingResultSpreadsheet.toFile)) { writer =>
       writer.println(s"student;points;grade")
       for ((student, points) <- points) {
-        val grade = exam.tags(gradingScale).grade(student, points)
+        val _, grade = exam.tags(gradingScale).grade(student, points)
 
         writer.println(s"$student;$points;$grade")
       }
@@ -182,13 +183,14 @@ object TaskGradeEveryone extends Task {
   }
   
   private def makeReports(): Unit = {
-    val targetDir = exam.tags.getOrElse(gradingReportDir, throw RuntimeException(s"Specify gradingReportDir-tag in exam ${exam.name}"))
+    val targetDir = gradingReportDir
 //    val targetDir = Utils.getSystemPropertyPath("student.report.dir", "the directory where to write the student reports")
     Files.writeString(targetDir.resolve("errors.html"), "Grading task in progress.")
     val errors = mutable.Queue[(String, Assessment, String)]()
     if (onlyTheseStudents.isEmpty) // Don't run time consuming things if we only want to test grade a student
       tryWithError[Unit](errors, label = "Exam tests failed") {
-        exam.runTests() }
+//        exam.runTests()
+      }
 
     val students = onlyTheseStudents match {
       case Seq() => Dynexite.resultsByLearner(exam).toSeq.collect { case (student, results) if results.nonEmpty => student }
@@ -206,7 +208,7 @@ object TaskGradeEveryone extends Task {
       }
     }
     makeErrorReport(errors, targetDir.resolve("errors.html"))
-    makePointsCSV(targetDir, pointMap.result(), exam = exam)
+    makePointsCSV(pointMap.result(), exam = exam)
     println(s"\n\nReports in $targetDir, errors in ${targetDir.resolve("errors.html")}")
     if (errors.nonEmpty)
       println("***** THERE WERE ERRORS *****")

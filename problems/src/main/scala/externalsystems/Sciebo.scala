@@ -26,23 +26,24 @@ object Sciebo {
   }
 
   private var lastRequest = Instant.MIN
-  def getPublicReadLink(path: String): String =
-    PersistentCache.getOrCompute[String](s"SCIEBO-PUBLIC-LINK2:$path".getBytes, _.getBytes, new String(_)) {
-    synchronized {
-      Utils.waitUntil(lastRequest.plus(secondsBetweenRequests, ChronoUnit.SECONDS))
-      logger.info(s"Requesting Sciebo link for $path")
-      val permissions = SharePermissions(SharePermissions.SingleRight.READ, SharePermissions.SingleRight.SHARE)
-      val existing = client.getShares(path, false, false).asScala.find(share =>
-        share.getSharePermissions.getCurrentPermission == permissions.getCurrentPermission &&
-          share.getShareType == ShareType.PUBLIC_LINK)
-      logger.debug(s"Existing link: $existing")
-      val share = existing.getOrElse(
-        // TODO Currently passwords are enforced. Replace password by null later.
-        client.doShare(path, ShareType.PUBLIC_LINK, null, false, "password", permissions))
-      logger.info(s"Link to $path: ${share.getUrl}${if (existing.nonEmpty) " (already existed)" else ""}")
-      lastRequest = Instant.now()
-      share.getUrl
+  def getPublicReadLink(root: Path, path: Path): String = {
+    val subpath = root.relativize(path).toString
+    PersistentCache.getOrCompute[String](s"SCIEBO-PUBLIC-LINK2:$subpath".getBytes, _.getBytes, new String(_)) {
+      synchronized {
+        Utils.waitUntil(lastRequest.plus(secondsBetweenRequests, ChronoUnit.SECONDS))
+        logger.info(s"Requesting Sciebo link for $subpath")
+        val permissions = SharePermissions(SharePermissions.SingleRight.READ, SharePermissions.SingleRight.SHARE)
+        val existing = client.getShares(subpath, false, false).asScala.find(share =>
+          share.getSharePermissions.getCurrentPermission == permissions.getCurrentPermission &&
+            share.getShareType == ShareType.PUBLIC_LINK)
+        logger.debug(s"Existing link: $existing")
+        val share = existing.getOrElse(
+          client.doShare(subpath, ShareType.PUBLIC_LINK, null, false, null, permissions))
+        logger.info(s"Link to $subpath: ${share.getUrl}${if (existing.nonEmpty) " (already existed)" else ""}")
+        lastRequest = Instant.now()
+        share.getUrl
       }
+    }
   }
 
   private val logger = Logger[Sciebo.type]

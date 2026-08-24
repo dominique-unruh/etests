@@ -23,8 +23,10 @@ object Schein {
                     responsible: String = "Prof. Dr. Dominique Unruh")
   case class Student(name: String,
                      registrationNumber: String,
-                     grade: Double) {
-    def gradeString = f"$grade%.1f"
+                     email: Option[String] = None,
+                     grade: Option[Double]) {
+    def gradeString = f"${grade.get}%.1f"
+    def withGrade(grade: Double): Student = copy(grade = Some(grade))
   }
 
   private val logo = Path.of("/home/unruh/cloud/qis/shared/agnes-uvalic/templates-and-design/institute-logo/02_bildmarke_und_text_EN/pdf/rwth_lehrstuhl_quanteninformationssysteme_en_rgb.pdf")

@@ -15,6 +15,8 @@ import org.odftoolkit.simple.SpreadsheetDocument
 import org.odftoolkit.simple.table.Table
 
 import java.io.IOException
+import scala.collection.immutable.{AbstractMap, SeqMap}
+import scala.language.dynamics
 
 /** An immutable in-memory table of string cells with named columns.
   *
@@ -78,6 +80,32 @@ case class Spreadsheet private (
       case Seq(value) => value
       case _ => throw new IllegalArgumentException(s"key: $key, index ${index.name}, multiple elements")
 
+  def lookup(header: String, key: String): Row = lookupAll(header, key) match
+    case Seq() => throw new NoSuchElementException(s"key: $key, column: $header")
+    case Seq(value) => value
+    case _ => throw new IllegalArgumentException(s"key: $key, column $header, multiple elements")
+
+  private def lookupAll(header: String, key: String) = {
+    val rowNrs = rowNumberIndex(header).map.getOrElse(key, Seq.empty)
+    rowNrs.map(nr => rows(nr))
+  }
+
+  def indexKeys[U](index: Index[U]): Seq[String] = for (row <- rows) yield row(index.indexColumn)
+  def indexValues[U](index: Index[U]): Seq[U] =
+    for (key <- indexKeys(index)) yield
+      lookup(index, key)
+
+  def indexToMap[U](index: Index[U]) : Map[String, U] = new AbstractMap[String, U] {
+    override def removed(key: String): Map[String, U] = ???
+    override def updated[V1 >: U](key: String, value: V1): Map[String, V1] = ???
+    override def get(key: String): Option[U] =
+      try Some(lookup(index, key))
+      catch case _ : NoSuchElementException => None
+    override def iterator: Iterator[(String, U)] =
+      for (key <- indexKeys(index).iterator) yield
+        (key, lookup(index, key))
+  }
+
   /** Throws a [[RuntimeException]] describing up to ten [[errors]] if this spreadsheet is invalid. */
   def assertValid(): Unit =
     if (errors.nonEmpty) {
@@ -124,9 +152,10 @@ object Spreadsheet {
   case class RowNumberIndex(map: Map[String, Seq[Int]])
 
   /** A single row: a map from column name to cell value. */
-  case class Row(cells: Map[String, String]) {
+  case class Row(cells: Map[String, String]) extends Dynamic {
     /** The cell value in column `header`. */
     def apply(header: String): String = cells(header)
+    def selectDynamic(header: String): String = apply(header)
   }
 
   /** A named lookup index over a column, mapping a matching `(rowNumber, row)` to a value of type `U`.
@@ -158,6 +187,22 @@ object Spreadsheet {
   def fromIterable(headers: Seq[String], rows: IterableOnce[Seq[String]]): Spreadsheet = {
     fromRawRowsIterator(Iterator(headers) ++ rows)
   }
+
+  def fromMapIterable(rows: IterableOnce[Map[String, String]]): Spreadsheet = {
+    val iterator = rows.iterator
+    assert(iterator.hasNext)
+    val first = iterator.next()
+    val headers = first.keysIterator.toSeq
+    assert(Utils.isDistinct(headers))
+    val rowsBuilder = Vector.newBuilder[Row]
+    rowsBuilder += Row(first)
+    for (row <- iterator) {
+      assert(row.keySet == headers.toSet)
+      rowsBuilder += Row(row)
+    }
+    Spreadsheet(headers = headers, rows = rowsBuilder.result)
+  }
+
 
   /** A check run over a whole [[Spreadsheet]], yielding error messages for anything wrong. */
   trait ValidationRule {
