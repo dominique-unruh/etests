@@ -54,8 +54,10 @@ object InterpolatedMarkdown extends InterpolatedTextC[Markdown, InterpolatedMark
   override def empty: InterpolatedMarkdown[Nothing] =
     new InterpolatedMarkdown(InterpolatedString.empty)
   
-  given [T]: Conversion[Markdown, InterpolatedMarkdown[T]] = 
+  given [T]: Conversion[Markdown, InterpolatedMarkdown[T]] =
     md => InterpolatedMarkdown.apply(md)
+
+  val newline = InterpolatedMarkdown(Markdown.newline)
 }
 
 /** Encapsulates Markdown code.
@@ -68,4 +70,8 @@ object InterpolatedMarkdown extends InterpolatedTextC[Markdown, InterpolatedMark
  **/
 final case class Markdown(markdown: String) extends AnyVal {
   def toHtml: Html = Html(markdownToHtml(markdown)).stripSurroundingParagraph
+}
+
+object Markdown {
+  val newline = Markdown("\n")
 }

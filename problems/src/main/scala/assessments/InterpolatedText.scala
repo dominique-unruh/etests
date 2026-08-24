@@ -1,5 +1,7 @@
 package assessments
 
+import cats.Monoid
+
 import scala.collection.mutable
 
 /** Common interface for different variants of interpolated text.
@@ -33,6 +35,11 @@ trait InterpolatedTextC[Text, Self[+U] <: InterpolatedText[U, Text, Self]] {
   
   extension (it: Self[Text]) {
     def mkText: Text = it.flatMapArgs(identity)
+  }
+
+  given monoid[T]: Monoid[Self[T]] = new Monoid[Self[T]] {
+    def empty: Self[T] = InterpolatedTextC.this.empty
+    def combine(x: Self[T], y: Self[T]): Self[T] = x ++ y
   }
 }
 
