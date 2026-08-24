@@ -29,7 +29,10 @@ trait GradingScale {
 class BonusPointGrading(scale: GradingScale, passingThreshold: Points, reachableBonusPoints : Points,
                         bonusPointTable : => Spreadsheet) extends GradingScale {
   private lazy val bonusPointTableLazy = bonusPointTable
-  private val bonusPointsIndex = Spreadsheet.Index("bonus points", "Matrikelnummer", (_, r) => Points(r("MANUALLY CORRECTED")))
+  private val bonusPointsIndex = Spreadsheet.Index[Points]("bonus points", "Matrikelnummer",
+    { (_, r) => r("MANUALLY CORRECTED") match {
+      case "" | "-" => 0
+      case points => Points(points) }})
 
   /** Checks that this scale is well-formed for an exam worth `reachable` points, throwing an
    * [[AssertionError]] if not (e.g. points out of range or grades not strictly ordered).
