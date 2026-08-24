@@ -76,6 +76,9 @@ object TaskGradeEveryone extends Task {
       report
     }
 
+    val (gradingExplanation0, grade) = exam.tags(gradingScale).grade(student, totalPoints)
+    val gradingExplanation = if (gradingExplanation0.isEmpty) gradingExplanation0 else Html("<p>") + gradingExplanation0 + Html("</p>")
+
     Using.resource(new PrintWriter(reportFile.toFile)) { writer =>
       val pdfLink = if (includeDynexitePDFs) """<li><a href="dynexite.pdf">Dynexite PDF</a> (for comparison)</li>""" else ""
       val title = s"${exam.name}. Student $student"
@@ -91,7 +94,7 @@ object TaskGradeEveryone extends Task {
              |<ul>
              |  <li>Registration number: ${escapeHtml4(student)}</li>
              |  <li>Total points: ${totalPoints.decimalFractionString(2)} / ${exam.reachablePoints.decimalFractionString(2)}</li>
-             |  <li>Grade: ${exam.tags(gradingScale).grade(totalPoints)}</li>
+             |  <li>Grade: $grade${gradingExplanation.html}</li>
              |  $pdfLink
              |  <br/>${exam.tags(gradingScale).html.html}
              |</ul>
@@ -155,7 +158,7 @@ object TaskGradeEveryone extends Task {
     Using.resource(new PrintWriter(targetDir.resolve("results.csv").toFile)) { writer =>
       writer.println(s"student;points;grade")
       for ((student, points) <- points) {
-        val grade = exam.tags(gradingScale).grade(points)
+        val grade = exam.tags(gradingScale).grade(student, points)
 
         writer.println(s"$student;$points;$grade")
       }
