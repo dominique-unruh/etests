@@ -22,5 +22,5 @@ object TaskContext {
   lazy val scieboRoot = Path.of("/home/unruh/cloud/sciebo")
   /** Copy of [[gradingReportDir]] files, in a shared folder. Students get live access to it.
    * Must be manually copied over from [[gradingReportDir]]. */
-  lazy val scieboReportDir = scieboRoot / "iqc-2026-exam1-grading/reports"
+  lazy val scieboReportDir = scieboRoot / "shared/iqc-2026-exam1-grading/reports"
 }
