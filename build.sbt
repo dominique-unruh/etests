@@ -1,3 +1,4 @@
+
 import org.irundaia.sass.Maxified
 import sbt.librarymanagement.CrossVersion.for3Use2_13
 import org.yaml.snakeyaml.Yaml
@@ -91,6 +92,7 @@ lazy val problems = (project in file("problems"))
     libraryDependencies += "com.microsoft.playwright" % "playwright" % "1.55.0", 
     libraryDependencies += "org.xerial" % "sqlite-jdbc" % "3.51.2.0",
     libraryDependencies += "org.typelevel" %% "spire" % "0.18.0",
+    libraryDependencies += "com.github.javakeyring" % "java-keyring" % "1.0.4",
   )
 
 // Directories (relative to exams/) whose entry under `exams:` in exams/exams.yaml has
@@ -118,22 +120,20 @@ lazy val exams = (project in file("exams"))
       val base = baseDirectory.value
       def under(d: File): FileFilter =
         new SimpleFileFilter(f => f.toPath.normalize.startsWith(d.toPath.normalize))
-      val excluded = Seq(base / "target", base / ".git") ++ archivedExams.map(base / _)
-      excluded.map(under).reduce(_ || _) || HiddenFileFilter
+      // Each exams/<exam> folder is its own git repo, so .git lives one level down, not at base.
+      val gitDir: FileFilter =
+        new SimpleFileFilter(f => f.toPath.normalize.iterator.asScala.exists(_.toString == ".git"))
+      val excluded = archivedExams.map(base / _).map(under)
+      (gitDir +: excluded).reduce(_ || _) || HiddenFileFilter
     },
     Compile / unmanagedResources / excludeFilter := {
-      val base = baseDirectory.value
-      def under(d: File): FileFilter =
-        new SimpleFileFilter(f => f.toPath.normalize.startsWith(d.toPath.normalize))
-      ("*.scala": FileFilter) || under(base / "target") || under(base / ".git") || HiddenFileFilter
+      val gitDir: FileFilter =
+        new SimpleFileFilter(f => f.toPath.normalize.iterator.asScala.exists(_.toString == ".git"))
+      ("*.scala": FileFilter) || gitDir || HiddenFileFilter
     },
     // IntelliJ (via sbt-ide-settings) marks the archived exam folders as excluded on sbt reload, so
     // it stops indexing/compiling their (non-compiling) sources — mirrors the compile excludeFilter.
     ideExcludedDirectories := archivedExams.map(baseDirectory.value / _) :+ (baseDirectory.value / "target"),
-    // ...but keep each archived exam's archive/ (static HTML/PDF/YAML snapshots) visible by declaring
-    // it a resource root; IntelliJ resolves nested content-root markings innermost-first, so a
-    // resource root inside an excluded folder stays browsable. (archive/ is already on the classpath.)
-    Compile / unmanagedResourceDirectories ++= archivedExams.map(baseDirectory.value / _ / "archive"),
     // Problem objects (MarkdownAssessment = utest.TestSuite) are discovered as test suites here too.
     testFrameworks += new TestFramework("utest.runner.Framework"),
     inConfig(Compile)(Defaults.testTasks),

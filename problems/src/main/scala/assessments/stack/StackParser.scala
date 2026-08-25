@@ -4,6 +4,7 @@ import assessments.math.Math
 import assessments.{ElementName, ExceptionContext, ExceptionWithContext, Html, SyntaxError}
 import assessments.pageelements.InputElement
 import assessments.math.Math.{Operation, Ops}
+import com.typesafe.scalalogging.Logger
 import externalsystems.MoodleStack
 import externalsystems.MoodleStack.{Question, Quiz, inputElementToMoodle}
 import ujson.{Arr, Str, transform}
@@ -120,8 +121,10 @@ object StackParser {
       files = Map("expression.txt" -> expression, "question.xml" -> xml),
       requestedOutputs = Seq("result.txt", "errors.txt")).map { result =>
 
-      if (result.exitCode != 0)
+      if (result.exitCode != 0) {
+        logger.debug(result.output)
         throw RuntimeException("Docker failed")
+      }
       //    if (result.fileString("status.txt").getOrElse("").contains("parsing"))
       //      throw SyntaxError(s"Could not parse $inputFixed using maxima")
       for (errors <- result.fileString("errors.txt")) {
@@ -144,4 +147,6 @@ object StackParser {
       maximaToStackMath(maximaTerm)
     }
   }
+
+  private val logger = Logger[this.type]
 }
