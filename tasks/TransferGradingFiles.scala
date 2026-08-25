@@ -37,9 +37,11 @@ object TransferGradingFiles extends Task {
       newGrades.get(student) match {
         case None =>
           sys.error(s"Student $student is in the published Sciebo spreadsheet but not in $gradingResultSpreadsheet.")
-        case Some(newGrade) if oldGrade > newGrade =>
-          sys.error(s"Student $student: published grade $oldGrade is worse than new grade $newGrade (grades may not improve on re-transfer).")
-        case Some(_) =>
+        case Some(newGrade) =>
+          if (newGrade > oldGrade)
+            sys.error(s"Student $student: published grade $oldGrade is better than new grade $newGrade (grades may only improve on re-transfer).")
+          else if (newGrade != oldGrade)
+            println(s"$student: $oldGrade -> $newGrade")
       }
     }
   }
