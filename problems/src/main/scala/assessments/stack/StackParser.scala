@@ -8,7 +8,7 @@ import com.typesafe.scalalogging.Logger
 import externalsystems.MoodleStack
 import externalsystems.MoodleStack.{Question, Quiz, inputElementToMoodle}
 import ujson.{Arr, Str, transform}
-import utils.Docker
+import utils.{Docker, Utils, memoized}
 import utils.Tag.Tags
 import utils.Utils.awaitResult
 
@@ -93,6 +93,7 @@ object StackParser {
   def parse(expression: String, inputElement: InputElement)(using exceptionContext: ExceptionContext): Math =
     parseFuture(expression, inputElement).awaitResult()
 
+  @memoized
   def parseFuture(expression: String, inputElement: InputElement)(using exceptionContext: ExceptionContext): Future[Math] = {
     if (expression.trim.isEmpty)
       throw SyntaxError("empty string is not a valid math expression")

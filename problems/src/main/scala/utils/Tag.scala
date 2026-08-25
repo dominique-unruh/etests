@@ -31,7 +31,7 @@ object Tag {
    *               will not contain tags that this class does not understand. All tags in this tag collection
    *               will be of type `Tag[O,V]` with `O >: Owner`.
    **/
-  class Tags[-Owner] private (/** Contains `Tag[O,V] -> V` pairs, with `O >: Owner` */
+  case class Tags[-Owner] private (/** Contains `Tag[O,V] -> V` pairs, with `O >: Owner` */
                                private val map: Map[Tag[?, ?], Any]) extends AnyVal {
     def get[Value](tag: Tag[?, Value]): Option[Value] =
       map.get(tag).asInstanceOf[Option[Value]]
