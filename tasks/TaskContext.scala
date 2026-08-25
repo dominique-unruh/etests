@@ -23,4 +23,7 @@ object TaskContext {
   /** Copy of [[gradingReportDir]] files, in a shared folder. Students get live access to it.
    * Must be manually copied over from [[gradingReportDir]]. */
   lazy val scieboReportDir = scieboRoot / "shared/iqc-2026-exam1-grading/reports"
+  /** Copy of [[gradingResultSpreadsheet]], in Sciebo. */
+  lazy val scieboGradingResultSpreadsheet = scieboReportDir / "results.csv"
+
 }
