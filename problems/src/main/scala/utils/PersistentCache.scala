@@ -50,12 +50,12 @@ object PersistentCache {
   def forceInitialization(): Unit = connection
 
   private lazy val getStatement = connection.prepareStatement(
-    "SELECT value FROM cache WHERE key_hash = ? AND key = ?"
+    "SELECT value FROM cache WHERE key_hash = ?"
   )
 
   def get(key: Array[Byte]): Option[Array[Byte]] = synchronized {
     getStatement.setBytes(1, sha256(key))
-    getStatement.setBytes(2, key)
+//    getStatement.setBytes(2, key)
     val rs = getStatement.executeQuery()
     try if (rs.next()) Some(rs.getBytes(1)) else None
     finally rs.close()
