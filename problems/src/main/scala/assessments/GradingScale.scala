@@ -62,7 +62,7 @@ class BonusPointGrading(scale: GradingScale, passingThreshold: Points, reachable
       comments += md"* Exam points for passing not above passing threshold ($passingThreshold), exam not passed"
       5.0
     } else {
-      comments += md"* Enough points passing, grade computed based on the adjusted points for grade"
+      comments += md"* Enough points for passing, grade computed based on the adjusted points for grade"
       val (_,grade) = scale.grade(registrationNumber, adjustedPercentageForGrade)
       grade
     }
