@@ -5,7 +5,7 @@ import assessments.{Assessment, ElementName, FileMapBuilder, Html}
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import play.api.libs.json.{JsNull, JsObject, JsString, JsValue}
-import utils.{IndentedInterpolator, Tag, Utils}
+import utils.{IndentedInterpolator, Memoize, Tag, Utils}
 import utils.Tag.Tags
 
 import scala.concurrent.Future
@@ -42,4 +42,6 @@ object InputElement {
   val inputElementColumns: Tag[InputElement, Int] = Tag(default = 15)
   /** Number of rows of the input element */
   val inputElementRows: Tag[InputElement, Int] = Tag(default = 1)
+
+  given Memoize.Key[InputElement] = Memoize.Key.by(identity)
 }
