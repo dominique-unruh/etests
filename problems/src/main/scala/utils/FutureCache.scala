@@ -36,7 +36,7 @@ object FutureCache {
         logger.debug("Invalidating cache key (fails guard)")
         invalidate(key)
         evaluate(key)(body)
-      case None =>
+      case _ =>
         future
     }
   }
