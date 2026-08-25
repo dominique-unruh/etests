@@ -198,6 +198,24 @@ object Utils {
     }
   }
 
+  /** Read a secret (`account`) from the operating system's keyring (Secret Service / macOS
+   * Keychain / Windows Credential Manager, via the java-keyring library) under service name
+   * `service`. If the keyring has no entry, `prompt` is evaluated to obtain the secret, which is
+   * stored back into the keyring and returned. `description` is used only in log messages. */
+  def readOrPromptKeyring(service: String, account: String, description: String)(prompt: => String): String = {
+    val keyring = com.github.javakeyring.Keyring.create()
+    try
+      keyring.getPassword(service, account)
+    catch
+      case _: com.github.javakeyring.PasswordAccessException =>
+        val secret = prompt.trim
+        if (secret.isEmpty)
+          throw new RuntimeException(s"No $description provided; aborting.")
+        keyring.setPassword(service, account, secret)
+        logger.info(s"Stored $description in the system keyring (service=$service, account=$account).")
+        secret
+  }
+
   private val stripLeadingEmptyLinesRegex = """(?s)^([ \t]*\n)+""".r
   def stripLeadingEmptyLines(string: String): String =
     stripLeadingEmptyLinesRegex.replaceFirstIn(string, "")
