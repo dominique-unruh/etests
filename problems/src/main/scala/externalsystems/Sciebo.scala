@@ -38,9 +38,10 @@ object Sciebo {
             share.getSharePermissions.getCurrentPermission == permissions.getCurrentPermission &&
               share.getShareType == ShareType.PUBLIC_LINK)
           logger.debug(s"Existing link: $existing")
-          lastRequest = Instant.now()
-          val share = existing.getOrElse(
-            client.doShare(subpath, ShareType.PUBLIC_LINK, null, false, null, permissions))
+          val share = existing.getOrElse {
+            Thread.sleep((secondsBetweenRequests*1000).toLong)
+            lastRequest = Instant.now()
+            client.doShare(subpath, ShareType.PUBLIC_LINK, null, false, null, permissions) }
           logger.info(s"Link to $subpath: ${share.getUrl}${if (existing.nonEmpty) " (already existed)" else ""}")
           lastRequest = Instant.now()
           share.getUrl
