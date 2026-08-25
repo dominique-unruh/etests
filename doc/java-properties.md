@@ -15,3 +15,4 @@ Existing options:
 * `sciebo.password = password` For automated Sciebo uploads.
 * `run.option.for.problem = OPTION` Can be `runTests`, `extractStack`, or `uploadDynexite`. Decides what to do when an individual problem (or exam) object is executed (Ctrl-Shift-F10 in IDEA). See `doc/exporting.md`.
 * `grading.timeout = 60s` Timeout when grading (grader fails then, better than just waiting forever)
+* `stackparser.url = http://localhost:8080` Base URL of the stack-parser HTTP service used by `StackParser`. If set, expressions are parsed by POSTing to `<url>/parse` (a warm daemon; see `services/stack-parser/etests-service`). If unset, a one-shot Docker container (`docker/stack-parser`) is spun up per parse instead.
