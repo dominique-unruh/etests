@@ -66,7 +66,7 @@ object TaskGradeEveryone extends Task {
   }
 
   private def makeReport(exam: Exam, student: String, targetDir: Path, errors: mutable.Queue[(String, Assessment, String)]): Points = {
-    logger.info(s"Grading $student")
+    logger.info(s"Grading $student.")
     val studentDir = targetDir.resolve(student)
     var totalPoints = Points(0)
     Files.createDirectories(studentDir)
@@ -159,7 +159,7 @@ object TaskGradeEveryone extends Task {
     Using.resource(new PrintWriter(gradingResultSpreadsheet.toFile)) { writer =>
       writer.println(s"student;points;grade")
       for ((student, points) <- points) {
-        val _, grade = exam.tags(gradingScale).grade(student, points)
+        val (_, grade) = exam.tags(gradingScale).grade(student, points)
 
         writer.println(s"$student;$points;$grade")
       }
