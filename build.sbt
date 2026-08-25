@@ -16,6 +16,9 @@ Global / excludeLintKeys += ideExcludedDirectories
 
 ThisBuild / scalaVersion := "3.6.4"
 ThisBuild / scalacOptions += "-language:implicitConversions"
+// Enables use of experimental APIs (e.g. scala.annotation.MacroAnnotation, used by utils.memoized)
+// without marking every use site @experimental.
+ThisBuild / scalacOptions += "-experimental"
 
 ideExcludedDirectories := Seq(baseDirectory.value / ".devcontainer" / "persistent")
 
