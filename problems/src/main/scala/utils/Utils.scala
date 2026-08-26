@@ -450,6 +450,7 @@ object Utils {
       if (result.exitCode == 0) return false
       if (result.output.contains("ERR_SOCKET_NOT_CONNECTED")) return true
       if (result.output.contains("ERR_CERT_VERIFIER_CHANGED")) return true
+      if (result.output.contains("ERR_CONNECTION_CLOSED")) return true
       false
     }
     Docker.runInDocker(

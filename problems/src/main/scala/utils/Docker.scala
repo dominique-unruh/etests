@@ -199,8 +199,10 @@ object Docker {
           if (cacheGuard(result)) {
             logger.debug(s"Cached docker result rejected by cacheGuard for: $shortDescription")
             None
-          } else
+          } else {
+            logger.debug(s"Found.")
             Some(result)
+          }
         case _ => None
       cached match
         case Some(result) => result
