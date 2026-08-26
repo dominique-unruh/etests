@@ -68,7 +68,7 @@ object LaTeX {
         |echo "Starting LaTeX compilation..."
         |pdflatex -interaction=batchmode latex.tex
         |echo "LaTeX compilation successful"
-        |magick -density 300 latex.pdf result.png &> convert.log
+        |magick -density 300 latex.pdf +set date:create +set date:modify -define png:exclude-chunks=date,tIME -strip result.png &> convert.log
         |echo "Conversion completed successfully"
         |""".stripMargin
 
