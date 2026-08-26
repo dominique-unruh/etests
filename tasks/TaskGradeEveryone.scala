@@ -189,7 +189,7 @@ object TaskGradeEveryone extends Task {
     val errors = mutable.Queue[(String, Assessment, String)]()
     if (onlyTheseStudents.isEmpty) // Don't run time consuming things if we only want to test grade a student
       tryWithError[Unit](errors, label = "Exam tests failed") {
-//        exam.runTests()
+        exam.runTests()
       }
 
     val students = onlyTheseStudents match {
