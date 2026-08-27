@@ -129,8 +129,11 @@ class Assessment (val name: String,
     val elements =
       (pageElements.values.collect { case element: DynamicElement => element }.toSeq)
         `appended` PointsReached
+    // The grading exceptions are part of the cache key: otherwise editing the exceptions CSV and
+    // then reverting the answer to a previously-graded value would return the stale cached feedback.
+    val gradingExceptions = exam.gradingExceptions()
     val feedbackFutures = for (element <- elements)
-      yield FutureCache.evaluateFuture((this, element.name, answerMap))(element.getFeedback(exam, this, answerMap))
+      yield FutureCache.evaluateFuture((this, element.name, answerMap, gradingExceptions))(element.getFeedback(exam, this, answerMap))
     val feedbackOptions = Utils.awaitSeq(feedbackFutures, feedbackTimeout)
     var timedOut = false
     val feedbacks = Seq.newBuilder[(String, JsValue)]
