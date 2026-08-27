@@ -2,6 +2,7 @@ package assessments
 
 import assessments.Exam.{ExamMainRun, logger, runOption}
 import assessments.ExceptionContext.{addToExceptionContext, initialExceptionContext}
+import assessments.pageelements.GradingElement
 import assessments.pageelements.GradingElement.GradingExceptions
 import assessments.pageelements.RenderContext
 import com.typesafe.scalalogging.Logger
@@ -164,13 +165,13 @@ case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownA
    * so [[gradingExceptions]] can reload only when the file changes. */
   private var gradingExceptionsCache: Option[(FileTime, GradingExceptions)] = None
 
-  /** Manual grade overrides for this exam, keyed by student registration number then by grading
-   * element. Read from the CSV named by the [[Exam.gradingExceptionsCSV]] tag, which has columns
-   * `registration`, `grader`, `feedback`, `points`; empty if the tag is unset. The parsed result is
-   * cached and reloaded only when the file's modification time changes. */
+  /** Manual grade overrides for this exam, keyed by student registration number, problem (assessment)
+   * name and grading element. Read from the CSV named by the [[Exam.gradingExceptionsCSV]] tag, which
+   * has columns `registration`, `problem`, `grader`, `feedback`, `points`; empty if the tag is unset.
+   * The parsed result is cached and reloaded only when the file's modification time changes. */
   def gradingExceptions(): GradingExceptions = synchronized {
     tags.get(Exam.gradingExceptionsCSV) match {
-      case None => Map.empty
+      case None => GradingExceptions.empty
       case Some(path) =>
         val mtime = Files.getLastModifiedTime(path)
         gradingExceptionsCache match {
@@ -184,14 +185,24 @@ case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownA
   }
 
   private def loadGradingExceptions(path: Path): GradingExceptions = {
+    given ExceptionContext = initialExceptionContext(s"Loading grading exceptions from $path")
     val spreadsheet = Spreadsheet.load(path, Spreadsheet.Format.CSV.default)
-    spreadsheet.rows
-      .groupBy(_("registration"))
-      .view.mapValues { rows =>
-        rows.map { row =>
-          ElementName(row("grader")) -> (Markdown(row("feedback")), Points(row("points")))
-        }.toMap
-      }.toMap
+    val entries = spreadsheet.rows.map { row =>
+      (row("registration"), row("problem"), ElementName(row("grader"))) ->
+        (Markdown(row("feedback")), Points(row("points")))
+    }
+    val duplicateKeys = entries.map(_._1).groupBy(identity).collect { case (key, occurrences) if occurrences.length > 1 => key }
+    if (duplicateKeys.nonEmpty)
+      throw new RuntimeException(
+        s"Duplicate (registration, problem, grader) entries in grading exceptions $path: ${duplicateKeys.mkString(", ")}")
+    // Every (problem, grader) referenced must name an existing problem containing that grading element.
+    for (((_, problem, grader), _) <- entries) {
+      val gradingElements = assessmentByName(problem).assessment.pageElements
+      if (!gradingElements.get(grader).exists(_.isInstanceOf[GradingElement]))
+        throw new RuntimeException(
+          s"Grading exception in $path refers to grader '$grader' in problem '$problem', which is not a grading element there.")
+    }
+    GradingExceptions(entries.toMap)
   }
 }
 

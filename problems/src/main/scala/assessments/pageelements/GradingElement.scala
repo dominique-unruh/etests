@@ -105,8 +105,8 @@ class GradingElement(override val name: ElementName,
   }
 
   /** If a grading exception applies to this grader for `registrationNumber`, produce the overriding
-   * [[Feedback]] directly (skipping the grader). Also validates, for the given student, that **every**
-   * grader named in the exceptions is an actual [[GradingElement]] of `assessment` — throwing if not.
+   * [[Feedback]] directly (skipping the grader). Well-formedness of the exceptions (problems and
+   * graders exist) is already checked when they are loaded (see [[Exam.gradingExceptions]]).
    *
    * @return `Some(feedback)` if an exception overrides this grader; `None` if the grader should run
    *         normally (no exceptions for this student, or none targeting this grader). */
@@ -114,17 +114,9 @@ class GradingElement(override val name: ElementName,
                                       (using ExceptionContext): Option[Feedback] = {
     val overrideForThisGrader = for {
       regNr <- registrationNumber
-      exceptionsForStudent <- exam.gradingExceptions().get(regNr)
-    } yield {
-      // Step 1: all graders referenced for this student must be grading elements of this assessment.
-      val validGraderNames = assessment.pageElements.values.collect { case e: GradingElement => e.name }.toSet
-      for (graderName <- exceptionsForStudent.keys if !validGraderNames.contains(graderName))
-        throw ExceptionWithContext(
-          s"Grading exception for student $regNr refers to '$graderName', which is not a grading element in ${assessment.name}")
-      // Step 2: does an exception target this very grader?
-      exceptionsForStudent.get(name)
-    }
-    overrideForThisGrader.flatten.map { case (comment, points) =>
+      value <- exam.gradingExceptions().map.get((regNr, assessment.name, name))
+    } yield value
+    overrideForThisGrader.map { case (comment, points) =>
       if (points > reachablePoints)
         throw ExceptionWithContext(s"Grading exception awards $points points, more than the reachable $reachablePoints")
       Feedback(points = Some(points), text = comment.toHtml, outcome = inferOutcome(points, reachablePoints))
@@ -183,10 +175,14 @@ object GradingElement {
 
   case class Feedback(text: Html, points: Option[Points] = None, outcome: Outcome = Outcome.unspecified, error: Option[String | Exception] = None)
 
-  /** Manual grade overrides, keyed by student registration number, then by the grading element to
+  /** Manual grade overrides, keyed by student registration number, assessment name, grading element to
    * override. Each override supplies a `comment` (rendered as the feedback body) and the `points` to
    * award. See [[GradingElement.computeFeedback]]. */
-  type GradingExceptions = Map[String, Map[ElementName, (Markdown, Points)]]
+  // TODO move somewhere else
+  case class GradingExceptions(map: Map[(String, String, ElementName), (Markdown, Points)]) extends AnyVal
+  object GradingExceptions {
+    val empty = GradingExceptions(Map.empty)
+  }
 
   /** Outcome consistent with `points` awarded out of `reachablePoints`: full points → `correct`,
    * nothing (or negative) → `incorrect`, anything in between → `partiallyCorrect`. */
