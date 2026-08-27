@@ -18,12 +18,13 @@ import java.util.Date
 object ArchiveExam extends Task {
   exportExam()
   
-  def problemHTML(problem: MarkdownAssessment) =
+  def problemHTML(exam: Exam, problem: MarkdownAssessment) =
     val renderContext = RenderContext(
       RenderContext.dynamic := false,
       RenderContext.studentAnswers := problem.referenceSolution,
       RenderContext.problem := problem,
-      RenderContext.catchExceptions := true)
+      RenderContext.catchExceptions := true,
+      RenderContext.exam := exam)
     val body =
       problem.renderStaticHtml(renderContext)
     ind"""<h1>${escapeHtml4(problem.name)}</h1>
@@ -40,7 +41,7 @@ object ArchiveExam extends Task {
     Utils.htmlToPdf(htmlFile, pdfFile)
   }
 
-  def exportProblem(archiveDir: Path, problem: MarkdownAssessment) = {
+  def exportProblem(archiveDir: Path, exam: Exam, problem: MarkdownAssessment) = {
     val basename = problem.getClass.getSimpleName.stripSuffix("$")
 
     val html = Html(ind"""<html>
@@ -49,7 +50,7 @@ object ArchiveExam extends Task {
                          |  ${Assessment.htmlHeaderStatic.html}
                          |</head>
                          |<body>
-                         |${problemHTML(problem)}
+                         |${problemHTML(exam, problem)}
                          |</body>
                          |</html>
                          |""".stripMargin)
@@ -96,7 +97,7 @@ object ArchiveExam extends Task {
     } finally stream.close()
 
     val problems = for (problem <- exam.problems) yield
-      exportProblem(archiveDir = archiveDir, problem = problem)
+      exportProblem(archiveDir = archiveDir, exam = exam, problem = problem)
 
     val html = Html(ind"""<html>
                     |<head>
@@ -104,7 +105,7 @@ object ArchiveExam extends Task {
                     |  ${Assessment.htmlHeaderStatic.html}
                     |</head>
                     |<body>
-                    |${exam.problems.map(problemHTML).mkString("\n<hr/>\n")}
+                    |${exam.problems.map(problemHTML(exam, _)).mkString("\n<hr/>\n")}
                     |</body>
                     |</html>
                     |""".stripMargin)

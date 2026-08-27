@@ -3,7 +3,7 @@ package assessments.pageelements
 import assessments.GradingContext.answers
 import assessments.pageelements.MultipleChoice.Style.checkbox
 import assessments.pageelements.MultipleChoice.{Style, checkboxLabel, notSelectedString}
-import assessments.{Assessment, ElementName, FileMapBuilder, Html, Points}
+import assessments.{Assessment, ElementName, Exam, FileMapBuilder, Html, Points}
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import play.api.libs.json.{JsArray, JsNull, JsNumber, JsObject, JsString, JsValue, Json}
@@ -122,7 +122,8 @@ final class MultipleChoice(override val name: ElementName,
   }
 
 
-  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsValue] = Future.successful(JsNull)
+  override def getFeedback(exam: Exam, assessment: Assessment,
+                           state: Map[ElementName, JsValue]): Future[JsValue] = Future.successful(JsNull)
   override def timeoutFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue = JsNull
 }
 

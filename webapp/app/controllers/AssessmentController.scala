@@ -72,7 +72,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     given ExceptionContext = ExceptionContext.initialExceptionContext(s"Web query for exam $examName, problem $assessmentName")
     val exam = Exam.getExamById(examName)
     val assessment = getAssessment(exam, assessmentName)
-    val (body, files) = assessment.renderHtml
+    val (body, files) = assessment.renderHtml(exam)
     val testingSolutionDescriptions =
       assessment.testingSolutions.map(a => if (a.description.isEmpty) "testing solution" else a.description)
     val html = views.html.assessment(
@@ -148,7 +148,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     given ExceptionContext = initialExceptionContext(s"Responsing to web-request $request")
     val exam = Exam.getExamById(examName)
     val assessment = getAssessment(exam, assessmentName)
-    val (body, files) = assessment.renderHtml
+    val (body, files) = assessment.renderHtml(exam)
     val (mime, content) = files(fileName)
     Ok(content).as(mime)
   }
@@ -159,7 +159,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     // TODO do some caching?
     val assessment = getAssessment(exam, assessmentName)
     val payload = request.body.asJson.get.asInstanceOf[JsObject]
-    val (feedback, errors, timedOut) = assessment.getFeedback(payload)
+    val (feedback, errors, timedOut) = assessment.getFeedback(exam, payload)
     val response = Seq.newBuilder[(String, JsValue)]
     response += "feedback" -> feedback
     response += "timedout" -> JsBoolean(timedOut)

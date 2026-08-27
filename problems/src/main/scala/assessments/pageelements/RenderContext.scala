@@ -1,6 +1,6 @@
 package assessments.pageelements
 
-import assessments.{Answers, Assessment, ElementName}
+import assessments.{Answers, Assessment, ElementName, Exam}
 import utils.Tag
 import utils.Tag.{Tagged, Tags}
 
@@ -35,4 +35,7 @@ object RenderContext {
    * a student printout). Only affects **static** rendering (`dynamic := false`); in dynamic rendering
    * the `<etest-grading>` web component is always emitted and visibility is handled client-side. */
   val showSolutions: Tag[RenderContext, Boolean] = Tag(default = true)
+  /** The [[Exam]] being rendered; supplies grading exceptions to [[GradingElement.computeFeedback]]
+   * during static rendering. */
+  val exam: Tag[RenderContext, Exam] = Tag()
 }

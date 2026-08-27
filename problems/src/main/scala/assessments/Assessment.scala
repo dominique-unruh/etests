@@ -82,8 +82,8 @@ class Assessment (val name: String,
     body2
   }
 
-  lazy val renderHtml: (Html, Map[String, (String, Array[Byte])]) = {
-    val renderContext = RenderContext(RenderContext.dynamic := true)
+  def renderHtml(exam: Exam): (Html, Map[String, (String, Array[Byte])]) = {
+    val renderContext = RenderContext(RenderContext.dynamic := true, RenderContext.exam := exam)
     val fileMapBuilder = DefaultFileMapBuilder("")
     def render(element: Element) = element.renderHtml(renderContext, fileMapBuilder)
 
@@ -91,10 +91,10 @@ class Assessment (val name: String,
     (body, fileMapBuilder.result())
   }
 
-  def pointsReached(answers: Answers, registrationNumber: Option[String]): Future[Points] = {
+  def pointsReached(exam: Exam, answers: Answers, registrationNumber: Option[String]): Future[Points] = {
     val pointIterFuture =
       Future.traverse(pageElements.values.collect { case e: GradingElement => e }) {
-        _.pointsReached(this, registrationNumber, answers)
+        _.pointsReached(exam, this, registrationNumber, answers)
       }
     for (points <- pointIterFuture) yield
       points.map(_.getOrElse(0: Points)).sum
@@ -105,8 +105,9 @@ class Assessment (val name: String,
 
     private val processing = JsObject(Seq(("processing", JsBoolean(true))))
 
-    override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsObject] = {
-      val pointsFuture = assessment.pointsReached(assessment.webappStateToAnswers(state),
+    override def getFeedback(exam: Exam, assessment: Assessment,
+                             state: Map[ElementName, JsValue]): Future[JsObject] = {
+      val pointsFuture = assessment.pointsReached(exam, assessment.webappStateToAnswers(state),
         state.get(ElementName.registrationNumber).map(_.asInstanceOf[JsString].value))
       for (points <- pointsFuture) yield {
         JsObject(Seq(("points", JsNumber(points.toBigDecimal))))
@@ -122,14 +123,14 @@ class Assessment (val name: String,
   }
 
 
-  def getFeedback(answer: JsObject): (JsObject, JsArray, Boolean) = {
+  def getFeedback(exam: Exam, answer: JsObject): (JsObject, JsArray, Boolean) = {
     // TODO should only recalculate changed things
     val answerMap = answer.value.map { (name, content) => (ElementName.fromHtmlComponentName(name), content) }.toMap
     val elements =
       (pageElements.values.collect { case element: DynamicElement => element }.toSeq)
         `appended` PointsReached
     val feedbackFutures = for (element <- elements)
-      yield FutureCache.evaluateFuture((this, element.name, answerMap))(element.getFeedback(this, answerMap))
+      yield FutureCache.evaluateFuture((this, element.name, answerMap))(element.getFeedback(exam, this, answerMap))
     val feedbackOptions = Utils.awaitSeq(feedbackFutures, feedbackTimeout)
     var timedOut = false
     val feedbacks = Seq.newBuilder[(String, JsValue)]

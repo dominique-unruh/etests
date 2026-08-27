@@ -1,7 +1,7 @@
 package externalsystems
 
 import assessments.pageelements.MultipleChoice.{Style, checkboxLabel}
-import assessments.{Assessment, DefaultFileMapBuilder, Html}
+import assessments.{Assessment, DefaultFileMapBuilder, DummyExam, Html}
 import assessments.pageelements.{DynamicElement, ImageElement, InputElement, MathPreviewElement, MultipleChoice, RenderContext, SolutionElement, StaticElement}
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
@@ -281,7 +281,7 @@ object MoodleStack {
   def assessmentToQuestion(assessment: Assessment): Question = {
     val inputs = Seq.newBuilder[Input]
     val fileMapBuilder = DefaultFileMapBuilder("@@PLUGINFILE@@/")
-    val renderContext = RenderContext(RenderContext.dynamic := false)
+    val renderContext = RenderContext(RenderContext.dynamic := false, RenderContext.exam := DummyExam)
     val questionText = assessment.renderHtml { element =>
       element match {
         case pageElement: InputElement =>

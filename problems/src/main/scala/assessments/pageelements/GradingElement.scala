@@ -2,9 +2,9 @@ package assessments.pageelements
 
 import assessments.ExceptionContext.initialExceptionContext
 import assessments.GradingContext.{GradeBlockExit, Outcome, bareGradeBlock, gradeBlock}
-import assessments.pageelements.GradingElement.{Feedback, errorToString, graderExecutionContext, logger}
+import assessments.pageelements.GradingElement.{Feedback, errorToString, graderExecutionContext, inferOutcome, logger}
 import assessments.pageelements.RenderContext.catchExceptions
-import assessments.{Answers, Assessment, Comment, ElementName, ExceptionContext, ExceptionWithContext, FileMapBuilder, GradingContext, Html, HtmlConvertible, InterpolatedMarkdown, Points}
+import assessments.{Answers, Assessment, Comment, ElementName, Exam, ExceptionContext, ExceptionWithContext, FileMapBuilder, GradingContext, Html, HtmlConvertible, InterpolatedMarkdown, Markdown, Points}
 import com.typesafe.scalalogging.Logger
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import play.api.libs.json.{JsNumber, JsObject, JsString, JsValue}
@@ -48,6 +48,7 @@ class GradingElement(override val name: ElementName,
       if (!context.getOrElse(RenderContext.showSolutions, true))
         return Html("")
       val fb = computeFeedback(
+        context(RenderContext.exam),
         context(RenderContext.problem),
         context.get(RenderContext.registrationNumber),
         context(RenderContext.studentAnswers),
@@ -72,12 +73,14 @@ class GradingElement(override val name: ElementName,
     }
     Html(ind"""<etest-grading id="${name.htmlComponentNameEscaped}"></etest-grading>""")
 
-  def pointsReached(assessment: Assessment, registrationNumber: Option[String], answers: Answers): Future[Option[Points]] =
-    computeFeedback(assessment, registrationNumber, answers, catchExceptions = false).map(_.points)
+  def pointsReached(exam: Exam, assessment: Assessment, registrationNumber: Option[String],
+                    answers: Answers): Future[Option[Points]] =
+    computeFeedback(exam, assessment, registrationNumber, answers, catchExceptions = false).map(_.points)
 
-  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsObject] = {
+  override def getFeedback(exam: Exam, assessment: Assessment,
+                           state: Map[ElementName, JsValue]): Future[JsObject] = {
     val registrationNumber = state.get(ElementName.registrationNumber).map(_.asInstanceOf[JsString].value)
-    val result = for (fb <- computeFeedback(assessment, registrationNumber, assessment.webappStateToAnswers(state), catchExceptions = true)) yield {
+    val result = for (fb <- computeFeedback(exam, assessment, registrationNumber, assessment.webappStateToAnswers(state), catchExceptions = true)) yield {
       val builder = Map.newBuilder[String, JsValue]
       builder.addOne(("text", JsString(fb.text.html)))
       for (points <- fb.points)
@@ -101,9 +104,41 @@ class GradingElement(override val name: ElementName,
     }
   }
 
-  def computeFeedback(assessment: Assessment, registrationNumber: Option[String], answers: Answers,
+  /** If a grading exception applies to this grader for `registrationNumber`, produce the overriding
+   * [[Feedback]] directly (skipping the grader). Also validates, for the given student, that **every**
+   * grader named in the exceptions is an actual [[GradingElement]] of `assessment` — throwing if not.
+   *
+   * @return `Some(feedback)` if an exception overrides this grader; `None` if the grader should run
+   *         normally (no exceptions for this student, or none targeting this grader). */
+  private def gradingExceptionFeedback(exam: Exam, assessment: Assessment, registrationNumber: Option[String])
+                                      (using ExceptionContext): Option[Feedback] = {
+    val overrideForThisGrader = for {
+      regNr <- registrationNumber
+      exceptionsForStudent <- exam.gradingExceptions().get(regNr)
+    } yield {
+      // Step 1: all graders referenced for this student must be grading elements of this assessment.
+      val validGraderNames = assessment.pageElements.values.collect { case e: GradingElement => e.name }.toSet
+      for (graderName <- exceptionsForStudent.keys if !validGraderNames.contains(graderName))
+        throw ExceptionWithContext(
+          s"Grading exception for student $regNr refers to '$graderName', which is not a grading element in ${assessment.name}")
+      // Step 2: does an exception target this very grader?
+      exceptionsForStudent.get(name)
+    }
+    overrideForThisGrader.flatten.map { case (comment, points) =>
+      if (points > reachablePoints)
+        throw ExceptionWithContext(s"Grading exception awards $points points, more than the reachable $reachablePoints")
+      Feedback(points = Some(points), text = comment.toHtml, outcome = inferOutcome(points, reachablePoints))
+    }
+  }
+
+  def computeFeedback(exam: Exam, assessment: Assessment, registrationNumber: Option[String], answers: Answers,
                       catchExceptions: Boolean): Future[Feedback] = {
     given ExceptionContext = initialExceptionContext(s"Recomputing grading based on change of inputs in webapp")
+    gradingExceptionFeedback(exam, assessment, registrationNumber) match {
+    case Some(feedback) =>
+      logger.debug(s"Grading exception for ${registrationNumber}, ${this.name}, ${feedback.points}")
+      Future.successful(feedback)
+    case None =>
     val duration = Utils.getSystemProperty("grading.timeout", "timeout for graders, e.g., 10s, 1m")
     logger.debug(s"Running grader $name, $registrationNumber: $answers")
     given GradingContext = GradingContext(answers.answers, registrationNumber.getOrElse("NO_STUDENT"), reachablePoints, assessment.sourceAssessment)
@@ -136,6 +171,7 @@ class GradingElement(override val name: ElementName,
     }.recover {
       case e: Exception if catchExceptions => Feedback(text = textAsHtml, error = Some(e))
     }
+    }
   }
 }
 
@@ -146,6 +182,18 @@ object GradingElement {
     ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(10))
 
   case class Feedback(text: Html, points: Option[Points] = None, outcome: Outcome = Outcome.unspecified, error: Option[String | Exception] = None)
+
+  /** Manual grade overrides, keyed by student registration number, then by the grading element to
+   * override. Each override supplies a `comment` (rendered as the feedback body) and the `points` to
+   * award. See [[GradingElement.computeFeedback]]. */
+  type GradingExceptions = Map[String, Map[ElementName, (Markdown, Points)]]
+
+  /** Outcome consistent with `points` awarded out of `reachablePoints`: full points → `correct`,
+   * nothing (or negative) → `incorrect`, anything in between → `partiallyCorrect`. */
+  private def inferOutcome(points: Points, reachablePoints: Points): Outcome =
+    if (points == reachablePoints) Outcome.correct
+    else if (points <= Points.zero) Outcome.incorrect
+    else Outcome.partiallyCorrect
 
   def errorToString(error: String | Exception): String = error match {
     case s: String => s

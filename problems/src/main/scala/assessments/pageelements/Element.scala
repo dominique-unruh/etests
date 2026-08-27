@@ -47,7 +47,8 @@ trait DynamicElement extends Element { self =>
    *
    * @param state the current answers, keyed by [[ElementName]]
    * @return the feedback payload for this element, consumed by the frontend renderer */
-  def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsValue]
+  def getFeedback(exam: Exam, assessment: Assessment,
+                  state: Map[ElementName, JsValue]): Future[JsValue]
   /** Fallback feedback used when [[getFeedback]] does not finish within the feedback timeout.
    *
    * [[Assessment.getFeedback]] awaits all elements' [[getFeedback]] futures with a deadline; for any

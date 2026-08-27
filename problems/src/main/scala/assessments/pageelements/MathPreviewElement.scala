@@ -1,6 +1,6 @@
 package assessments.pageelements
 
-import assessments.{Assessment, ElementName, FileMapBuilder, Html, SyntaxError}
+import assessments.{Assessment, ElementName, Exam, FileMapBuilder, Html, SyntaxError}
 import me.shadaj.scalapy.py
 import me.shadaj.scalapy.py.PyQuote
 import org.apache.commons.text.StringEscapeUtils
@@ -45,7 +45,8 @@ class MathPreviewElement(val name: ElementName,
     }
   }
 
-  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsString] = Future {
+  override def getFeedback(exam: Exam, assessment: Assessment,
+                           state: Map[ElementName, JsValue]): Future[JsString] = Future {
     val content = state(observed).asInstanceOf[JsString].value
     if (content.isBlank)
       JsString(s"""<span style="color:gray">(preview)</span>""")

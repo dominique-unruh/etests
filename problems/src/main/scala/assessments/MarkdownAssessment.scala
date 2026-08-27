@@ -100,7 +100,7 @@ abstract class MarkdownAssessment extends TestSuite {
     println(s"Testing $name with ${if (changes.nonEmpty) "modified " else ""}reference solution, expected: $expected points.")
     val changedReference = referenceSolution.update(changes)
     println(s"Reference solution: ${changedReference}")
-    val points = assessment.pointsReached(changedReference, None).awaitResult()
+    val points = assessment.pointsReached(DummyExam, changedReference, None).awaitResult()
     println(s"Resulting number of points: $points (expected points: $expected)")
     if (points != expected)
         throw ExceptionWithContext("Mismatch with expectation")
@@ -232,6 +232,7 @@ abstract class MarkdownAssessment extends TestSuite {
     val testCase = Test(testName) {
       given context: GradingContext = GradingContext(solution.answers, "NO STUDENT", reachablePoints, this)
       val feedback = gradingElement.computeFeedback(
+        exam = DummyExam,
         assessment = this,
         registrationNumber = None,
         answers = solution,
@@ -267,6 +268,7 @@ abstract class MarkdownAssessment extends TestSuite {
     val testCase = Test(testName) {
       given context: GradingContext = GradingContext(solution.answers, "NO STUDENT", reachablePoints, this)
       val result = Try(gradingElement.computeFeedback(
+        exam = DummyExam,
         assessment = this,
         registrationNumber = None,
         answers = solution,
@@ -296,7 +298,7 @@ abstract class MarkdownAssessment extends TestSuite {
     val testCases = for (solution <- solutions) yield Test(solution.description) {
       given context: GradingContext = GradingContext(solution.answers, "NO STUDENT", reachablePoints, this)
       if (points != null) {
-        val pointsReached = this.pointsReached(answersImmutable, Some(context.registrationNumber)).awaitResult()
+        val pointsReached = this.pointsReached(DummyExam, answersImmutable, Some(context.registrationNumber)).awaitResult()
         assert(points == pointsReached)
       }
       test
@@ -336,7 +338,7 @@ abstract class MarkdownAssessment extends TestSuite {
         case n: String => grader(n)
       }
       val feedbacks = elements.map { element =>
-        (element, element.computeFeedback(assessment = this, registrationNumber = None, answers = answers, catchExceptions = false).awaitResult())
+        (element, element.computeFeedback(exam = DummyExam, assessment = this, registrationNumber = None, answers = answers, catchExceptions = false).awaitResult())
       }
       def triggered(feedback: Feedback): Boolean =
         feedback.outcome == Outcome.correct ||

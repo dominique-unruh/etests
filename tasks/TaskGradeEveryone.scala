@@ -42,7 +42,8 @@ object TaskGradeEveryone extends Task {
       val renderContext = RenderContext(
         RenderContext.dynamic := false,
         RenderContext.studentAnswers := answers,
-        RenderContext.registrationNumber := student)
+        RenderContext.registrationNumber := student,
+        RenderContext.exam := exam)
       val body = question.renderStaticHtml(renderContext)
 
       output ++= "<div class=\"question-text\">\n"
@@ -52,7 +53,7 @@ object TaskGradeEveryone extends Task {
 
       output ++= "<div class=\"grading-report\">"
       output ++= "<h2>Your grading</h2>\n"
-      val questionPoints = question.pointsReached(answers, Some(student)).awaitResult()
+      val questionPoints = question.pointsReached(exam, answers, Some(student)).awaitResult()
       output ++= s"Points: ${questionPoints.decimalFractionString(2)} of ${question.reachablePoints}\n"
       points += questionPoints
     } catch {
