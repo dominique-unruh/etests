@@ -38,6 +38,7 @@ export class Grading extends InteractiveElement<null, GradingFeedback> {
         else
             this.points.innerText = newValue.points + " points";
         this.outcome.className = "grading-outcome";
+        this.outcome.title = "Grader: " + this.id.replace(/^etest-/, "");
         if (newValue.outcome == null)
             this.outcome.innerText = "";
         else {
