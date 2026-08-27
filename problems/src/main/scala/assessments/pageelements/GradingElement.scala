@@ -111,7 +111,7 @@ class GradingElement(override val name: ElementName,
    * @return `Some(feedback)` if an exception overrides this grader; `None` if the grader should run
    *         normally (no exceptions for this student, or none targeting this grader). */
   private def gradingExceptionFeedback(exam: Exam, assessment: Assessment, registrationNumber: Option[String])
-                                      (using ExceptionContext): Option[Feedback] = {
+                                      (using ExceptionContext, GradingContext): Option[Feedback] = {
     val overrideForThisGrader = for {
       regNr <- registrationNumber
       value <- exam.gradingExceptions().map.get((regNr, assessment.name, name))
@@ -119,13 +119,15 @@ class GradingElement(override val name: ElementName,
     overrideForThisGrader.map { case (comment, points) =>
       if (points > reachablePoints)
         throw ExceptionWithContext(s"Grading exception awards $points points, more than the reachable $reachablePoints")
-      Feedback(points = Some(points), text = comment.toHtml, outcome = inferOutcome(points, reachablePoints))
+      Feedback(points = Some(points), text = text.toHtml.flatMapArgs(_.toHtml) + Html("<hr>") + comment.toHtml,
+        outcome = inferOutcome(points, reachablePoints))
     }
   }
 
   def computeFeedback(exam: Exam, assessment: Assessment, registrationNumber: Option[String], answers: Answers,
                       catchExceptions: Boolean): Future[Feedback] = {
     given ExceptionContext = initialExceptionContext(s"Recomputing grading based on change of inputs in webapp")
+    given GradingContext = GradingContext(answers.answers, registrationNumber.getOrElse("NO_STUDENT"), reachablePoints, assessment.sourceAssessment)
     gradingExceptionFeedback(exam, assessment, registrationNumber) match {
     case Some(feedback) =>
       logger.debug(s"Grading exception for ${registrationNumber}, ${this.name}, ${feedback.points}")
@@ -133,7 +135,6 @@ class GradingElement(override val name: ElementName,
     case None =>
     val duration = Utils.getSystemProperty("grading.timeout", "timeout for graders, e.g., 10s, 1m")
     logger.debug(s"Running grader $name, $registrationNumber: $answers")
-    given GradingContext = GradingContext(answers.answers, registrationNumber.getOrElse("NO_STUDENT"), reachablePoints, assessment.sourceAssessment)
     val textAsHtml = text.toHtml.flatMapArgs(_.toHtml)
     Utils.runWithTimeoutFuture(Duration(duration), s"${assessment.name}-$name-${registrationNumber}") {
       val (exit, context) = bareGradeBlock(reachablePoints, allowExitWithoutDone = true) {
