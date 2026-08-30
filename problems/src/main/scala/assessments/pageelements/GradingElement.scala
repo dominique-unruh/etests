@@ -117,8 +117,8 @@ class GradingElement(override val name: ElementName,
       value <- exam.gradingExceptions().map.get((regNr, assessment.name, name))
     } yield value
     overrideForThisGrader.map { case (comment, points) =>
-      if (points > reachablePoints)
-        throw ExceptionWithContext(s"Grading exception awards $points points, more than the reachable $reachablePoints")
+//      if (points > reachablePoints)
+//        throw ExceptionWithContext(s"Grading exception awards $points points, more than the reachable $reachablePoints")
       Feedback(points = Some(points), text = text.toHtml.flatMapArgs(_.toHtml) + Html("<hr>") + comment.toHtml,
         outcome = inferOutcome(points, reachablePoints))
     }
