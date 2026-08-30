@@ -25,9 +25,6 @@ import scala.util.Try
 
 case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownAssessment*)
                (using sourceFileImplicit: UsingWrapper[sourcecode.File, tags.type]) extends TestSuite {
-  val tests2 = Tests {
-    test("hello") {???}
-  }
   val id: String = getClass.getName.stripSuffix("$")
   val sourceFile: Path = Path.of(sourceFileImplicit.value.value)
   assert(problems.map(_.name).distinct.length == problems.length)
