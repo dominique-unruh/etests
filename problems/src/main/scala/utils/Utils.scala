@@ -3,6 +3,7 @@ package utils
 import assessments.{ExceptionContext, ExceptionWithContext}
 import com.typesafe.scalalogging.Logger
 import sourcecode.FileName
+import utils.Docker.DockerResult
 
 import java.awt.Toolkit
 import java.awt.datatransfer.{Clipboard, StringSelection}
@@ -195,6 +196,24 @@ object Utils {
       logger.info(s"Stored $description in $file (mode 0600).")
       secret
     }
+  }
+
+  /** Read a secret (`account`) from the operating system's keyring (Secret Service / macOS
+   * Keychain / Windows Credential Manager, via the java-keyring library) under service name
+   * `service`. If the keyring has no entry, `prompt` is evaluated to obtain the secret, which is
+   * stored back into the keyring and returned. `description` is used only in log messages. */
+  def readOrPromptKeyring(service: String, account: String, description: String)(prompt: => String): String = {
+    val keyring = com.github.javakeyring.Keyring.create()
+    try
+      keyring.getPassword(service, account)
+    catch
+      case _: com.github.javakeyring.PasswordAccessException =>
+        val secret = prompt.trim
+        if (secret.isEmpty)
+          throw new RuntimeException(s"No $description provided; aborting.")
+        keyring.setPassword(service, account, secret)
+        logger.info(s"Stored $description in the system keyring (service=$service, account=$account).")
+        secret
   }
 
   private val stripLeadingEmptyLinesRegex = """(?s)^([ \t]*\n)+""".r
@@ -427,16 +446,28 @@ object Utils {
     htmlToPdfAsync(htmlFile, pdfOutputFile).awaitResult()
 
   def htmlToPdfAsync(html: String, htmlFile: String = "HTML"): Future[Array[Byte]] = {
+    def cacheGuard(result: DockerResult): Boolean = {
+      if (result.exitCode == 0) return false
+      if (result.output.contains("ERR_SOCKET_NOT_CONNECTED")) return true
+      if (result.output.contains("ERR_CERT_VERIFIER_CHANGED")) return true
+      if (result.output.contains("ERR_CONNECTION_CLOSED")) return true
+      false
+    }
     Docker.runInDocker(
 //            invalidateCache = true,
       shortDescription = s"HTML to PDF, $htmlFile",
       image = Path.of("docker/html-to-pdf"),
       files = Map("input.html" -> html.getBytes(StandardCharsets.UTF_8)),
       //      command = Seq("ls", "-lh", "/workdir"),
-      requestedOutputs = Seq("output.pdf")
+      requestedOutputs = Seq("output.pdf"),
+      // A network failure (e.g. MathJax failing to load) can produce a cached failure that must not
+      // be reused; discard such cached results so the conversion is retried.
+      cacheGuard = cacheGuard
     ) map { result =>
-      if (result.exitCode != 0)
+      if (result.exitCode != 0) {
+        print(result.output)
         throw new IOException(s"Could not convert $htmlFile to PDF. Conversion script returned ${result.exitCode}")
+      }
       result.files("output.pdf")
     }
   }

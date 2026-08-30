@@ -50,11 +50,15 @@
                 <br>
                 <div><a href="javascript:window.stateManager.randomStudent()">Random student...</a></div>
                 <div><a href="javascript:window.stateManager.showDynexitePdf()">Show Dynexite PDF...</a></div>
-                <div><a href="javascript:window.stateManager.showDynexiteLink()">Show Dynexite preview...</a></div>
+                <div><a href="javascript:window.stateManager.showDynexiteLink()">Show Dynexite preview of student answers...</a></div>
+                <div><a href="javascript:window.stateManager.showDynexiteQuestionLink()">Show question in Dynexite...</a></div>
                 <div><a href="javascript:window.stateManager.askForAnswers('student') ">Load answers...</a></div>
-                @for((description, index) <- testingSolutionDescriptions.zipWithIndex) {
-                <div><a href="javascript:window.stateManager.askForAnswers('testing:@index')">Load @description...</a></div>
-                }
+                <details class="testing-solutions">
+                    <summary><a href="javascript:window.stateManager.askForAnswers('testing:0')">Load @testingSolutionDescriptions.head...</a></summary>
+                    @for((description, index) <- testingSolutionDescriptions.zipWithIndex.tail) {
+                    <div><a href="javascript:window.stateManager.askForAnswers('testing:@index')">Load @description...</a></div>
+                    }
+                </details>
                 <div><a href="javascript:window.stateManager.showDynexiteAnswers()">Raw Dynexite answers...</a></div>
 
                 <etest-points-reached id="etest-points-reached" reachable="@(reachablePoints)"></etest-points-reached>

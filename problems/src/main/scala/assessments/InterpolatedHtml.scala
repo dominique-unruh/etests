@@ -54,9 +54,9 @@ object InterpolatedHtml extends InterpolatedTextC[Html, InterpolatedHtml] {
 //    inline def md[T](args: T*): InterpolatedHtml[T] = new InterpolatedHtml(InterpolatedString[T](sc.parts, args))
 //  }
 
-    extension (it: InterpolatedHtml[HtmlConvertible]) {
-      def flatten: Html = it.flatMapArgs(_.toHtml)
-    }
+  extension (it: InterpolatedHtml[HtmlConvertible]) {
+    def flatten: Html = it.flatMapArgs(_.toHtml)
+  }
 
   override def apply[T](text: Html): InterpolatedHtml[T] =
     new InterpolatedHtml(InterpolatedString(text.html))

@@ -1,11 +1,11 @@
 package assessments.pageelements
 
 import assessments.pageelements.InputElement.{inputElementColumns, inputElementRows}
-import assessments.{Assessment, ElementName, FileMapBuilder, Html}
+import assessments.{Assessment, ElementName, Exam, FileMapBuilder, Html}
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import play.api.libs.json.{JsNull, JsObject, JsString, JsValue}
-import utils.{IndentedInterpolator, Tag, Utils}
+import utils.{IndentedInterpolator, Memoize, Tag, Utils}
 import utils.Tag.Tags
 
 import scala.concurrent.Future
@@ -32,7 +32,8 @@ case class InputElement(name: ElementName,
       Html(s"""<input type="text" size="${tags(inputElementColumns)}" readonly value="${escapeHtml4(answer)}"/>""")
   }
 
-  override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsValue] = Future.successful(JsNull)
+  override def getFeedback(exam: Exam, assessment: Assessment,
+                           state: Map[ElementName, JsValue]): Future[JsValue] = Future.successful(JsNull)
   override def timeoutFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue = JsNull
 }
 
@@ -42,4 +43,6 @@ object InputElement {
   val inputElementColumns: Tag[InputElement, Int] = Tag(default = 15)
   /** Number of rows of the input element */
   val inputElementRows: Tag[InputElement, Int] = Tag(default = 1)
+
+  given Memoize.Key[InputElement] = Memoize.Key.by(identity)
 }

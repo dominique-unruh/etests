@@ -1,0 +1,35 @@
+# Local warm daemons for etests services.
+#
+#   docker compose up --build        (from services/)
+#
+# Stays up across sbt reloads (unlike an in-JVM cache or a per-request container),
+# so the etests app just talks to http://localhost:18080 while you develop.
+# Point etests at it with `stackparser.url = http://localhost:18080` in java.properties.
+#
+# Uses the optimised image (SBCL Maxima started from a saved stackmaxima image): ~85ms/parse
+# vs ~520ms for the plain ECL demo (etests-service/Dockerfile). First build is slow (source-builds
+# Maxima); later runs reuse the layer.
+#
+# `docker compose watch` (or `up --watch`) live-syncs the PHP endpoints into the running container
+# (the php -S daemon re-reads scripts per request, so no restart needed) and rebuilds on structural
+# changes (Dockerfile, config.php, composer manifests).
+
+services:
+  stack-parser:
+    build:
+      context: ./stack-parser
+      dockerfile: etests-service/Dockerfile.optimised
+    image: etests-stack-parser:opt
+    ports:
+      - "18080:8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    develop:
+      watch:
+        - action: rebuild
+          path: ./stack-parser/

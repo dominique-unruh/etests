@@ -2,7 +2,7 @@ package assessments
 
 import assessments.Assessment.feedbackTimeout
 import assessments.pageelements.RenderContext.problem
-import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, ErrorElement, ImageElement, InputElement, RenderContext, SolutionElement, StaticElement}
+import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, ErrorElement, GradingElement, ImageElement, InputElement, RenderContext, StaticElement}
 import com.eed3si9n.eval.Eval
 import io.github.classgraph.ClassGraph
 import org.apache.commons.text.StringEscapeUtils
@@ -62,7 +62,7 @@ class Assessment (val name: String,
   }
 
   def renderStaticHtml(renderContext: RenderContext): Html = {
-    val renderContext2 = renderContext + (problem := this)
+    val renderContext2 = renderContext `update` (problem := this)
 //    val renderContext = RenderContext(RenderContext.dynamic := false, RenderContext.studentAnswers := solution)
     val fileMapBuilder = DataUrlFileMapBuilder()
     def render(element: Element) = element.renderHtml(renderContext2, fileMapBuilder)
@@ -82,8 +82,8 @@ class Assessment (val name: String,
     body2
   }
 
-  lazy val renderHtml: (Html, Map[String, (String, Array[Byte])]) = {
-    val renderContext = RenderContext(RenderContext.dynamic := true)
+  def renderHtml(exam: Exam): (Html, Map[String, (String, Array[Byte])]) = {
+    val renderContext = RenderContext(RenderContext.dynamic := true, RenderContext.exam := exam)
     val fileMapBuilder = DefaultFileMapBuilder("")
     def render(element: Element) = element.renderHtml(renderContext, fileMapBuilder)
 
@@ -91,10 +91,10 @@ class Assessment (val name: String,
     (body, fileMapBuilder.result())
   }
 
-  def pointsReached(answers: Answers, registrationNumber: Option[String]): Future[Points] = {
+  def pointsReached(exam: Exam, answers: Answers, registrationNumber: Option[String]): Future[Points] = {
     val pointIterFuture =
-      Future.traverse(pageElements.values.collect { case e: SolutionElement => e }) {
-        _.pointsReached(this, registrationNumber, answers)
+      Future.traverse(pageElements.values.collect { case e: GradingElement => e }) {
+        _.pointsReached(exam, this, registrationNumber, answers)
       }
     for (points <- pointIterFuture) yield
       points.map(_.getOrElse(0: Points)).sum
@@ -105,8 +105,9 @@ class Assessment (val name: String,
 
     private val processing = JsObject(Seq(("processing", JsBoolean(true))))
 
-    override def getFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): Future[JsObject] = {
-      val pointsFuture = assessment.pointsReached(assessment.webappStateToAnswers(state),
+    override def getFeedback(exam: Exam, assessment: Assessment,
+                             state: Map[ElementName, JsValue]): Future[JsObject] = {
+      val pointsFuture = assessment.pointsReached(exam, assessment.webappStateToAnswers(state),
         state.get(ElementName.registrationNumber).map(_.asInstanceOf[JsString].value))
       for (points <- pointsFuture) yield {
         JsObject(Seq(("points", JsNumber(points.toBigDecimal))))
@@ -122,14 +123,17 @@ class Assessment (val name: String,
   }
 
 
-  def getFeedback(answer: JsObject): (JsObject, JsArray, Boolean) = {
+  def getFeedback(exam: Exam, answer: JsObject): (JsObject, JsArray, Boolean) = {
     // TODO should only recalculate changed things
     val answerMap = answer.value.map { (name, content) => (ElementName.fromHtmlComponentName(name), content) }.toMap
     val elements =
       (pageElements.values.collect { case element: DynamicElement => element }.toSeq)
         `appended` PointsReached
+    // The grading exceptions are part of the cache key: otherwise editing the exceptions CSV and
+    // then reverting the answer to a previously-graded value would return the stale cached feedback.
+    val gradingExceptions = exam.gradingExceptions()
     val feedbackFutures = for (element <- elements)
-      yield FutureCache.evaluateFuture((this, element.name, answerMap))(element.getFeedback(this, answerMap))
+      yield FutureCache.evaluateFuture((this, element.name, answerMap, gradingExceptions))(element.getFeedback(exam, this, answerMap))
     val feedbackOptions = Utils.awaitSeq(feedbackFutures, feedbackTimeout)
     var timedOut = false
     val feedbacks = Seq.newBuilder[(String, JsValue)]
@@ -168,13 +172,27 @@ class Assessment (val name: String,
 object Assessment {
   val feedbackTimeout = Duration("1 second")
 
+  /** The stylesheet embedded into every static (non-webapp) render — archives, exported PDFs, and
+   *  the standalone HTML produced by [[htmlHeaderStatic]] (used by `ArchiveExam`, `TaskGradeEveryone`,
+   *  and [[Exam]]'s static HTML). Compiled from `problems/src/main/assets/stylesheets/static.scss`.
+   *
+   *  sbt-web/sbt-sassify emits it as a *webjar* resource
+   *  (`META-INF/resources/webjars/problems/<version>/stylesheets/static.css`), whose version segment
+   *  is chosen by the build, so it is located by its trailing path rather than a fixed classpath
+   *  path. (A hard-coded `/stylesheets/static.css` only ever matched stale leftover artifacts, or
+   *  nothing on a clean build, causing static renders to ship outdated or missing styling.)
+   *
+   *  The webapp does not use this; it serves its own compiled `main.css`. */
   lazy val staticCSS: String = {
-    val resource = "/stylesheets/static.css"
-    val stream = getClass.getResourceAsStream(resource)
-    if (stream == null)
-      throw new RuntimeException(s"Could not find $resource on the classpath")
-    try new String(stream.readAllBytes(), StandardCharsets.UTF_8)
-    finally stream.close()
+    val scanResult = new ClassGraph().acceptPaths("META-INF/resources", "stylesheets").scan()
+    try {
+      val resources = scanResult.getResourcesWithLeafName("static.css")
+        .filter(_.getPath.endsWith("stylesheets/static.css"))
+      if (resources.isEmpty)
+        throw new RuntimeException(
+          "Could not find stylesheets/static.css on the classpath (is the sbt-sassify build output present?)")
+      resources.get(0).getContentAsString
+    } finally scanResult.close()
   }
   lazy val htmlHeaderStatic: Html = Html(
     ind"""<meta charset="UTF-8">

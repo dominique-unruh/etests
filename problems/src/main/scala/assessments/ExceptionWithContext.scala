@@ -1,5 +1,7 @@
 package assessments
 
+import utils.Memoize
+
 class ExceptionWithContext(message: String, extraData: Any*)(implicit context: ExceptionContext) extends Exception {
   override def getMessage: String = {
     val longMessage = StringBuilder(message)
@@ -18,4 +20,6 @@ class ExceptionContext private (val messages: List[(String, Seq[Any])]) {
 object ExceptionContext {
   def initialExceptionContext(message: String, extraData: Any*) = ExceptionContext(List((message, extraData)))
   def addToExceptionContext(message: String, extraData: Any*)(using exceptionContext: ExceptionContext): ExceptionContext = exceptionContext.add(message, extraData)
+
+  given Memoize.Key[ExceptionContext] = Memoize.Key.constant
 }

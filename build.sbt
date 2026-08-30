@@ -1,3 +1,4 @@
+
 import org.irundaia.sass.Maxified
 import sbt.librarymanagement.CrossVersion.for3Use2_13
 import org.yaml.snakeyaml.Yaml
@@ -9,8 +10,17 @@ version := "1.0-SNAPSHOT"
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
+// ideExcludedDirectories is consumed only by IntelliJ's sbt import, never by an sbt task, so sbt's
+// lintUnused check flags it — exempt it.
+Global / excludeLintKeys += ideExcludedDirectories
+
 ThisBuild / scalaVersion := "3.6.4"
 ThisBuild / scalacOptions += "-language:implicitConversions"
+// Enables use of experimental APIs (e.g. scala.annotation.MacroAnnotation, used by utils.memoized)
+// without marking every use site @experimental.
+ThisBuild / scalacOptions += "-experimental"
+
+ideExcludedDirectories := Seq(baseDirectory.value / ".devcontainer" / "persistent")
 
 //lazy val root = project in file(".")
 
@@ -74,6 +84,8 @@ lazy val problems = (project in file("problems"))
       "io.circe" %% "circe-parser" % "0.14.14",
       "io.circe" %% "circe-yaml" % "0.14.2",
     ),
+    libraryDependencies += "com.softwaremill.sttp.client4" %% "core" % "4.0.26",
+    libraryDependencies += "com.softwaremill.sttp.client4" %% "circe" % "4.0.26",
     libraryDependencies += "org.apache.xmlgraphics" % "batik-transcoder" % "1.19",
     libraryDependencies += "org.apache.xmlgraphics" % "batik-codec" % "1.19",
     libraryDependencies += "org.apache.xmlgraphics" % "batik-dom" % "1.19",
@@ -85,6 +97,7 @@ lazy val problems = (project in file("problems"))
     libraryDependencies += "com.microsoft.playwright" % "playwright" % "1.55.0", 
     libraryDependencies += "org.xerial" % "sqlite-jdbc" % "3.51.2.0",
     libraryDependencies += "org.typelevel" %% "spire" % "0.18.0",
+    libraryDependencies += "com.github.javakeyring" % "java-keyring" % "1.0.4",
   )
 
 // Directories (relative to exams/) whose entry under `exams:` in exams/exams.yaml has
@@ -112,15 +125,20 @@ lazy val exams = (project in file("exams"))
       val base = baseDirectory.value
       def under(d: File): FileFilter =
         new SimpleFileFilter(f => f.toPath.normalize.startsWith(d.toPath.normalize))
-      val excluded = Seq(base / "target", base / ".git") ++ archivedExams.map(base / _)
-      excluded.map(under).reduce(_ || _) || HiddenFileFilter
+      // Each exams/<exam> folder is its own git repo, so .git lives one level down, not at base.
+      val gitDir: FileFilter =
+        new SimpleFileFilter(f => f.toPath.normalize.iterator.asScala.exists(_.toString == ".git"))
+      val excluded = archivedExams.map(base / _).map(under)
+      (gitDir +: excluded).reduce(_ || _) || HiddenFileFilter
     },
     Compile / unmanagedResources / excludeFilter := {
-      val base = baseDirectory.value
-      def under(d: File): FileFilter =
-        new SimpleFileFilter(f => f.toPath.normalize.startsWith(d.toPath.normalize))
-      ("*.scala": FileFilter) || under(base / "target") || under(base / ".git") || HiddenFileFilter
+      val gitDir: FileFilter =
+        new SimpleFileFilter(f => f.toPath.normalize.iterator.asScala.exists(_.toString == ".git"))
+      ("*.scala": FileFilter) || gitDir || HiddenFileFilter
     },
+    // IntelliJ (via sbt-ide-settings) marks the archived exam folders as excluded on sbt reload, so
+    // it stops indexing/compiling their (non-compiling) sources — mirrors the compile excludeFilter.
+    ideExcludedDirectories := archivedExams.map(baseDirectory.value / _) :+ (baseDirectory.value / "target"),
     // Problem objects (MarkdownAssessment = utest.TestSuite) are discovered as test suites here too.
     testFrameworks += new TestFramework("utest.runner.Framework"),
     inConfig(Compile)(Defaults.testTasks),

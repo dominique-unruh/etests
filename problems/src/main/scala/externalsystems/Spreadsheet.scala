@@ -15,7 +15,24 @@ import org.odftoolkit.simple.SpreadsheetDocument
 import org.odftoolkit.simple.table.Table
 
 import java.io.IOException
+import scala.collection.immutable.{AbstractMap, SeqMap}
+import scala.language.dynamics
 
+/** An immutable in-memory table of string cells with named columns.
+  *
+  * Backed by a header row plus a sequence of [[Spreadsheet.Row]]s (one map per row keyed by header
+  * name). Supports column lookups, validation, and loading/saving in CSV or ODS
+  * ([[Spreadsheet.Format]]). All transforming operations return a new [[Spreadsheet]].
+  *
+  * Construct via the [[Spreadsheet]] companion factory methods ([[Spreadsheet.load]],
+  * [[Spreadsheet.fromIterable]], [[Spreadsheet.fromRawRowsIterator]]); the primary constructor is
+  * private.
+  *
+  * @param headers         the column names, in order
+  * @param rows            the data rows
+  * @param fileFormat      the format used when [[save]] is called without an explicit format
+  * @param filePath        the path this spreadsheet was loaded from / saves to by default, if any
+  * @param validationRules rules checked by [[valid]] / [[errors]] / [[assertValid]] */
 case class Spreadsheet private (
                                  headers: Seq[String],
                                  rows: Vector[Row],
@@ -25,6 +42,8 @@ case class Spreadsheet private (
                  ) {
   private val rowNumberIndices: ConcurrentHashMap[String, RowNumberIndex] = new ConcurrentHashMap[String, RowNumberIndex]()
 
+  /** Returns (building and caching on first use) an index mapping each distinct value in `column` to
+    * the row numbers where it occurs. `column` must be a header. */
   def rowNumberIndex(column: String): RowNumberIndex =
     rowNumberIndices.computeIfAbsent(column, _ =>
       assert(headers.contains(column))
@@ -37,6 +56,7 @@ case class Spreadsheet private (
       }
       RowNumberIndex(index.toMap))
 
+  /** True iff no validation rule reports an error. */
   def valid: Boolean = errors.isEmpty
 
   /** Contains at least one error if [[valid]]`==false`. */
@@ -45,17 +65,48 @@ case class Spreadsheet private (
          error <- validation.validate(this))
       yield error
 
+  /** Looks up all rows where `index` column equals `key`. Empty if none
+    * match.  */
   def lookupAll[U](index: Index[U], key: String): Seq[U] =
     val internalIndex = this.rowNumberIndex(index.indexColumn)
     val rowNrs = internalIndex.map.getOrElse(key, Seq.empty)
     rowNrs.map(nr => index.rowMap(nr, rows(nr)))
 
+  /** Looks up the single row matching `key` via `index`. Throws [[NoSuchElementException]] if none
+    * match, [[IllegalArgumentException]] if more than one does. */
   def lookup[U](index: Index[U], key: String): U =
     lookupAll(index, key) match
       case Seq() => throw new NoSuchElementException(s"key: $key, index: ${index.name}")
       case Seq(value) => value
       case _ => throw new IllegalArgumentException(s"key: $key, index ${index.name}, multiple elements")
 
+  def lookup(header: String, key: String): Row = lookupAll(header, key) match
+    case Seq() => throw new NoSuchElementException(s"key: $key, column: $header")
+    case Seq(value) => value
+    case _ => throw new IllegalArgumentException(s"key: $key, column $header, multiple elements")
+
+  private def lookupAll(header: String, key: String) = {
+    val rowNrs = rowNumberIndex(header).map.getOrElse(key, Seq.empty)
+    rowNrs.map(nr => rows(nr))
+  }
+
+  def indexKeys[U](index: Index[U]): Seq[String] = for (row <- rows) yield row(index.indexColumn)
+  def indexValues[U](index: Index[U]): Seq[U] =
+    for (key <- indexKeys(index)) yield
+      lookup(index, key)
+
+  def indexToMap[U](index: Index[U]) : Map[String, U] = new AbstractMap[String, U] {
+    override def removed(key: String): Map[String, U] = ???
+    override def updated[V1 >: U](key: String, value: V1): Map[String, V1] = ???
+    override def get(key: String): Option[U] =
+      try Some(lookup(index, key))
+      catch case _ : NoSuchElementException => None
+    override def iterator: Iterator[(String, U)] =
+      for (key <- indexKeys(index).iterator) yield
+        (key, lookup(index, key))
+  }
+
+  /** Throws a [[RuntimeException]] describing up to ten [[errors]] if this spreadsheet is invalid. */
   def assertValid(): Unit =
     if (errors.nonEmpty) {
       val errors2 = errors.take(10).toSeq
@@ -65,6 +116,8 @@ case class Spreadsheet private (
         throw new RuntimeException("Validation errors: " + errors2.head.mkString(". "))
     }
 
+  /** Writes this spreadsheet (header row plus data) to `path` using `format`. Both default to the
+    * path/format the spreadsheet remembers; `save()` throws if no path is known. */
   def save(path: Path = filePath.getOrElse(throw IllegalArgumentException("no path saved in spreadsheet, give one explicitly")),
            format: Spreadsheet.Format = fileFormat): Unit = {
     val rawRows = for (row <- rows.iterator) yield
@@ -73,11 +126,15 @@ case class Spreadsheet private (
     format.save(path, Iterator.single(headers) ++ rawRows)
   }
 
+  /** Returns a copy with `validationRule` added to the validation rules. */
   def addValidationRule(validationRule: ValidationRule): Spreadsheet =
     copy(validationRules = validationRules appended validationRule)
 
+  /** Returns a copy that no longer remembers a default [[filePath]]. */
   def forgetPath: Spreadsheet = copy(filePath = None)
 
+  /** Returns a copy with `f` applied to every row. If `f` returns a new row (not the same instance),
+    * it must keep exactly the same set of column keys. */
   def mapRows(f: Row => Row): Spreadsheet = {
     val headerSet = headers.toSet
     val newContent = rows.map { row =>
@@ -91,12 +148,25 @@ case class Spreadsheet private (
 }
 
 object Spreadsheet {
+  /** Maps each distinct cell value in a column to the row numbers where it occurs. */
   case class RowNumberIndex(map: Map[String, Seq[Int]])
-  case class Row(cells: Map[String, String]) {
+
+  /** A single row: a map from column name to cell value. */
+  case class Row(cells: Map[String, String]) extends Dynamic {
+    /** The cell value in column `header`. */
     def apply(header: String): String = cells(header)
+    def selectDynamic(header: String): String = apply(header)
   }
+
+  /** A named lookup index over a column, mapping a matching `(rowNumber, row)` to a value of type `U`.
+    *
+    * @param name        human-readable name, used in error messages
+    * @param indexColumn the column whose value is the lookup key
+    * @param rowMap      builds the result value from a matching row and its row number */
   case class Index[U](name: String, indexColumn: String, rowMap: (Int, Row) => U)
 
+  /** Builds a spreadsheet from raw rows: the first row is taken as the (distinct) header, the rest as
+    * data. Every data row must have the same length as the header. */
   def fromRawRowsIterator(rawRows: Iterator[Seq[String]]): Spreadsheet = {
     assert(rawRows.hasNext)
     val header = rawRows.next()
@@ -107,21 +177,41 @@ object Spreadsheet {
     Spreadsheet(headers = header, rows = Vector.from(rows))
   }
 
+  /** Loads a spreadsheet from `path` using `format`, remembering both for later [[Spreadsheet.save]]. */
   def load(path: Path, format: Format): Spreadsheet = {
     val rawRows = format.load(path)
     fromRawRowsIterator(rawRows).copy(fileFormat = format, filePath = Some(path))
   }
 
+  /** Builds a spreadsheet from an explicit header sequence and its data rows. */
   def fromIterable(headers: Seq[String], rows: IterableOnce[Seq[String]]): Spreadsheet = {
     fromRawRowsIterator(Iterator(headers) ++ rows)
   }
 
+  def fromMapIterable(rows: IterableOnce[Map[String, String]]): Spreadsheet = {
+    val iterator = rows.iterator
+    assert(iterator.hasNext)
+    val first = iterator.next()
+    val headers = first.keysIterator.toSeq
+    assert(Utils.isDistinct(headers))
+    val rowsBuilder = Vector.newBuilder[Row]
+    rowsBuilder += Row(first)
+    for (row <- iterator) {
+      assert(row.keySet == headers.toSet)
+      rowsBuilder += Row(row)
+    }
+    Spreadsheet(headers = headers, rows = rowsBuilder.result)
+  }
+
+
+  /** A check run over a whole [[Spreadsheet]], yielding error messages for anything wrong. */
   trait ValidationRule {
     /** Should return an empty sequence if validation passes, otherwise one or more error messages. */
     def validate(spreadsheet: Spreadsheet): IterableOnce[String]
   }
 
   object ValidationRule {
+    /** Validation rule requiring every value in `column` to be unique across rows. */
     case class UniqueColumn(column: String) extends ValidationRule {
       override def validate(spreadsheet: Spreadsheet): IterableOnce[String] =
         for ((key, rows) <- spreadsheet.rowNumberIndex(column).map;
@@ -130,17 +220,22 @@ object Spreadsheet {
     }
   }
 
+  /** A serialization backend: reads/writes raw rows of strings from/to a file. */
   trait Format {
+    /** Reads raw rows (including the header row) from `path`. */
     def load(path: Path): Iterator[Seq[String]]
+    /** Writes `rows` (including the header row) to `path`. */
     def save(path: Path, rows: IterableOnce[Seq[String]]): Unit
   }
 
   object Format {
+    /** Placeholder format for spreadsheets built in memory; loading/saving throws. */
     case object noFormat extends Format {
       override def load(path: Path): Iterator[Seq[String]] = ???
       override def save(path: Path, rows: IterableOnce[Seq[String]]): Unit = ???
     }
 
+    /** CSV format with a given underlying `CSVFormat` (delimiter etc.) and character encoding. */
     case class CSV(format: CSVFormat, encoding: String) extends Format {
       override def load(path: Path): Iterator[Seq[String]] = {
         val reader = CSVReader.open(path.toFile, encoding)(format)
@@ -155,12 +250,15 @@ object Spreadsheet {
       }
     }
     object CSV {
+      /** UTF-8 CSV using `;` as delimiter and `\n` as line terminator. */
       val default: CSV = CSV(new DefaultCSVFormat {
         override val delimiter: Char = ';'
         override val lineTerminator: String = "\n"
       }, "utf8")
     }
 
+    /** OpenDocument Spreadsheet (`.ods`) format. Select the sheet by exactly one of `sheetName` or
+      * `sheetIndex`. Only loading is implemented; saving throws. */
     case class ODS(sheetName: String = null, sheetIndex: Int = -1) extends Format {
       assert(sheetIndex >= 0 || sheetName != null)
       assert(!(sheetIndex != -1 && sheetName != null))

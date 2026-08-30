@@ -14,6 +14,7 @@ POST    /feedback/:exam/:assessment controllers.AssessmentController.getFeedback
 GET     /routes.js                           controllers.MiscController.javascriptRoutes
 GET     /randomstudent/:exam                      controllers.AssessmentController.randomStudent(exam)
 GET     /dynexitelink/:exam/:regno                      controllers.AssessmentController.dynexiteLink(exam, regno)
+GET     /dynexitequestionlink/:exam/:assessment                      controllers.AssessmentController.dynexiteQuestionLink(exam, assessment)
 GET     /dynexitepdf/:exam/:regno.pdf                      controllers.AssessmentController.dynexitePdf(exam, regno)
 GET     /dynexiteanswers/:exam/:assessment/:regno                      controllers.AssessmentController.dynexiteAnswers(exam, assessment, regno)
 

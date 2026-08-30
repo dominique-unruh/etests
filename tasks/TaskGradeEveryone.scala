@@ -1,8 +1,9 @@
+import TaskContext.{gradingReportDir, gradingResultSpreadsheet}
 import assessments.*
-import assessments.Exam.{gradingReportDir, gradingScale}
+import assessments.Exam.gradingScale
 import assessments.ExceptionContext.initialExceptionContext
-import assessments.GradingContext.comments
 import assessments.pageelements.RenderContext
+import com.typesafe.scalalogging.Logger
 import externalsystems.Dynexite
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
@@ -13,7 +14,6 @@ import java.io.PrintWriter
 import java.nio.file.{Files, Path}
 import scala.collection.mutable
 import scala.util.Using
-import scala.util.control.Breaks
 import scala.util.control.Breaks.{break, breakable}
 
 //noinspection ScalaFileName
@@ -22,8 +22,8 @@ object TaskGradeEveryone extends Task {
   val stopAfterFirst = false
   val generatePDFs = true
   val generateHTMLs = true
-  /** For quicker processing, only a single student (or few) */
-  lazy val onlyTheseStudents: Option[Seq[String]] = None
+  /** For quicker processing, only a single student (or few). Empty Seq = all students. */
+  lazy val onlyTheseStudents: Seq[String] = Seq()
 
   val exam = Utils.getSystemPropertyObject[assessments.Exam]("current.exam", "the current exam")
 
@@ -42,7 +42,8 @@ object TaskGradeEveryone extends Task {
       val renderContext = RenderContext(
         RenderContext.dynamic := false,
         RenderContext.studentAnswers := answers,
-        RenderContext.registrationNumber := student)
+        RenderContext.registrationNumber := student,
+        RenderContext.exam := exam)
       val body = question.renderStaticHtml(renderContext)
 
       output ++= "<div class=\"question-text\">\n"
@@ -52,7 +53,7 @@ object TaskGradeEveryone extends Task {
 
       output ++= "<div class=\"grading-report\">"
       output ++= "<h2>Your grading</h2>\n"
-      val questionPoints = question.pointsReached(answers, Some(student)).awaitResult()
+      val questionPoints = question.pointsReached(exam, answers, Some(student)).awaitResult()
       output ++= s"Points: ${questionPoints.decimalFractionString(2)} of ${question.reachablePoints}\n"
       points += questionPoints
     } catch {
@@ -66,6 +67,7 @@ object TaskGradeEveryone extends Task {
   }
 
   private def makeReport(exam: Exam, student: String, targetDir: Path, errors: mutable.Queue[(String, Assessment, String)]): Points = {
+    logger.info(s"Grading $student.")
     val studentDir = targetDir.resolve(student)
     var totalPoints = Points(0)
     Files.createDirectories(studentDir)
@@ -75,6 +77,9 @@ object TaskGradeEveryone extends Task {
       totalPoints += points
       report
     }
+
+    val (gradingExplanation0, grade) = exam.tags(gradingScale).grade(student, totalPoints)
+    val gradingExplanation = if (gradingExplanation0.isEmpty) gradingExplanation0 else Html("<p>") + gradingExplanation0 + Html("</p>")
 
     Using.resource(new PrintWriter(reportFile.toFile)) { writer =>
       val pdfLink = if (includeDynexitePDFs) """<li><a href="dynexite.pdf">Dynexite PDF</a> (for comparison)</li>""" else ""
@@ -91,7 +96,7 @@ object TaskGradeEveryone extends Task {
              |<ul>
              |  <li>Registration number: ${escapeHtml4(student)}</li>
              |  <li>Total points: ${totalPoints.decimalFractionString(2)} / ${exam.reachablePoints.decimalFractionString(2)}</li>
-             |  <li>Grade: ${exam.tags(gradingScale).grade(totalPoints)}</li>
+             |  <li>Grade: $grade${gradingExplanation.html}</li>
              |  $pdfLink
              |  <br/>${exam.tags(gradingScale).html.html}
              |</ul>
@@ -123,9 +128,10 @@ object TaskGradeEveryone extends Task {
   }
 
   private def makeErrorReport(errors: mutable.Queue[(String, Assessment, String)], reportPath: Path): Unit = {
+    val onlyStudentsCaveat = if (onlyTheseStudents.isEmpty) "" else s"<p><strong>Note: Only ${if (onlyTheseStudents.length==1) "student" else "students"} ${onlyTheseStudents.mkString(", ")} processed in this run.</strong></p>"
     Using.resource(new PrintWriter(reportPath.toFile)) { writer =>
       if (errors.isEmpty)
-        writer.println("<h1>No errors</h1>")
+        writer.println(s"<h1>No errors</h1>$onlyStudentsCaveat")
       else {
         def e(str: String) = escapeHtml4(str)
         writer.println(
@@ -137,11 +143,12 @@ object TaskGradeEveryone extends Task {
             |""".stripMargin)
         writer.println(s"<h1>Errors</h1>")
         writer.println(s"There were ${errors.length} errors and warnings")
+        writer.println(onlyStudentsCaveat)
         writer.println("<ul>")
         for ((student, question, message) <- errors) {
           writer.println(s"""<li>${e(student)}<sl-copy-button value=\"${e(student)}\"></sl-copy-button>, <b>${question.name}</b>""")
           writer.println(s"""[<a target="_blank" href="${e(student)}/grading.html">Document</a> |""")
-          writer.println(s"""<a target="_blank" href="http://localhost:9000/preview/${e(exam.id)}/${e(question.name)}/">Webapp</a>]<br>""")
+          writer.println(s"""<a target="_blank" href="http://localhost:9000/preview/${e(exam.id)}/${e(question.name)}/#regno=${e(student)}">Webapp</a>]<br>""")
           writer.println(s"""<span style="color:red">${message}</span></li>""")
         }
         writer.println("</ul></body>")
@@ -149,11 +156,11 @@ object TaskGradeEveryone extends Task {
     }
   }
 
-  private def makePointsCSV(targetDir: Path, points: Map[String, Points], exam: Exam): Unit = {
-    Using.resource(new PrintWriter(targetDir.resolve("results.csv").toFile)) { writer =>
+  private def makePointsCSV(points: Map[String, Points], exam: Exam): Unit = {
+    Using.resource(new PrintWriter(gradingResultSpreadsheet.toFile)) { writer =>
       writer.println(s"student;points;grade")
       for ((student, points) <- points) {
-        val grade = exam.tags(gradingScale).grade(points)
+        val (_, grade) = exam.tags(gradingScale).grade(student, points)
 
         writer.println(s"$student;$points;$grade")
       }
@@ -177,16 +184,18 @@ object TaskGradeEveryone extends Task {
   }
   
   private def makeReports(): Unit = {
-    val targetDir = exam.tags.getOrElse(gradingReportDir, throw RuntimeException(s"Specify gradingReportDir-tag in exam ${exam.name}"))
+    val targetDir = gradingReportDir
 //    val targetDir = Utils.getSystemPropertyPath("student.report.dir", "the directory where to write the student reports")
+    Files.writeString(targetDir.resolve("errors.html"), "Grading task in progress.")
     val errors = mutable.Queue[(String, Assessment, String)]()
     if (onlyTheseStudents.isEmpty) // Don't run time consuming things if we only want to test grade a student
       tryWithError[Unit](errors, label = "Exam tests failed") {
-        exam.runTests() }
+        exam.runTests()
+      }
 
     val students = onlyTheseStudents match {
-      case Some(value) => value
-      case None => Dynexite.resultsByLearner(exam).toSeq.collect { case (student, results) if results.nonEmpty => student }
+      case Seq() => Dynexite.resultsByLearner(exam).toSeq.collect { case (student, results) if results.nonEmpty => student }
+      case seq => seq
     }
 
 
@@ -200,11 +209,11 @@ object TaskGradeEveryone extends Task {
       }
     }
     makeErrorReport(errors, targetDir.resolve("errors.html"))
-    makePointsCSV(targetDir, pointMap.result(), exam = exam)
+    makePointsCSV(pointMap.result(), exam = exam)
     println(s"\n\nReports in $targetDir, errors in ${targetDir.resolve("errors.html")}")
     if (errors.nonEmpty)
       println("***** THERE WERE ERRORS *****")
     if (onlyTheseStudents.nonEmpty)
-      println(s"***** ONLY ${onlyTheseStudents.get.mkString(", ")} GRADED *****")
+      println(s"***** ONLY ${onlyTheseStudents.mkString(", ")} GRADED *****")
   }
 }

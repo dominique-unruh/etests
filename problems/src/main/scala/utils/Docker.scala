@@ -161,7 +161,8 @@ object Docker {
                   files: Map[String, Array[Byte] | String],
                   requestedOutputs: Seq[String],
                   shortDescription: String,
-                  invalidateCache: Boolean = false): Future[DockerResult] = {
+                  invalidateCache: Boolean = false,
+                  cacheGuard: DockerResult => Boolean = _ => false): Future[DockerResult] = {
     val imageId = getImageId(image, invalidateCache = invalidateCache)
 
     //    (new RuntimeException()).printStackTrace() // Useful for tracing where computationally heavy things are executed during object loading.
@@ -190,12 +191,22 @@ object Docker {
 //      }
 
 //      val newFuture = Future[DockerResult] {
-    FutureCache.evaluate(("DOCKER",argsJsonBytes)) {
+    FutureCache.evaluateGuarded(("DOCKER",argsJsonBytes), cacheGuard) {
       logger.debug(s"Looking for cached docker result for: $shortDescription")
-      PersistentCache.get(argsJsonBytes.bytes) match
+      val cached = PersistentCache.get(argsJsonBytes.bytes) match
         case Some(cached) if !invalidateCache =>
-          decode[DockerResult](new String(cached)).getOrElse(throw IOException("Unparsable cache content"))
-        case _ =>
+          val result = decode[DockerResult](new String(cached)).getOrElse(throw IOException("Unparsable cache content"))
+          if (cacheGuard(result)) {
+            logger.debug(s"Cached docker result rejected by cacheGuard for: $shortDescription")
+            None
+          } else {
+            logger.debug(s"Found.")
+            Some(result)
+          }
+        case _ => None
+      cached match
+        case Some(result) => result
+        case None =>
           val result = withBuildBound(s"Running docker image: $image (for $shortDescription)") {
             runInDockerNoCache(imageId = imageId, command = command, files = filesBytes,
               shortDescription = shortDescription,
@@ -204,6 +215,7 @@ object Docker {
           PersistentCache.put(argsJsonBytes.bytes, result.asJson.noSpaces.getBytes)
           result
     }
+
 
 //      currentlyRunning.update(argsJsonBytes, (Instant.now(), newFuture, shortDescription))
 //      garbageCollection()

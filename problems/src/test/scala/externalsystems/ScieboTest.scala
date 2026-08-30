@@ -8,7 +8,7 @@ import java.nio.file.Path
 class ScieboTest extends AnyFunSuiteLike {
   test("Share") {
     // /apps/files/files
-    val link = Sciebo.getPublicReadLink("tmp/sharetest")
+    val link = Sciebo.getPublicReadLink(Path.of(""), Path.of("tmp/sharetest"))
     println(link)
 //    println(link.getToken)
 //    println(link.getUrl)

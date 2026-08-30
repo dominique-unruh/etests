@@ -18,6 +18,11 @@ object PersistentCache {
     val cachePath = Utils.tempDir.resolve("cache")
     logger.debug("Opening SQLite cache")
 
+    // sbt's layered run classloader (classLoaderLayeringStrategy) hides the sqlite-jdbc
+    // ServiceLoader registration from DriverManager (which scans sbt's launcher classloader), so
+    // register the driver explicitly. Otherwise: "No suitable driver found for jdbc:sqlite:".
+    Class.forName("org.sqlite.JDBC")
+
     val conn = try
       DriverManager.getConnection(s"jdbc:sqlite:$cachePath")
       catch {
@@ -45,12 +50,12 @@ object PersistentCache {
   def forceInitialization(): Unit = connection
 
   private lazy val getStatement = connection.prepareStatement(
-    "SELECT value FROM cache WHERE key_hash = ? AND key = ?"
+    "SELECT value FROM cache WHERE key_hash = ?"
   )
 
   def get(key: Array[Byte]): Option[Array[Byte]] = synchronized {
     getStatement.setBytes(1, sha256(key))
-    getStatement.setBytes(2, key)
+//    getStatement.setBytes(2, key)
     val rs = getStatement.executeQuery()
     try if (rs.next()) Some(rs.getBytes(1)) else None
     finally rs.close()

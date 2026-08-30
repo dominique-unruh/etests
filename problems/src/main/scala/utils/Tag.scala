@@ -31,7 +31,7 @@ object Tag {
    *               will not contain tags that this class does not understand. All tags in this tag collection
    *               will be of type `Tag[O,V]` with `O >: Owner`.
    **/
-  class Tags[-Owner] private (/** Contains `Tag[O,V] -> V` pairs, with `O >: Owner` */
+  case class Tags[-Owner] private (/** Contains `Tag[O,V] -> V` pairs, with `O >: Owner` */
                                private val map: Map[Tag[?, ?], Any]) extends AnyVal {
     def get[Value](tag: Tag[?, Value]): Option[Value] =
       map.get(tag).asInstanceOf[Option[Value]]
@@ -42,8 +42,10 @@ object Tag {
     @targetName("add")
     def +[O, Value](tagged: Tagged[O, Value]): Tags[Owner & O] = {
       assert(!map.contains(tagged.tag))
-      new Tags(map + (tagged.tag.asInstanceOf[Tag[?, ?]] -> tagged.value))
+      update(tagged)
     }
+    def update[O, Value](tagged: Tagged[O, Value]): Tags[Owner & O] =
+      new Tags(map + (tagged.tag.asInstanceOf[Tag[?, ?]] -> tagged.value))
     def contains(tag: Tag[?, ?]): Boolean = map.contains(tag)
   }
   /** A tag/value pair with matching types. */

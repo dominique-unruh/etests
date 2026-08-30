@@ -1,18 +1,21 @@
 package assessments.pageelements
 
-import assessments.pageelements.SolutionElement.Feedback
-import assessments.pageelements.SolutionElement.Styling.explanation
 import assessments.*
-import play.api.libs.json.JsValue
 
-import scala.concurrent.Future
-
-/** A [[SolutionElement]] that shows static explanation text (styled as an `explanation` box).
- * Created via `explain(...)` in [[assessments.DynexiteDefaults]]. It awards no points; its
- * feedback is just the rendered `text`. For a grading element that also scores, see [[GradingElement]]. */
-class ExplanationElement(name: ElementName, text: InterpolatedMarkdown[HtmlConvertible]) extends SolutionElement(name = name, styling = explanation) {
-  lazy val html: Html = text.toHtml.flatMapArgs(_.toHtml)
-
-  override def computeFeedback(assessment: Assessment, registrationNumber: Option[String], answers: Answers): Future[Feedback] =
-    Future.successful(Feedback(text = html))
+/** A [[SolutionElement]] that shows static explanation text. Created via `explain(...)` in
+ * [[assessments.DynexiteDefaults]]. It awards no points and produces plain static HTML; it is
+ * omitted from blank question sheets (`showSolutions = false`). Interpolated args may be plain
+ * [[HtmlConvertible]] values or nested [[StaticElement]]s (rendered with the current context). For a
+ * solution element that also scores, see [[GradingElement]]. */
+class ExplanationElement(text: InterpolatedMarkdown[StaticElement | HtmlConvertible]) extends StaticElement, SolutionElement {
+  override def renderHtml(context: RenderContext, associatedFiles: FileMapBuilder): Html =
+    if (!context.getOrElse(RenderContext.showSolutions, true))
+      Html("")
+    else {
+      val body = text.toHtml.flatMapArgs {
+        case e: StaticElement => e.renderHtml(context, associatedFiles)
+        case h: HtmlConvertible => h.toHtml
+      }
+      Html(s"""<div class="explanation"><div class="explanation-body">${body.html}</div></div>""")
+    }
 }

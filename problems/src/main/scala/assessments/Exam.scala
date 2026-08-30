@@ -2,9 +2,13 @@ package assessments
 
 import assessments.Exam.{ExamMainRun, logger, runOption}
 import assessments.ExceptionContext.{addToExceptionContext, initialExceptionContext}
+import assessments.pageelements.GradingElement
+import assessments.pageelements.GradingElement.GradingExceptions
 import assessments.pageelements.RenderContext
 import com.typesafe.scalalogging.Logger
 import externalsystems.Dynexite
+import externalsystems.Schein.Student
+import externalsystems.Spreadsheet
 import io.github.classgraph.ClassGraph
 import org.apache.commons.text.StringEscapeUtils.escapeHtml4
 import utest.{TestSuite, Tests, test}
@@ -14,6 +18,7 @@ import utils.Utils.awaitResult
 
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
+import java.nio.file.attribute.FileTime
 import java.time.LocalDate
 import scala.jdk.CollectionConverters.IterableHasAsScala
 import scala.util.Try
@@ -26,7 +31,7 @@ case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownA
   assert(problems.map(_.id).distinct.length == problems.length)
   
   lazy val reachablePoints: Points = problems.map(_.reachablePoints).sum
-  
+
   def assessmentIndex(assessment: Assessment)(implicit exceptionContext: ExceptionContext): Int = {
     given ExceptionContext = ExceptionContext.addToExceptionContext(s"Looking for assessment $assessment in exam", assessment, this)
     val index = problems.indexWhere(_.assessment eq assessment)
@@ -99,7 +104,8 @@ case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownA
    *                      question sheet (student printout); `true` includes the solutions. */
   def renderExam(outputFile: Path, showSolutions: Boolean = true): Unit = {
     // TODO Make this all configurable
-    val renderContext = RenderContext(RenderContext.dynamic := false, RenderContext.showSolutions := showSolutions)
+    val renderContext = RenderContext(RenderContext.dynamic := false, RenderContext.showSolutions := showSolutions,
+      RenderContext.exam := this)
 
     def problemHTML(problem: MarkdownAssessment) =
       val body =
@@ -150,6 +156,50 @@ case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownA
   override def tests: Tests = {
     given ExceptionContext = initialExceptionContext(s"Tests for exam $name")
     testCases.toTests
+  }
+
+  /** Cached grading exceptions together with the modification time of the file they were read from,
+   * so [[gradingExceptions]] can reload only when the file changes. */
+  private var gradingExceptionsCache: Option[(FileTime, GradingExceptions)] = None
+
+  /** Manual grade overrides for this exam, keyed by student registration number, problem (assessment)
+   * name and grading element. Read from the CSV named by the [[Exam.gradingExceptionsCSV]] tag, which
+   * has columns `registration`, `problem`, `grader`, `feedback`, `points`; empty if the tag is unset.
+   * The parsed result is cached and reloaded only when the file's modification time changes. */
+  def gradingExceptions(): GradingExceptions = synchronized {
+    tags.get(Exam.gradingExceptionsCSV) match {
+      case None => GradingExceptions.empty
+      case Some(path) =>
+        val mtime = Files.getLastModifiedTime(path)
+        gradingExceptionsCache match {
+          case Some((cachedMtime, cached)) if cachedMtime == mtime => cached
+          case _ =>
+            val result = loadGradingExceptions(path)
+            gradingExceptionsCache = Some((mtime, result))
+            result
+        }
+    }
+  }
+
+  private def loadGradingExceptions(path: Path): GradingExceptions = {
+    given ExceptionContext = initialExceptionContext(s"Loading grading exceptions from $path")
+    val spreadsheet = Spreadsheet.load(path, Spreadsheet.Format.CSV.default)
+    val entries = spreadsheet.rows.map { row =>
+      (row("registration"), row("problem"), ElementName(row("grader"))) ->
+        (Markdown(row("feedback")), Points(row("points")))
+    }
+    val duplicateKeys = entries.map(_._1).groupBy(identity).collect { case (key, occurrences) if occurrences.length > 1 => key }
+    if (duplicateKeys.nonEmpty)
+      throw new RuntimeException(
+        s"Duplicate (registration, problem, grader) entries in grading exceptions $path: ${duplicateKeys.mkString(", ")}")
+    // Every (problem, grader) referenced must name an existing problem containing that grading element.
+    for (((_, problem, grader), _) <- entries) {
+      val gradingElements = assessmentByName(problem).assessment.pageElements
+      if (!gradingElements.get(grader).exists(_.isInstanceOf[GradingElement]))
+        throw new RuntimeException(
+          s"Grading exception in $path refers to grader '$grader' in problem '$problem', which is not a grading element there.")
+    }
+    GradingExceptions(entries.toMap)
   }
 }
 
@@ -236,16 +286,11 @@ object Exam {
   }
 
 
-  val examDate: Tag[Exam, LocalDate] = Tag[Exam, LocalDate]()
-  val courseName: Tag[Exam, String] = Tag[Exam, String]()
+  val examDate: Tag[Exam, LocalDate] = Tag()
+  val courseName: Tag[Exam, String] = Tag()
   /** Reachable points of the exam. If specified, running the Exam will test if this
    * matches the total of the reachable points of the problems. */
-  val reachablePoints: Tag[Exam, Points] = Tag[Exam, Points]()
+  val reachablePoints: Tag[Exam, Points] = Tag()
   val gradingScale: Tag[Exam, GradingScale] = Tag()
-  /** Directory where grading reports should be written to */
-  val gradingReportDir: Tag[Exam, Path] = Tag()
-  /** Relative to Sciebo root */
-  val scieboReportDir: Tag[Exam, Path] = Tag()
-  val rwthOnlineExportImportFile: Tag[Exam, Path] = Tag()
-  val scheinStudents: Tag[Exam, Map[String, String]] = Tag()
+  val gradingExceptionsCSV: Tag[Exam, Path] = Tag()
 }

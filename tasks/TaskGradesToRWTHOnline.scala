@@ -1,18 +1,14 @@
 import assessments.{Exam, Task}
-import Data.*
-import assessments.Exam.{gradingReportDir, scieboReportDir}
-import externalsystems.Schein.Semester.Winter
-import externalsystems.Spreadsheet.Index
 import externalsystems.{RWTHOnlineGrades, Schein, Sciebo, Spreadsheet}
 import utils.Utils
 
 import java.nio.file.{Files, Path}
 import scala.language.postfixOps
 
-//noinspection TypeAnnotation
+/*//noinspection TypeAnnotation
 object Data {
   val exam = Utils.getSystemPropertyObject[assessments.Exam]("current.exam", "the current exam")
-
+//
   // This file will be inplace-updated to contain the grades
   val rwthOnlineExportImportFile = exam.tags(Exam.rwthOnlineExportImportFile)
   lazy val rwthOnlineExport =
@@ -42,18 +38,17 @@ object Data {
 
   val scheinStudents = exam.tags(Exam.scheinStudents)
 
-  lazy val allStudents = rwthOnlineStudents ++ scheinStudents.keys
-
-//  val nonQualified = allStudents.toSet -- qualifiedStudents
+  lazy val allStudents = rwthOnlineStudents ++ scheinStudents.map(_.registrationNumber)
 
   val participatingStudents = allStudents.toSet // intersect qualifiedStudents.toSet
 
   lazy val scheinDir: Path = ???
-}
+}*/
 
 given Conversion[String, Path] = Path.of(_)
 
 
+/*
 object GetValidRegisteredStudents extends Task {
 //  assert(Utils.isDistinct(qualifiedStudents))
   assert(Utils.isDistinct(rwthOnlineStudents))
@@ -61,23 +56,15 @@ object GetValidRegisteredStudents extends Task {
   assert(Utils.isDistinct(allStudents))
 
 
-//  for (student <- nonQualified) {
-//    val entry = rwthOnlineExport.byRegistrationNumber(student)
-//    println(s"${entry.firstName} ${entry.familyName} <${entry.email}>    $student")
-//  }
-
-
   println((participatingStudents.size, allStudents.size))
-
-//  Spreadsheet.fromIterable(Seq("Registration number"), participatingStudents.map(Seq(_)))
-//    .save("/home/unruh/cloud/qis/lectures/2025-intro-qc/exam2/participating-students-for-dynexite.csv",
-//      Spreadsheet.Format.CSV.default)
-  
 }
+*/
 
-object GradesToRWTHOnline extends Task {
+/*object GradesToRWTHOnline extends Task {
+  ???
+
   // Update first:
-  // lcd intro-qc-priv && cp -a exam2/reports/ ~/cloud/sciebo/shared/intro-qc-exam2-grading/ && cd ~/cloud/sciebo/shared/intro-qc-exam2-grading/ && git gui
+  // lcd intro-qc private && cp -a exam1/reports/ /home/unruh/cloud/sciebo/shared/iqc-2026-exam1-grading/ && cd /home/unruh/cloud/sciebo/shared/iqc-2026-exam1-grading/ && git gui
 
   // This file is created by TaskGradeEveryone
   val gradeSheet = Spreadsheet.load(exam.tags(gradingReportDir).resolve("results.csv"), format=Spreadsheet.Format.CSV.default)
@@ -104,7 +91,7 @@ object GradesToRWTHOnline extends Task {
     .map { entry =>
       toPublish.get(entry.registrationNumber) match
         // TODO: remove password-info
-        case Some((grade, link)) => entry.setGrade(grade).setRemark(s"Details (available temporarily): $link (password is \"password\")")
+        case Some((grade, link)) => entry.setGrade(grade).setRemark(s"Details (available temporarily): $link")
         case None => entry.setGrade("X")
     }
 
@@ -121,17 +108,17 @@ object GradesToRWTHOnline extends Task {
   val course = Schein.Course(name = "Post-Quantum Cryptography", semester = Winter, year = 2025, ects = 6)
 
   println("Schein:")
-  for ((regno, name) <- scheinStudents)
-    if (toPublish.contains(regno)) {
-      val grade = toPublish(regno)._1.toDouble
+  for (student <- scheinStudents)
+    if (toPublish.contains(student.registrationNumber)) {
+      val grade = toPublish(student.registrationNumber)._1.toDouble
       if (grade <= 4) {
-        val student = Schein.Student(name = name, registrationNumber = regno, grade = grade)
-        Files.write(scheinDir.resolve(s"Schein $name $regno.pdf"), Schein.pdf(course, student))
+        val student2 = student.withGrade(grade)
+        Files.write(scheinDir.resolve(s"Schein ${student.name} ${student.registrationNumber}.pdf"), Schein.pdf(course, student2))
       }
-      println(s"$name ($regno), ${toPublish(regno)._1}, $grade")
+      println(s"${student.name} ${student.registrationNumber}, ${toPublish(student.registrationNumber)._1}, $grade")
     } else
-      println(s"$name ($regno): not participated")
+      println(s"${student.name} ${student.registrationNumber}: not participated")
 
   println("Done.")
   sys.exit()
-}
+}*/

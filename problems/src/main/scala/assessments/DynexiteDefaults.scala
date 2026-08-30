@@ -9,8 +9,6 @@ import scala.language.implicitConversions
 import assessments.pageelements.*
 import assessments.pageelements.DynamicElement.humanName
 import assessments.pageelements.MultipleChoice.Style.select
-import assessments.pageelements.SolutionElement.Styling
-import assessments.pageelements.SolutionElement.Styling.{explanation, grading}
 import assessments.stack.StackParser.parse
 import assessments.stack.StackUtils.checkEquality
 import assessments.stack.{SympyAssumption, SympyExpr}
@@ -163,14 +161,8 @@ object DynexiteDefaults {
   }
 
 
-  def explain(text: InterpolatedMarkdown[HtmlConvertible], name: String = null)
-             (using implicitName: ImplicitName[ElementName, name.type]): ExplanationElement = {
-    val actualName = if (implicitName.name.name == "question") // Inlined in the markdown, not a good default
-      ElementName(s"explanation-element-${Utils.uniqueId()}")
-    else
-      implicitName.name
-    ExplanationElement(actualName, text)
-  }
+  def explain(text: InterpolatedMarkdown[StaticElement | HtmlConvertible]): ExplanationElement =
+    ExplanationElement(text)
 
 
   def grading(text: GradingContext ?=> InterpolatedMarkdown[HtmlConvertible],
@@ -196,13 +188,20 @@ object DynexiteDefaults {
       context.outcome = incorrect
   }
 
-
-  extension (ge: GradingElement) {
-    def feedback(using context: GradingContext): SolutionElement.Feedback =
-      ge.computeFeedback(assessment = context.assessment,
-        registrationNumber = Some(context.registrationNumber),
-        answers = answersImmutable).awaitResult()
+  //noinspection AccessorLikeMethodIsUnit
+  def isOneOf(element: AnswerElement, options: String*)(using context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]): Unit = {
+    assert(!options.contains(""))
+    for (case mc : MultipleChoice <- Some(element))
+        assert(options.toSet.subsetOf(mc.options.keySet))
+    if (element.stringValue == "")
+      context.outcome = missing
+    else if (options contains element.stringValue) {
+      context.outcome = correct
+      context.points += context.reachablePoints
+    } else
+      context.outcome = incorrect
   }
+
 
   /** Checks for equality of two Sympy expressions (`x==y`?)
    * Up to mathematical equivalence, as far as can be figured out (somewhat heuristic).

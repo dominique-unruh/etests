@@ -18,4 +18,4 @@
 .vagrant/
 /tmp/dynexite_replay.py
 __pycache__/
-.DS_store/
+/.tmp/

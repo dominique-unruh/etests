@@ -10,7 +10,7 @@ import play.api.mvc.*
 import java.nio.file.{Files, Path}
 import javax.script.{ScriptEngine, ScriptEngineManager}
 import scala.util.matching.Regex
-import assessments.{Answers, Assessment, ElementName, Exam, ExceptionContext, MarkdownAssessment}
+import assessments.{Answers, Assessment, ElementName, Exam, ExceptionContext, ExceptionWithContext, MarkdownAssessment}
 import play.api.libs.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, JsValue}
 import play.mvc.BodyParser.Json
 import play.twirl.api.{Html, HtmlFormat}
@@ -72,7 +72,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     given ExceptionContext = ExceptionContext.initialExceptionContext(s"Web query for exam $examName, problem $assessmentName")
     val exam = Exam.getExamById(examName)
     val assessment = getAssessment(exam, assessmentName)
-    val (body, files) = assessment.renderHtml
+    val (body, files) = assessment.renderHtml(exam)
     val testingSolutionDescriptions =
       assessment.testingSolutions.map(a => if (a.description.isEmpty) "testing solution" else a.description)
     val html = views.html.assessment(
@@ -148,7 +148,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     given ExceptionContext = initialExceptionContext(s"Responsing to web-request $request")
     val exam = Exam.getExamById(examName)
     val assessment = getAssessment(exam, assessmentName)
-    val (body, files) = assessment.renderHtml
+    val (body, files) = assessment.renderHtml(exam)
     val (mime, content) = files(fileName)
     Ok(content).as(mime)
   }
@@ -159,7 +159,7 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
     // TODO do some caching?
     val assessment = getAssessment(exam, assessmentName)
     val payload = request.body.asJson.get.asInstanceOf[JsObject]
-    val (feedback, errors, timedOut) = assessment.getFeedback(payload)
+    val (feedback, errors, timedOut) = assessment.getFeedback(exam, payload)
     val response = Seq.newBuilder[(String, JsValue)]
     response += "feedback" -> feedback
     response += "timedout" -> JsBoolean(timedOut)
@@ -207,6 +207,15 @@ class AssessmentController @Inject()(val controllerComponents: ControllerCompone
   def dynexiteLink(examName: String, regno: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     val exam = Exam.getExamById(examName)
     Redirect(Dynexite.getLinkForLearner(exam, regno))
+  }
+
+  def dynexiteQuestionLink(examName: String, assessmentName: String): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    given ExceptionContext = ExceptionContext.initialExceptionContext(s"Responding to web-request $request")
+    val exam = Exam.getExamById(examName)
+    val assessment = getAssessment(exam, assessmentName)
+    val questionId = assessment.assessment.tags.getOrElse(Dynexite.dynexiteQuestionId,
+      throw ExceptionWithContext(s"Problem '$assessmentName' has no tag dynexiteQuestionId; cannot link to Dynexite."))
+    Redirect(Dynexite.editUrl(questionId))
   }
 
   def defaultRedirect(): Action[AnyContent] = Action {
