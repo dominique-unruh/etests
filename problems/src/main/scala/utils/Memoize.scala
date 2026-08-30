@@ -89,6 +89,11 @@ object Memoize {
  * a compiler crash in `ParamForwarding` when adding a strict field to a class
  * that has constructor parameters.)
  *
+ * If `R` is a `Future[_]`, the *in-flight* future is cached (published before it
+ * completes) so concurrent identical calls share one computation rather than each
+ * starting its own; a future that completes with a failure is evicted, so failures
+ * are never cached and the next call retries.
+ *
  * `MacroAnnotation` is experimental: the annotated definition (or its enclosing
  * scope) must be under experimental mode — mark it `@experimental` or compile
  * with `-experimental`.
@@ -124,27 +129,63 @@ class memoized extends MacroAnnotation {
         }
         val keyExpr = Expr.ofList(keyParts)
 
+        // A `Future`-returning method is memoized on the *in-flight* future, not its resolved value:
+        // the future is published to the cache before it completes, so concurrent identical calls
+        // share one computation instead of each starting its own (e.g. a feedback poll's concurrent
+        // fan-out all parsing the same input). A failed future is evicted once it completes, so
+        // failures are never cached — the next call retries.
+        val futureSym = Symbol.requiredClass("scala.concurrent.Future")
+        val isFuture = tpt.tpe.baseClasses.contains(futureSym)
+
         // Inline the lookup rather than calling a helper with a by-name `body`: a by-name
         // argument becomes a closure, and lifting the body's captures out of that closure
         // trips a compiler bug (LambdaLift "could not find proxy") when the body references
         // private members of the enclosing object. Keeping the body directly in the method
         // avoids the extra closure entirely.
-        val newRhs = tpt.tpe.asType match
-          case '[r] =>
-            val body = rhs.asExprOf[r]
-            // Re-own the whole new body to the (copied) method symbol; the constructed term is
-            // otherwise owned by the quote's synthetic owner, so references to the method's
-            // params/locals cannot be resolved later ("could not find proxy").
-            '{
-              val c = $cacheRef
-              val k: AnyRef = $keyExpr
-              c.get(k) match
-                case Some(v) => v.asInstanceOf[r]
-                case _ =>
-                  val res: r = $body
-                  c.update(k, res)
-                  res
-            }.asTerm.changeOwner(defSym)
+        //
+        // Re-own the whole new body to the (copied) method symbol; the constructed term is
+        // otherwise owned by the quote's synthetic owner, so references to the method's
+        // params/locals cannot be resolved later ("could not find proxy").
+        val newRhs =
+          if isFuture then
+            tpt.tpe.baseType(futureSym).typeArgs.head.asType match
+              case '[t] =>
+                val body = rhs.asExprOf[scala.concurrent.Future[t]]
+                '{
+                  val c = $cacheRef
+                  val k: AnyRef = $keyExpr
+                  c.get(k) match
+                    case Some(v) => v.asInstanceOf[scala.concurrent.Future[t]]
+                    case _ =>
+                      // Publish an incomplete promise atomically so only the winner runs `body`.
+                      val promise = scala.concurrent.Promise[t]()
+                      c.putIfAbsent(k, promise.future) match
+                        case Some(existing) => existing.asInstanceOf[scala.concurrent.Future[t]]
+                        case None =>
+                          val work: scala.concurrent.Future[t] =
+                            try $body
+                            catch case scala.util.control.NonFatal(e) => scala.concurrent.Future.failed[t](e)
+                          work.onComplete { result =>
+                            // Don't cache failures: drop the entry so the next call re-computes.
+                            if (result.isFailure) c.remove(k, promise.future)
+                            promise.complete(result)
+                          }(scala.concurrent.ExecutionContext.parasitic)
+                          promise.future
+                }.asTerm.changeOwner(defSym)
+          else
+            tpt.tpe.asType match
+              case '[r] =>
+                val body = rhs.asExprOf[r]
+                '{
+                  val c = $cacheRef
+                  val k: AnyRef = $keyExpr
+                  c.get(k) match
+                    case Some(v) => v.asInstanceOf[r]
+                    case _ =>
+                      val res: r = $body
+                      c.update(k, res)
+                      res
+                }.asTerm.changeOwner(defSym)
 
         val newDef = DefDef.copy(tree)(name, paramss, tpt, Some(newRhs))
         List(cacheVal, newDef)
