@@ -581,6 +581,7 @@ object Utils {
     val sharedLocations = Seq(
       Path.of("/home/unruh/cloud/qis/lectures/"),
       Path.of("/home/ben/qisCloud/"),
+      Path.of("/Users/Christina/Nextcloud/"),
     )
     boundary[Path] {
       for (subdir <- paths.prepended(path))
