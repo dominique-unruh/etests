@@ -288,6 +288,16 @@ object Exam {
 
   val examDate: Tag[Exam, LocalDate] = Tag()
   val courseName: Tag[Exam, String] = Tag()
+  val semester: Tag[Exam, Semester] = Tag()
+  case class Semester(season: Season, year: Int) {
+    assert(year >= 2020 && year <= 2100)
+  }
+  enum Season {
+    case Winter
+    case Summer
+    def lowerCase: String = toString.toLowerCase
+  }
+  val ects: Tag[Exam, Int] = Tag()
   /** Reachable points of the exam. If specified, running the Exam will test if this
    * matches the total of the reachable points of the problems. */
   val reachablePoints: Tag[Exam, Points] = Tag()

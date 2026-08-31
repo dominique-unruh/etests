@@ -2,6 +2,7 @@ package externalsystems
 
 import com.github.tototoshi.csv.{CSVFormat, CSVReader, CSVWriter, DefaultCSVFormat, QUOTE_ALL, Quoting}
 import RWTHOnlineGrades.{Entry, Headers, registrationNumberIndex, given}
+import assessments.RegistrationNumber
 import externalsystems.Spreadsheet.Row
 import externalsystems.Spreadsheet.ValidationRule.UniqueColumn
 import utils.Utils
@@ -22,7 +23,7 @@ class RWTHOnlineGrades private (private val spreadsheet: Spreadsheet) {
     map(e => f(e).getOrElse(e))
   def map(f: PartialFunction[Entry, Entry]): RWTHOnlineGrades = map(f.lift)
   /** Returns all registration numbers in this table */
-  lazy val students: Seq[String] = entries.map(_.registrationNumber)
+  lazy val students: Seq[RegistrationNumber] = entries.map(_.registrationNumber)
   lazy val entries: Seq[Entry] = spreadsheet.rows.map(Entry(_))
   def assertValid(): RWTHOnlineGrades = {
     spreadsheet.assertValid();
@@ -46,7 +47,7 @@ object RWTHOnlineGrades {
 
   class Entry private[RWTHOnlineGrades] (private [RWTHOnlineGrades] val row: Spreadsheet.Row) {
     override def toString: String = s"$firstName $familyName ($registrationNumber)"
-    def registrationNumber: String = row(Headers.registrationNumber)
+    def registrationNumber: RegistrationNumber = RegistrationNumber(row(Headers.registrationNumber))
     def firstName: String = row(Headers.firstName)
     def familyName: String = row(Headers.familyName)
     def email: String = row(Headers.email)

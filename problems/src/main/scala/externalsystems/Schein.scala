@@ -1,6 +1,7 @@
 package externalsystems
 
-import assessments.InterpolatedString
+import assessments.Exam.{courseName, ects, semester}
+import assessments.{Exam, InterpolatedString, RegistrationNumber}
 import assessments.InterpolatedString.iraw
 import utils.{IndentedInterpolator, LaTeX}
 import utils.LaTeX.escape
@@ -11,18 +12,9 @@ import java.time.format.DateTimeFormatter
 
 
 object Schein {
-  enum Semester {
-    case Winter
-    case Summer
-    def lowerCase: String = toString.toLowerCase
-  }
-  case class Course(name: String,
-                    semester: Semester,
-                    year: Int,
-                    ects: Int,
-                    responsible: String = "Prof. Dr. Dominique Unruh")
+  val responsiblePerson: String = "Prof. Dr. Dominique Unruh"
   case class Student(name: String,
-                     registrationNumber: String,
+                     registrationNumber: RegistrationNumber,
                      email: Option[String] = None,
                      grade: Option[Double]) {
     def gradeString = f"${grade.get}%.1f"
@@ -31,13 +23,13 @@ object Schein {
 
   private val logo = Path.of("/home/unruh/cloud/qis/shared/agnes-uvalic/templates-and-design/institute-logo/02_bildmarke_und_text_EN/pdf/rwth_lehrstuhl_quanteninformationssysteme_en_rgb.pdf")
 
-  def pdf(course: Course, student: Student): Array[Byte] = {
-    val source = latexSource(course, student)
+  def pdf(exam: Exam, student: Student): Array[Byte] = {
+    val source = latexSource(exam, student)
     val logoBytes = Files.readAllBytes(logo)
     LaTeX.latexToPDF(source, Map("logo.pdf" -> logoBytes))
   }
 
-  def latexSource(course: Course, student: Student): String = {
+  def latexSource(exam: Exam, student: Student): String = {
     val date = LocalDate.now().format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
     indraw"""
 \documentclass[12pt]{article}
@@ -64,7 +56,7 @@ object Schein {
 \end{center}
 
 
-\textbf{${escape(student.name)}} (student registration number ${escape(student.registrationNumber)})
+\textbf{${escape(student.name)}} (student registration number ${escape(student.registrationNumber.number)})
 
 \bigskip
 
@@ -72,11 +64,11 @@ successfully attended the course
 
 
 \begin{center}
-\textbf{${escape(course.name)}}
+\textbf{${escape(exam.tags(courseName))}}
 \end{center}
 
 
-(${escape(course.ects.toString)} ECTS credits) during ${escape(course.semester.lowerCase)} semester ${escape(course.year.toString)}.
+(${exam.tags(ects)} ECTS credits) during ${escape(exam.tags(semester).season.lowerCase)} semester ${exam.tags(semester).year}.
 
 \bigskip
 
@@ -87,7 +79,7 @@ Final grade: ${escape(student.gradeString)}
 Aachen, ${escape(date)},
 
 \begin{flushright}
-$$\overline{\textrm{\quad(${escape(course.responsible)})\quad}}$$
+$$\overline{\textrm{\quad(${escape(responsiblePerson)})\quad}}$$
 \end{flushright}
 
 \end{document}
