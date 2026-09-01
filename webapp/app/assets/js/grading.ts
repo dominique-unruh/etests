@@ -9,6 +9,18 @@ type GradingFeedback = {
 
 
 export class Grading extends InteractiveElement<null, GradingFeedback> {
+    // Badge glyph per DisplayOutcome (kept in sync with GradingContext.DisplayOutcome.glyph / _solution.scss).
+    private static outcomeGlyph(outcome: string): string {
+        switch (outcome) {
+            case "correct": case "penalized": return "✓";
+            case "partial": return "◐";
+            case "incorrect": case "noPenalty": return "✗";
+            case "notApplicable": return "n/a";
+            case "error": return "⚠";
+            default: return outcome;
+        }
+    }
+
     private points: HTMLSpanElement;
     private outcome: HTMLSpanElement;
     private error: HTMLDivElement;
@@ -38,11 +50,11 @@ export class Grading extends InteractiveElement<null, GradingFeedback> {
         else
             this.points.innerText = newValue.points + " points";
         this.outcome.className = "grading-outcome";
-        this.outcome.title = "Grader: " + this.id.replace(/^etest-/, "");
         if (newValue.outcome == null)
             this.outcome.innerText = "";
         else {
-            this.outcome.innerText = newValue.outcome;
+            this.outcome.innerText = Grading.outcomeGlyph(newValue.outcome);
+            this.outcome.title = newValue.outcome + " (grader: " + this.id.replace(/^etest-/, "") + ")";
             this.outcome.classList.add("outcome-" + newValue.outcome);
         }
         this.error.innerText = newValue.error == null ? "" : newValue.error;

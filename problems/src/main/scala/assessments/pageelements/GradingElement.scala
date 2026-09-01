@@ -1,8 +1,8 @@
 package assessments.pageelements
 
 import assessments.ExceptionContext.initialExceptionContext
-import assessments.GradingContext.{GradeBlockExit, Outcome, bareGradeBlock, gradeBlock}
-import assessments.pageelements.GradingElement.{Feedback, errorToString, graderExecutionContext, inferOutcome, logger}
+import assessments.GradingContext.{DisplayOutcome, GraderOutcome}
+import assessments.pageelements.GradingElement.{Feedback, errorToString, logger}
 import assessments.pageelements.RenderContext.catchExceptions
 import assessments.{Answers, Assessment, Comment, ElementName, Exam, ExceptionContext, ExceptionWithContext, FileMapBuilder, GradingContext, Html, HtmlConvertible, InterpolatedMarkdown, Markdown, Points}
 import com.typesafe.scalalogging.Logger
@@ -12,32 +12,70 @@ import utils.{IndentedInterpolator, Tag, Utils}
 import utils.Tag.Tags
 import utils.Utils.awaitResult
 
-import java.util.concurrent.Executors
-import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration.Duration
+import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.boundary.Label
+import scala.concurrent.duration.Duration
 
-/** An inline grader: a [[SolutionElement]] that carries both a rule `text` and the `grader` block
- * scoring it, and renders live feedback (points, outcome, comments). Created via `grading(text,
- * grader)` in [[assessments.DynexiteDefaults]]; a problem usually has several, and their points are
- * summed by `Assessment`'s `PointsReached`.
+/** An inline grader: a [[SolutionElement]] that carries a rule `text` plus the `grader` block scoring
+ * it, and renders live feedback (points, display badge, comments). Created via `grading(text,
+ * reachablePoints, grader, ...)` in [[assessments.DynexiteDefaults]]; a problem usually has several.
  *
- * On each feedback request the `grader` runs inside a [[GradingContext.bareGradeBlock]] (with
- * `allowExitWithoutDone = true`, so it may finish with `done()` or by falling through; `abort()`
- * is rejected) under the `grading.timeout` via [[utils.Utils.runWithTimeoutFuture]]. The resulting
- * points and the rule text (plus any comments as a report) form this element's feedback.
+ * The `grader` returns a [[GraderOutcome]] ([[GraderOutcome.fires]] / [[GraderOutcome.firesPartially]]
+ * / [[GraderOutcome.doesntFire]]); it does not award points directly. The points awarded follow from
+ * the outcome, `reachablePoints`, and `negative`:
+ *  - `fires` → ± `reachablePoints`;
+ *  - `firesPartially(p)` → ± `p` (requires `0 < p < reachablePoints`);
+ *  - `doesntFire` → 0;
+ * where the sign is negative iff `negative` (a penalty rule that removes points).
  *
- * Shown only in the solution view. In the web app (dynamic render) it emits an `<etest-grading>`
- * web component that recomputes feedback as answers change; in a static render it evaluates the
- * grader once and inlines the result (omitted entirely from blank question sheets). */
+ * A rule is skipped entirely (verdict [[DisplayOutcome.notApplicable]], 0 points) if any rule named in
+ * `unless` fired (fully or partially). The whole chain of a problem's rules is resolved together by
+ * [[Assessment.gradeAll]], which orders them topologically by `unless`.
+ *
+ * `partial` marks the rule as awarding partial credit (only affects the display badge, not the
+ * points). Points are summed by `Assessment`'s `PointsReached`.
+ *
+ * Shown only in the solution view. In the web app (dynamic render) it emits an `<etest-grading>` web
+ * component that recomputes feedback as answers change; in a static render it evaluates the grader
+ * once and inlines the result (omitted from blank question sheets).
+ *
+ * @param negative if `true`, this is a penalty rule: firing subtracts points instead of adding them.
+ * @param partial  if `true`, firing this rule is only partial credit (affects the badge only).
+ * @param unless   if any of these (higher-priority) rules fired, this rule is not evaluated
+ *                 (`notApplicable`). */
 class GradingElement(override val name: ElementName,
                      val reachablePoints: Points,
                      text: GradingContext ?=> InterpolatedMarkdown[HtmlConvertible],
-                     grader: (context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]) ?=> Unit)
+                     grader: (context: GradingContext, exceptionContext: ExceptionContext) ?=> GraderOutcome,
+                     val negative: Boolean = false,
+                     val partial: Boolean = false,
+                     val unless: Seq[ElementName] = Seq.empty)
   extends DynamicElement, SolutionElement {
 
   override val tags: Tag.Tags[GradingElement] = Tags.empty
+
+  /** Points awarded for `outcome`, with the sign flipped for a `negative` (penalty) rule. Throws if a
+   * `firesPartially(p)` violates `0 < p < reachablePoints`. */
+  def signedPoints(outcome: GraderOutcome)(using ExceptionContext): Points = {
+    val magnitude = outcome match {
+      case GraderOutcome.fires => reachablePoints
+      case GraderOutcome.firesPartially(p) =>
+        if (!(p > Points.zero && p < reachablePoints))
+          throw ExceptionWithContext(s"firesPartially($p) must satisfy 0 < points < $reachablePoints (grader $name)")
+        p
+      case GraderOutcome.doesntFire => Points.zero
+    }
+    if (negative) Points.zero - magnitude else magnitude
+  }
+
+  /** The display badge for a resolved outcome (`None` = suppressed by `unless`). */
+  def displayFor(outcome: Option[GraderOutcome]): DisplayOutcome = outcome match {
+    case None => DisplayOutcome.notApplicable
+    case Some(GraderOutcome.doesntFire) => if (negative) DisplayOutcome.noPenalty else DisplayOutcome.incorrect
+    case Some(GraderOutcome.fires) =>
+      if (partial) DisplayOutcome.partial else if (negative) DisplayOutcome.penalized else DisplayOutcome.correct
+    case Some(GraderOutcome.firesPartially(_)) => DisplayOutcome.partial
+  }
 
   override def timeoutFeedback(assessment: Assessment, state: Map[ElementName, JsValue]): JsValue =
     JsObject(Seq("text" -> DynamicElement.hourglass))
@@ -47,24 +85,20 @@ class GradingElement(override val name: ElementName,
       // Blank question sheet (e.g. a student printout): omit solution-only content entirely.
       if (!context.getOrElse(RenderContext.showSolutions, true))
         return Html("")
-      val fb = computeFeedback(
+      val doCatch = context(catchExceptions)
+      val feedbacks = context(RenderContext.problem).gradeAll(
         context(RenderContext.exam),
-        context(RenderContext.problem),
-        context.get(RenderContext.registrationNumber),
         context(RenderContext.studentAnswers),
-        catchExceptions = context(catchExceptions)).awaitResult()
-      val pointsHtml = fb.points match {
-        case Some(points) => s"""<div class="grading-points">${escapeHtml4(points.decimalFractionString(precision = 2))} points</div>"""
-        case None => ""
-      }
-      val outcomeHtml =
-        if (fb.outcome == Outcome.unspecified) ""
-        else s"""<div class="grading-outcome outcome-${escapeHtml4(fb.outcome.toString)}">${escapeHtml4(fb.outcome.toString)}</div>"""
-      for (error <- fb.error if !context(catchExceptions))
+        context.get(RenderContext.registrationNumber),
+        catchExceptions = doCatch).awaitResult()
+      val fb = feedbacks(name)
+      for (error <- fb.error if !doCatch)
         error match {
           case e: Exception => throw e
           case s: String => throw new RuntimeException(s)
         }
+      val pointsHtml = s"""<div class="grading-points">${escapeHtml4(fb.points.decimalFractionString(precision = 2))} points</div>"""
+      val outcomeHtml = s"""<div class="grading-outcome outcome-${fb.display}" title="${escapeHtml4(fb.display.toString)}">${escapeHtml4(fb.display.glyph)}</div>"""
       val errorHtml = fb.error match {
         case Some(error) => s"""<div class="grading-error">${escapeHtml4(errorToString(error))}</div>"""
         case None => ""
@@ -73,97 +107,67 @@ class GradingElement(override val name: ElementName,
     }
     Html(ind"""<etest-grading id="${name.htmlComponentNameEscaped}"></etest-grading>""")
 
-  def pointsReached(exam: Exam, assessment: Assessment, registrationNumber: Option[String],
-                    answers: Answers): Future[Option[Points]] =
-    computeFeedback(exam, assessment, registrationNumber, answers, catchExceptions = false).map(_.points)
-
   override def getFeedback(exam: Exam, assessment: Assessment,
                            state: Map[ElementName, JsValue]): Future[JsObject] = {
     val registrationNumber = state.get(ElementName.registrationNumber).map(_.asInstanceOf[JsString].value)
-    val result = for (fb <- computeFeedback(exam, assessment, registrationNumber, assessment.webappStateToAnswers(state), catchExceptions = true)) yield {
-      val builder = Map.newBuilder[String, JsValue]
-      builder.addOne(("text", JsString(fb.text.html)))
-      for (points <- fb.points)
-        builder.addOne(("points", JsNumber(points.toBigDecimal)))
-      if (fb.outcome != Outcome.unspecified)
-        builder.addOne(("outcome", JsString(fb.outcome.toString)))
-      for (error <- fb.error) {
-        builder.addOne(("error", JsString(errorToString(error))))
-        builder.addOne(("points", JsNumber(0)))
-        builder.addOne(("outcome", JsString("error")))
-      }
-      JsObject(builder.result())
-    }
+    val result = for (feedbacks <- assessment.gradeAll(exam, assessment.webappStateToAnswers(state), registrationNumber, catchExceptions = true))
+      yield feedbacks(name).toJson
     result.recover {
-      case e : Throwable =>
+      case e: Throwable =>
         e.printStackTrace()
         JsObject(Seq(
           "text" -> JsString(""),
           "error" -> JsString(e.toString),
-          "points" -> JsNumber(0), "outcome" -> JsString("error")))
+          "points" -> JsNumber(0), "outcome" -> JsString(DisplayOutcome.error.toString)))
+    }
+  }
+
+  /** Renders just this rule's `text` (no grader run). Used for the `notApplicable` / error feedback,
+   * where the grader is not run or threw. */
+  def renderText(assessment: Assessment, registrationNumber: Option[String], answers: Answers): Html = {
+    given ExceptionContext = initialExceptionContext(s"Rendering grading rule text for $name")
+    given GradingContext = GradingContext(answers.answers, registrationNumber.getOrElse("NO_STUDENT"), reachablePoints, assessment.sourceAssessment)
+    text.toHtml.flatMapArgs(_.toHtml)
+  }
+
+  /** Runs the grader for this rule in isolation (ignoring `unless`), under the `grading.timeout`.
+   * Returns the grader's [[GraderOutcome]] together with the rendered rule text (with any comments the
+   * grader produced appended as a report). The returned future FAILS if the grader throws — callers
+   * decide whether to surface that (webapp) or propagate it (tests, static render without
+   * `catchExceptions`). */
+  def runGrader(exam: Exam, assessment: Assessment, registrationNumber: Option[String],
+                answers: Answers): Future[(GraderOutcome, Html)] = {
+    given ExceptionContext = initialExceptionContext(s"Grading rule $name")
+    given context: GradingContext = GradingContext(answers.answers, registrationNumber.getOrElse("NO_STUDENT"), reachablePoints, assessment.sourceAssessment)
+    val textAsHtml = text.toHtml.flatMapArgs(_.toHtml)
+    val duration = Utils.getSystemProperty("grading.timeout", "timeout for graders, e.g., 10s, 1m")
+    logger.debug(s"Running grader $name, $registrationNumber: $answers")
+    Utils.runWithTimeoutFuture(Duration(duration), s"${assessment.name}-$name-$registrationNumber") {
+      val outcome = grader
+      val report = Comment.seqToHtml(GradingContext.comments(using context).toSeq)
+      val textAndReport = if (report.isEmpty) textAsHtml else textAsHtml + Html("<hr>") + report
+      (outcome, textAndReport)
     }
   }
 
   /** If a grading exception applies to this grader for `registrationNumber`, produce the overriding
    * [[Feedback]] directly (skipping the grader). Well-formedness of the exceptions (problems and
-   * graders exist) is already checked when they are loaded (see [[Exam.gradingExceptions]]).
-   *
-   * @return `Some(feedback)` if an exception overrides this grader; `None` if the grader should run
-   *         normally (no exceptions for this student, or none targeting this grader). */
-  private def gradingExceptionFeedback(exam: Exam, assessment: Assessment, registrationNumber: Option[String])
-                                      (using ExceptionContext, GradingContext): Option[Feedback] = {
+   * graders exist) is already checked when they are loaded (see [[Exam.gradingExceptions]]). */
+  def exceptionOverride(exam: Exam, assessment: Assessment, registrationNumber: Option[String],
+                        answers: Answers): Option[Feedback] = {
     val overrideForThisGrader = for {
       regNr <- registrationNumber
       value <- exam.gradingExceptions().map.get((regNr, assessment.name, name))
     } yield value
     overrideForThisGrader.map { case (comment, points) =>
-//      if (points > reachablePoints)
-//        throw ExceptionWithContext(s"Grading exception awards $points points, more than the reachable $reachablePoints")
-      Feedback(points = Some(points), text = text.toHtml.flatMapArgs(_.toHtml) + Html("<hr>") + comment.toHtml,
-        outcome = inferOutcome(points, reachablePoints))
-    }
-  }
-
-  def computeFeedback(exam: Exam, assessment: Assessment, registrationNumber: Option[String], answers: Answers,
-                      catchExceptions: Boolean): Future[Feedback] = {
-    given ExceptionContext = initialExceptionContext(s"Recomputing grading based on change of inputs in webapp")
-    given GradingContext = GradingContext(answers.answers, registrationNumber.getOrElse("NO_STUDENT"), reachablePoints, assessment.sourceAssessment)
-    gradingExceptionFeedback(exam, assessment, registrationNumber) match {
-    case Some(feedback) =>
-      logger.debug(s"Grading exception for ${registrationNumber}, ${this.name}, ${feedback.points}")
-      Future.successful(feedback)
-    case None =>
-    val duration = Utils.getSystemProperty("grading.timeout", "timeout for graders, e.g., 10s, 1m")
-    logger.debug(s"Running grader $name, $registrationNumber: $answers")
-    val textAsHtml = text.toHtml.flatMapArgs(_.toHtml)
-    Utils.runWithTimeoutFuture(Duration(duration), s"${assessment.name}-$name-${registrationNumber}") {
-      val (exit, context) = bareGradeBlock(reachablePoints, allowExitWithoutDone = true) {
-        grader }
-      if (exit.abort) throw ExceptionWithContext("abort() not allowed in this grader")
-      val points = context.points
-      if (points > reachablePoints)
-        throw ExceptionWithContext(s"Grader awarded $points points, more than the reachable $reachablePoints")
-      context.outcome match {
-        case Outcome.incorrect if points > Points.zero =>
-          throw ExceptionWithContext(s"outcome=incorrect but $points points (> 0) awarded")
-        case Outcome.correct | Outcome.partiallyCorrectFullPoints if points != reachablePoints =>
-          throw ExceptionWithContext(s"outcome=${context.outcome} but $points points awarded (expected $reachablePoints)")
-        case Outcome.partiallyCorrect if points < Points.zero =>
-          throw ExceptionWithContext(s"outcome=partiallyCorrect but negative $points points awarded")
-        case Outcome.notApplicable if points != Points.zero =>
-          throw ExceptionWithContext(s"outcome=inapplicable but $points points awarded (expected 0)")
-        case _ =>
-      }
-      val report = Comment.seqToHtml(GradingContext.comments(using context).toSeq)
-      val textAndReport = if (report.isEmpty) textAsHtml
-      else textAsHtml + Html("<hr>") + report
-      Feedback(
-        points = Some(context.points),
-        text = textAndReport,
-        outcome = context.outcome)
-    }.recover {
-      case e: Exception if catchExceptions => Feedback(text = textAsHtml, error = Some(e))
-    }
+      given ExceptionContext = initialExceptionContext(s"Grading exception for $name")
+      // Reconstruct an outcome from the overridden points, so `unless` / mutual-exclusion still work.
+      val outcome =
+        if (points == reachablePoints) GraderOutcome.fires
+        else if (points <= Points.zero) GraderOutcome.doesntFire
+        else GraderOutcome.firesPartially(points)
+      Feedback(name = name, points = points, display = displayFor(Some(outcome)), outcome = Some(outcome),
+        text = renderText(assessment, registrationNumber, answers) + Html("<hr>") + comment.toHtml)
     }
   }
 }
@@ -171,26 +175,33 @@ class GradingElement(override val name: ElementName,
 
 object GradingElement {
   private val logger = Logger[GradingElement]
-  private val graderExecutionContext: ExecutionContext =
-    ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(10))
 
-  case class Feedback(text: Html, points: Option[Points] = None, outcome: Outcome = Outcome.unspecified, error: Option[String | Exception] = None)
+  /** Resolved feedback for one grading rule. `points` is the (signed) points awarded (0 when the rule
+   * did not fire or is not applicable). `display` is the badge; `outcome` is the raw grader verdict
+   * (`None` when the rule was not evaluated because an `unless` rule fired, or when the grader threw). */
+  case class Feedback(name: ElementName, text: Html, points: Points, display: DisplayOutcome,
+                      outcome: Option[GraderOutcome], error: Option[String | Exception] = None) {
+    def fired: Boolean = outcome.exists(_.fired)
+
+    def toJson: JsObject = {
+      val builder = Map.newBuilder[String, JsValue]
+      builder.addOne(("text", JsString(text.html)))
+      builder.addOne(("points", JsNumber(points.toBigDecimal)))
+      builder.addOne(("outcome", JsString(display.toString)))
+      for (error <- error)
+        builder.addOne(("error", JsString(errorToString(error))))
+      JsObject(builder.result())
+    }
+  }
 
   /** Manual grade overrides, keyed by student registration number, assessment name, grading element to
    * override. Each override supplies a `comment` (rendered as the feedback body) and the `points` to
-   * award. See [[GradingElement.computeFeedback]]. */
+   * award. See [[GradingElement.exceptionOverride]]. */
   // TODO move somewhere else
   case class GradingExceptions(map: Map[(String, String, ElementName), (Markdown, Points)]) extends AnyVal
   object GradingExceptions {
     val empty = GradingExceptions(Map.empty)
   }
-
-  /** Outcome consistent with `points` awarded out of `reachablePoints`: full points → `correct`,
-   * nothing (or negative) → `incorrect`, anything in between → `partiallyCorrect`. */
-  private def inferOutcome(points: Points, reachablePoints: Points): Outcome =
-    if (points == reachablePoints) Outcome.correct
-    else if (points <= Points.zero) Outcome.incorrect
-    else Outcome.partiallyCorrect
 
   def errorToString(error: String | Exception): String = error match {
     case s: String => s

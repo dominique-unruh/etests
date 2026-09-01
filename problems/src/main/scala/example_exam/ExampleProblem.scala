@@ -2,6 +2,7 @@ package example_exam
 
 import assessments.DynexiteDefaults.*
 import assessments.GradingContext.*
+import assessments.GradingContext.GraderOutcome.{doesntFire, fires}
 import assessments.InterpolatedMarkdown.md
 import assessments.pageelements.{Element, InputElement, SolutionElement}
 import assessments.math.Math
@@ -44,27 +45,28 @@ $gradingRule2
   """, reachablePoints, {
     given MathContext = MathContext.default
 
-    // TODO: it should be possible to check whether gradingRule2 triggered instead
     if (answer.stringValue.trim == "10")
-      done()
-
-    val parsed = answer.mathTry
-    if (parsed == Math.noAnswer)
-      done()
-
-    if (parsed.toSympyMC() `algebraicEqual` 10)
-      comments += "Correct"
-      points += reachablePoints
-    else
-      comments += raw"Doesn't evaluate to 10, but to \(${parsed.toSympyMC().simplify.latex}\)"
+      doesntFire // handled by gradingRule2
+    else {
+      val parsed = answer.mathTry
+      if (parsed == Math.noAnswer)
+        doesntFire
+      else if (parsed.toSympyMC() `algebraicEqual` 10) {
+        comments += "Correct"
+        fires
+      } else {
+        comments += raw"Doesn't evaluate to 10, but to \(${parsed.toSympyMC().simplify.latex}\)"
+        doesntFire
+      }
+    }
   })
 
-  lazy val gradingRule2 = grading(md"""The number 10: half points.""", reachablePoints, {
-    if (answer.stringValue.trim == "10")
+  lazy val gradingRule2 = grading(md"""The number 10: half points.""", reachablePoints / 2, {
+    if (answer.stringValue.trim == "10") {
       comments += "You entered 10 literally. Half points"
-      points += reachablePoints / 2
-      done()
-  })
+      fires
+    } else doesntFire
+  }, partial = true)
 
   private val logger = Logger[ExampleProblem.type]
 }
