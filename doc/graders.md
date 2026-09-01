@@ -104,6 +104,83 @@ if (parsed != None && checkSomeMathProperty(parsed.get)) points += 3
 ...
 ```
 
+# Testing graders
+
+Graders are tested from **inside the problem file** (not in a separate test source). The tests are
+ordinary calls in the body of the `MarkdownAssessment` object; they register test cases that run under
+`sbt test`. They are useful even before a grader is implemented: with the grader still `missingGrader`,
+the tests document the intended behavior and fail until the grader is written.
+
+## Test solutions
+
+A test runs a grader against a *solution*, i.e. an `Answers` value assigning a string to each input
+field. Build them from `referenceSolution` by overriding individual fields:
+
+```scala 3
+lazy val solHalf = referenceSolution.update(ans1 -> "1/2")            // one field changed
+lazy val solTwoFields = referenceSolution.update(field1 -> "a", field2 -> "b")
+```
+
+Two solutions are **predefined** and always available — do **not** redeclare them:
+- `referenceSolution`: every field at its reference answer (the fully-correct solution).
+- `emptySolution`: every field empty. Use this to test the "missing answer" case; there is no need to
+  define an empty solution yourself.
+
+Every `val`/`lazy val` of type `Answers` you declare in the object is automatically picked up as a
+test solution by the chain/overall tests below (via reflection), alongside these two predefined ones.
+
+## `testGrader` — a single grading rule
+
+```scala 3
+testGrader(grader, solution, outcome = …, points = …)
+```
+
+Asserts that grading `solution` with the grading rule named `grader` yields the given `outcome`
+(an `Outcome`: `correct`, `partiallyCorrect`, `partiallyCorrectFullPoints`, `incorrect`,
+`notApplicable`, `missing`) and/or the given `points`. Either assertion is skipped if its argument is
+omitted. `grader` is the rule name (the `name="…"` you passed to `grading(...)`) or the grading element
+itself. Example:
+
+```scala 3
+testGrader("correctGrader", referenceSolution, outcome = correct, points = 10)
+testGrader("grader12", solHalf, outcome = partiallyCorrect, points = 5)
+testGrader("grader12", referenceSolution, outcome = notApplicable, points = Points.zero) // higher rule won
+testGrader("grader12", emptySolution, outcome = missing, points = Points.zero)
+```
+
+Related: `testGraderThrows(grader, solution)` asserts that the grader *throws* on that solution (graders
+throw to flag a case they deliberately do not handle — see above).
+
+## `testGraderChain` — priority / mutual exclusion
+
+```scala 3
+testGraderChain(name = "distinctGraders",
+  graders = Seq("correctGrader", "grader12", "grader1")) // descending priority order
+```
+
+Given the graders of one input (or one answer group) in **descending priority order**, this checks the
+whole chain behaves consistently for a solution. A grader *triggers* if its outcome is `correct`,
+`partiallyCorrect`, or `partiallyCorrectFullPoints`, or it awards nonzero points. The check asserts:
+- once some grader triggers, **every later** (lower-priority) grader is `notApplicable`; and
+- any grader that is `notApplicable` has **some earlier** (higher-priority) grader that triggered.
+
+If `solution` is omitted (the default), the chain check runs **once for each** test solution —
+`referenceSolution`, `emptySolution`, and every `Answers` val you declared — so a single
+`testGraderChain` call covers all your solutions at once.
+
+## You do not need `testGrader` for every grader × solution
+
+The chain test already pins down which graders must *not* fire. So for a given solution it is enough to
+assert, with **one** `testGrader`, the grader that is *supposed* to fire (its positive `outcome` and
+`points`). You do **not** need to add `testGrader(…, notApplicable)` / `testGrader(…, incorrect)` for
+the other graders on that same solution: if graders `X, Y, Z` form a tested chain and you assert
+`testGrader("Y", sol, outcome = correct)`, the `testGraderChain` over `X, Y, Z` guarantees that `X`
+does not fire (a higher-priority `X` firing would make `Y` `notApplicable`, contradicting `correct`)
+and that `Z` is `notApplicable` (a later grader after a trigger). So one positive `testGrader` per
+solution plus the chain gives full coverage; add extra `testGrader` assertions only where you want to
+nail down a specific `outcome` the chain does not determine (e.g. distinguishing `incorrect` from
+`missing`, or a `partiallyCorrectFullPoints` case).
+
 # Instructions for AI (Claude)
 
 When developing a grader, do not edit the problem file, only the graders.
