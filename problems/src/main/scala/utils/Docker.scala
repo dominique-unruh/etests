@@ -103,7 +103,7 @@ object Docker {
           withBuildBound(s"Pulling docker image $image") {
             println(s"Pulling docker image $image")
             (dockerCmd ++ Seq("pull", "--platform=linux/amd64", "--", image)).!!
-            val images = (dockerCmd ++ Seq("images", "-q", "--", image)).!!
+            val images = (dockerCmd ++ Seq("images", "-q", "--", image.stripPrefix("docker.io/"))).!!
             val images2 = images.split('\n')
             logger.debug(s"$image -> ${images2.mkString(", ")}")
             if (images2.length > 1)
@@ -118,6 +118,7 @@ object Docker {
             imageId
           }
       }
+      assert(imageId.nonEmpty)
       pulledInThisSession += (image -> imageId)
       PersistentCache.put(cacheKey, (currentTimeMillis(), imageId).asJson.noSpaces.getBytes(UTF_8))
 
@@ -245,6 +246,7 @@ object Docker {
                                  requestedOutputs: Seq[String],
                                  hashKey: String): DockerResult = {
     val tempDir = Utils.getTempDir
+    assert(imageId.nonEmpty)
 
     for ((file, content) <- files) {
       Files.write(tempDir.resolve(file), content)
