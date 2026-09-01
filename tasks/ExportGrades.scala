@@ -49,7 +49,7 @@ object ExportGrades extends Task {
         "registration" -> regno.number,
         "name" -> allStudentsRow.name,
         "email" -> allStudentsRow.email,
-        "filename" -> filename.toString)
+        "filename" -> filename.getFileName.toString)
       println(s"${allStudentsRow.name}, ${regno}, $grade")
     }
   }
