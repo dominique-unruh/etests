@@ -1,6 +1,7 @@
 import TaskContext.{/, allStudents, exam, gradingReportDir, gradingResultSpreadsheet, rwthOnlineCSV, scheinDir}
 import assessments.Exam.courseName
 import assessments.{RegistrationNumber, Task}
+import externalsystems.RWTHOnlineGrades.SpecialGrade.isNonparticipationGrade
 import externalsystems.Schein.Student
 import externalsystems.Spreadsheet.Format.CSV
 import externalsystems.Spreadsheet.Index
@@ -19,7 +20,7 @@ object ExportGrades extends Task {
 
   val rwthOnlineGradesUpdated = rwthOnlineGrades.map { entry =>
     results.lookupOption("student", entry.registrationNumber.number) match {
-      case None => assert(entry.grade.isEmpty); entry
+      case None => assert(entry.grade.isEmpty || isNonparticipationGrade(entry.grade), entry.grade); entry
       case Some(row) => entry.setGrade(row.grade)
     }
   }

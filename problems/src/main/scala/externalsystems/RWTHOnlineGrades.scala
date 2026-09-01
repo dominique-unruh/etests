@@ -3,6 +3,7 @@ package externalsystems
 import com.github.tototoshi.csv.{CSVFormat, CSVReader, CSVWriter, DefaultCSVFormat, QUOTE_ALL, Quoting}
 import RWTHOnlineGrades.{Entry, Headers, registrationNumberIndex, given}
 import assessments.RegistrationNumber
+import externalsystems.RWTHOnlineGrades.SpecialGrade.medicalCertificate
 import externalsystems.Spreadsheet.Row
 import externalsystems.Spreadsheet.ValidationRule.UniqueColumn
 import utils.Utils
@@ -83,5 +84,17 @@ object RWTHOnlineGrades {
       .addValidationRule(UniqueColumn(Headers.registrationNumber))
       .forgetPath // Make sure we don't overwrite original accidentally
     RWTHOnlineGrades(spreadsheet)
+  }
+
+  enum SpecialGrade(val grade: String, val description: String) {
+    case medicalCertificate extends SpecialGrade("Q-Q", "medical certificate")
+  }
+  object SpecialGrade {
+    lazy val fromGrade : Map[String, SpecialGrade] = SpecialGrade.values.map(g => g.grade -> g).toMap
+    val nonparticipationGrades: Set[SpecialGrade] = Set(medicalCertificate)
+    def isNonparticipationGrade(grade: String): Boolean = fromGrade.get(grade) match {
+      case Some(value) => nonparticipationGrades.contains(value)
+      case None => false
+    }
   }
 }
