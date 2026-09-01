@@ -42,13 +42,13 @@ object ExportGrades extends Task {
         grade = Some(grade)
       )
       Files.createDirectories(scheinDir)
-      val filename = s"Schein ${allStudentsRow.name} ${regno}.pdf"
-      Files.write(scheinDir / filename, Schein.pdf(exam, student))
+      val filename = scheinDir / s"Schein ${allStudentsRow.name} ${regno}.pdf"
+      Files.write(filename, Schein.pdf(exam, student))
       mailing += Map(
         "registration" -> regno.number,
         "name" -> allStudentsRow.name,
         "email" -> allStudentsRow.email,
-        "filename" -> filename)
+        "filename" -> filename.toString)
       println(s"${allStudentsRow.name}, ${regno}, $grade")
     }
   }
