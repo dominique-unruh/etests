@@ -201,9 +201,19 @@ need to assert the reference case by hand.
 `testGraderGroup` already guarantees the group's rules are mutually exclusive, and the reference check
 pins down the fully-correct case. So for a given solution it is enough to assert, with **one**
 `testGrader`, the grader that is *supposed* to fire. You do **not** need to add
-`testGrader(…, doesntFire)` for the other graders on that same solution. Add extra `testGrader`
-assertions only where you want to nail down something the group/reference checks don't — e.g. a
-`firesPartially(p)` boundary, or that a specific non-fire really is `doesntFire` for a tricky input.
+`testGrader(…, doesntFire)` for the other graders on that same solution.
+
+Precise rule: a `testGrader(Y, S, doesntFire)` is **redundant** — delete it — whenever some grader `X`
+in the **same group** as `Y` has a `testGrader(X, S, fires)` (and `X` ≠ `Y`). Reason: `testGraderGroup`
+asserts ≤ 1 grader fires on `S`, and the `fires` test proves `X` is that one, so every sibling
+necessarily `doesntFire`. This applies to `referenceSolution` too (its full rule fires, per the
+reference check).
+
+The rule does **not** apply when **no** grader in the group fires on `S` (empty/zero/scalar/wrong-size/
+invalid-input cases, and any "wrong but matches nothing" answer): the group test only bounds the count
+at ≤ 1, so it cannot prove a *specific* grader is `doesntFire`. Keep those `doesntFire` assertions.
+Also keep extra `testGrader`s that nail down something the group/reference checks don't — e.g. a
+`firesPartially(p)` boundary.
 
 # Instructions for AI (Claude)
 
