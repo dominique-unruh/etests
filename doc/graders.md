@@ -180,10 +180,17 @@ testGraderGroup(name = "distinctGraders",
   graders = Seq("correctGrader", "grader12", "grader1"))
 ```
 
-Asserts that **at most one** of the listed graders fires (fully or partially), each run in isolation,
-for the solution. Use it for a group of rules meant to be mutually exclusive (e.g. a priority chain
-wired with `unless`): it guarantees the graders' own verdicts never overlap, so the `unless` wiring
-only ever has to suppress a rule that would not have fired anyway.
+Asserts that **at most one** of the listed graders fires in the *actual* grading of the solution —
+i.e. grading the whole assessment (which honors each rule's `unless`; a rule suppressed by an
+`unless` counts as `notApplicable`, not fired). Use it for a priority chain of mutually-exclusive
+rules: it checks that the rules **together with their `unless` wiring** never award two of them at
+once — the real double-credit failure mode (a missing or wrong `unless`).
+
+Unlike `testGrader` (which runs one grader in isolation), this runs the joint grading, so the
+graders need **not** be mutually exclusive on their own. A lower rule may fire in isolation as long
+as a higher rule's `unless` suppresses it here; the group only fails if two rules survive `unless`
+and both fire. (It runs with exceptions **not** caught, so a `missingGrader`/throwing grader fails
+the test.)
 
 If `solution` is omitted (the default), the check runs **once for each** test solution —
 `referenceSolution`, `emptySolution`, and every `Answers` val you declared — so a single
@@ -196,24 +203,29 @@ points, **no** partial (`partial = true`) rule fires, **every** full positive ru
 `notApplicable` because a higher rule fired), and **no** negative (penalty) rule fires. So you rarely
 need to assert the reference case by hand.
 
-## You do not need `testGrader` for every grader × solution
+## `testGrader` (isolation) vs `testGraderGroup` (joint): what to assert
 
-`testGraderGroup` already guarantees the group's rules are mutually exclusive, and the reference check
-pins down the fully-correct case. So for a given solution it is enough to assert, with **one**
-`testGrader`, the grader that is *supposed* to fire. You do **not** need to add
-`testGrader(…, doesntFire)` for the other graders on that same solution.
+`testGrader` runs one grader **in isolation** (ignoring `unless`); `testGraderGroup` grades the
+assessment **jointly** (applying `unless`) and checks ≤ 1 of the group fires. They cover different
+things, so use each for what it covers and don't duplicate.
 
-Precise rule: a `testGrader(Y, S, doesntFire)` is **redundant** — delete it — whenever some grader `X`
-in the **same group** as `Y` has a `testGrader(X, S, fires)` (and `X` ≠ `Y`). Reason: `testGraderGroup`
-asserts ≤ 1 grader fires on `S`, and the `fires` test proves `X` is that one, so every sibling
-necessarily `doesntFire`. This applies to `referenceSolution` too (its full rule fires, per the
-reference check).
+For a solution `S`, assert with **one** `testGrader(X, S, fires)` the rule `X` whose *own case* `S`
+is. You do **not** need `testGrader(Y, S, doesntFire)` for a sibling `Y` that is meant to be excluded
+only by `unless`: such a `Y` may legitimately fire *in isolation* (graders need not self-guard against
+higher rules — that is what `unless` is for), and the joint `testGraderGroup` is what guarantees `Y`
+is suppressed so only `X` is awarded. Writing `testGrader(Y, S, doesntFire)` in that situation is not
+just redundant, it can be **wrong** — it would fail on a correct grader that relies on `unless`.
 
-The rule does **not** apply when **no** grader in the group fires on `S` (empty/zero/scalar/wrong-size/
-invalid-input cases, and any "wrong but matches nothing" answer): the group test only bounds the count
-at ≤ 1, so it cannot prove a *specific* grader is `doesntFire`. Keep those `doesntFire` assertions.
-Also keep extra `testGrader`s that nail down something the group/reference checks don't — e.g. a
-`firesPartially(p)` boundary.
+Do keep a `testGrader(Y, S, doesntFire)` when `Y` genuinely should **not** fire on `S` **on its own
+merits** — i.e. `S` is not `Y`'s case at all (a wrong / empty / malformed answer that `Y` must reject),
+independently of any `unless`. Those pin the grader's own logic and the group cannot replace them (it
+only bounds the count). Likewise keep `testGrader`s that nail down a `firesPartially(p)` boundary.
+If a `testGraderGroup` and a fire-test for another grader together already imply that `Y` doesn't fire,
+no need to test that `Y` doesn't fire.
+
+
+The reference-solution check already covers `referenceSolution` (the full rule fires, no partial rule
+fires), so you rarely need to assert that case by hand.
 
 # Instructions for AI (Claude)
 

@@ -328,10 +328,17 @@ abstract class MarkdownAssessment extends TestSuite {
     addTest(testCase)
   }
 
-  /** Tests that **at most one** of the given graders fires (fully or partially), each run in
-   * isolation. Use this for a group of mutually-exclusive rules (e.g. a priority chain wired with
-   * `unless`): it guarantees the graders' own verdicts never overlap, so the `unless` wiring only ever
-   * has to suppress a rule that would not have fired anyway.
+  /** Tests that **at most one** of the given graders fires in the *actual* grading of `solution` —
+   * i.e. grading the whole assessment via [[Assessment.gradeAll]], which honors each rule's `unless`
+   * (a rule that is suppressed by an `unless` shows as `notApplicable`, not fired). Use this for a
+   * priority chain of mutually-exclusive rules: it verifies that the rules together with their
+   * `unless` wiring never award two of the group's rules at once — the real double-credit failure
+   * mode. Because `unless` is applied here, the graders need **not** be mutually exclusive in
+   * isolation: a lower rule may fire on its own as long as a higher rule's `unless` suppresses it in
+   * the joint grading.
+   *
+   * Runs with `catchExceptions = false`, so a grader that throws (e.g. `missingGrader`) fails the
+   * test rather than being silently counted as not-fired.
    *
    * @param graders  the grading elements (by name or directly) that should be mutually exclusive.
    * @param solution the answers to grade against. If `null` (default), the check runs once for **each**
@@ -347,13 +354,13 @@ abstract class MarkdownAssessment extends TestSuite {
     val testName = Option(name).getOrElse(s"grader group (≤1 fires): ${elements.map(_.name).mkString(", ")}")
     def check(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
       val answers = answersImmutable
-      val firedGraders = elements.filter { element =>
-        val (outcome, _) = element.runGrader(
-          exam = DummyExam, assessment = this.assessment, registrationNumber = None, answers = answers).awaitResult()
-        outcome.fired
-      }
+      // Grade the whole assessment jointly so each rule's `unless` is applied; then count how many of
+      // the group's rules actually fired (a suppressed rule is `notApplicable`, i.e. not fired).
+      val feedbacks = this.assessment.gradeAll(
+        exam = DummyExam, answers = answers, registrationNumber = None, catchExceptions = false).awaitResult()
+      val firedGraders = elements.filter(element => feedbacks(element.name).fired)
       assert(firedGraders.length <= 1,
-        s"More than one grader fired for $answers: ${firedGraders.map(_.name).mkString(", ")}.")
+        s"More than one grader fired (joint grading, honoring `unless`) for $answers: ${firedGraders.map(_.name).mkString(", ")}.")
     }
     testOverall(solution = solution, test = check, name = testName)
   }
