@@ -135,6 +135,30 @@ errors."* even for a trivially valid input like `1`.
 Fix: bind `simp:true` locally inside the validator's block, i.e.
 `block([simp:true, ...], ...)`. `concreteReal` does this.
 
+## Gotcha: forbidden functions in question variables ("Error(s) in question-variables")
+
+STACK applies its CAS security model to the question variables (not just to student input), so a
+call to a function on its forbidden list makes the *whole* question-variables block fail. Dynexite
+surfaces this as *"Stack Error: Error(s) in question-variables"* on upload; STACK's own validator
+reports *"Forbidden function: `<name>`"*. This bit `MoodleValidationHelpers.texSingleArgKet(dim)`,
+whose first version zero-padded the ket label with `printf(false, "~3,'0d", x)` — `printf` is
+forbidden. It now pads with a `while`/`sconcat`/`slength` loop, which are allowed. Common building
+blocks that *are* allowed: `sconcat`, `string`, `slength`, `substring`, `simplode`, `smake`, `ssubst`,
+`while`, `block`, `if`.
+
+You can check a single definition without a full export using STACK's keyval validator:
+`(new stack_cas_keyval($def, null, 0))->get_valid()` / `->get_errors(false, 'strings')` in the
+`:opt` image — a forbidden function makes `get_valid()` return `false` with the message above.
+
+## Gotcha: `\rangle` disappears when the definition is built with Scala's `s"""..."""`
+
+Maxima's string literal needs `"\\rangle"` (two backslashes) to render a single LaTeX `\rangle`. In a
+plain triple-quoted Scala string (`"""..."""`, e.g. the no-arg `texSingleArgKet`) `\\rangle` already
+means two backslashes. But the `s`-interpolator applies escape processing, so inside `s"""..."""`
+you must write `\\\\rangle` (four) to emit two. Getting this wrong drops the backslash and the
+answer renders as `|000rangle` instead of `|000⟩`. The `texSingleArgKet(dim)` overload uses four
+backslashes for exactly this reason.
+
 ## Writing / testing your own validator
 
 Add a new `FunctionDefinition` to `MoodleValidationHelpers` (or build one inline). Rules of thumb:
