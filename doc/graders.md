@@ -217,11 +217,15 @@ is suppressed so only `X` is awarded. Writing `testGrader(Y, S, doesntFire)` in 
 just redundant, it can be **wrong** — it would fail on a correct grader that relies on `unless`.
 
 Do keep a `testGrader(Y, S, doesntFire)` when `Y` genuinely should **not** fire on `S` **on its own
-merits** — i.e. `S` is not `Y`'s case at all (a wrong / empty / malformed answer that `Y` must reject),
+merits** — i.e. `S` is not `Y`'s case at all (a wrong / malformed answer that `Y` must reject),
 independently of any `unless`. Those pin the grader's own logic and the group cannot replace them (it
 only bounds the count). Likewise keep `testGrader`s that nail down a `firesPartially(p)` boundary.
 If a `testGraderGroup` and a fire-test for another grader together already imply that `Y` doesn't fire,
 no need to test that `Y` doesn't fire.
+
+The **empty solution** is a special case: a `testGrader(Y, emptySolution, doesntFire)` is **redundant**
+— the built-in "No answers, no points?" test already forces the empty solution to 0 points, so no
+positive rule can fire there. Don't write per-grader `doesntFire` tests for `emptySolution`.
 
 
 The reference-solution check already covers `referenceSolution` (the full rule fires, no partial rule
