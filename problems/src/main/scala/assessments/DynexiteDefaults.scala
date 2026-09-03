@@ -1,7 +1,7 @@
 package assessments
 
-import assessments.GradingContext.Outcome.{correct, notApplicable, incorrect, missing}
-import assessments.GradingContext.{GradeBlockExit, answers, answersImmutable, comments}
+import assessments.GradingContext.GraderOutcome.{doesntFire, fires}
+import assessments.GradingContext.{GraderOutcome, answers, answersImmutable, comments}
 import assessments.math.Math
 import assessments.math.Math.Ops
 
@@ -20,7 +20,6 @@ import utils.Utils.awaitResult
 import java.io.IOException
 import scala.collection.{SeqMap, immutable}
 import scala.util.Random
-import scala.util.boundary.Label
 
 object DynexiteDefaults {
 //  given sympyCache: Cache[SympyExpr] = CaffeineCache[SympyExpr]
@@ -167,91 +166,31 @@ object DynexiteDefaults {
 
   def grading(text: GradingContext ?=> InterpolatedMarkdown[HtmlConvertible],
               reachablePoints: Points,
-              grader: (context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]) ?=> Unit,
-              name: String = null)
+              grader: (context: GradingContext, exceptionContext: ExceptionContext) ?=> GraderOutcome,
+              name: String = null,
+              partial: Boolean = false,
+              negative: Boolean = false,
+              unless: Seq[ElementName] = Seq.empty)
              (using implicitName: ImplicitName[ElementName, name.type]) : GradingElement = {
     if (implicitName.name.name == "question") // Inlined in the markdown, not a good default
       throw RuntimeException("grading called inside question markdown. Put into own val or pass name parameter.")
-    GradingElement(implicitName.name, reachablePoints, text, grader)
+    GradingElement(implicitName.name, reachablePoints, text, grader, negative = negative, partial = partial, unless = unless)
   }
 
-  def missingGrader(using context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]): Unit =
+  def missingGrader(using context: GradingContext, exceptionContext: ExceptionContext): GraderOutcome =
     throw ExceptionWithContext("Grader not implemented")
 
-  def equalsReference(element: AnswerElement)(using context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]): Unit = {
-    if (element.stringValue == "")
-      context.outcome = missing
-    else if (element.stringValue == element.reference) {
-      context.outcome = correct
-      context.points += context.reachablePoints
-    } else
-      context.outcome = incorrect
-  }
+  def equalsReference(element: AnswerElement)(using context: GradingContext, exceptionContext: ExceptionContext): GraderOutcome =
+    if (element.stringValue == element.reference) fires else doesntFire
 
   //noinspection AccessorLikeMethodIsUnit
-  def isOneOf(element: AnswerElement, options: String*)(using context: GradingContext, exceptionContext: ExceptionContext, label: Label[GradeBlockExit]): Unit = {
+  def isOneOf(element: AnswerElement, options: String*)(using context: GradingContext, exceptionContext: ExceptionContext): GraderOutcome = {
     assert(!options.contains(""))
     for (case mc : MultipleChoice <- Some(element))
         assert(options.toSet.subsetOf(mc.options.keySet))
-    if (element.stringValue == "")
-      context.outcome = missing
-    else if (options contains element.stringValue) {
-      context.outcome = correct
-      context.points += context.reachablePoints
-    } else
-      context.outcome = incorrect
+    if (options.contains(element.stringValue)) fires else doesntFire
   }
 
 
-  /** Checks for equality of two Sympy expressions (`x==y`?)
-   * Up to mathematical equivalence, as far as can be figured out (somewhat heuristic).
-   *
-   * @param x Either a sympy expression, or an answer field
-   *          (in which case the sympy expression will automatically be retrieved).
-   * @param y Analogous to `x`
-   * @param assumption Assumption to pass to Sympy (e.g., all variables are positive).
-   */
-  @deprecated
-  def checkEq(x: => InputElement | SympyExpr,
-              y: => InputElement | SympyExpr,
-              assumption: SympyAssumption = SympyAssumption.positive)
-             (using context: GradingContext, exceptionContext: ExceptionContext): Boolean =
-    try {
-      def toSympy(value: InputElement | SympyExpr) = value match {
-        case x: InputElement => x.sympy
-        case x: SympyExpr => x
-      }
-      checkEquality(toSympy(x), toSympy(y), assumption=assumption)
-    } catch
-      case e : SyntaxError =>
-        comments += e.getMessage; false
-  
-  def gradeInputGroup(inputs: Seq[(AnswerElement, String)],
-                      pointsPerOption: Points = null, pointsTotal: Points = null)
-                     (using context: GradingContext): Unit = {
-    assert(inputs.nonEmpty)
-    assert(pointsPerOption != null || pointsTotal != null)
-    if (pointsPerOption != null && pointsTotal != null)
-      assert(pointsTotal == pointsPerOption * inputs.length, (pointsTotal, pointsPerOption))
-    val pointsPerOption2 = if (pointsPerOption==null) pointsTotal / inputs.length else pointsPerOption
-    val pointsTotal2 = if (pointsTotal==null) pointsPerOption * inputs.length else pointsTotal
-
-    var points: Points = 0
-
-    for ((input, description) <- inputs) {
-      val stringValue = input.stringValue 
-      if (stringValue == input.reference)
-        assert(stringValue == "" || input.asInstanceOf[MultipleChoice].options.contains(stringValue))
-        comments += s"$description: Correct."
-        points += pointsPerOption2
-      else if (stringValue == "")
-        comments += s"$description: Incorrect. (You selected nothing, should be '${input.reference}')"
-      else
-        comments += s"$description: Incorrect. (You said '${stringValue}', should be '${input.reference}')"
-    }
-
-    GradingContext.points += points
-  }
-  
   def todo(message: String | HtmlConvertible): TodoElement = TodoElement(message)
 }

@@ -1,6 +1,5 @@
 package assessments
 
-import assessments.GradingContext.{comments, done, points}
 import assessments.InterpolatedMarkdown.md
 import assessments.pageelements.{Element, RenderContext, StaticElement}
 import io.circe.Json
@@ -84,11 +83,6 @@ object ArchivedExam {
     private def maybeElement(element: Option[StaticElement | HtmlConvertible]) : StaticElement | HtmlConvertible = element match {
       case Some(e) => e
       case None => Html("")
-    }
-
-    override def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
-      comments += "No actual grading in archived question."
-      points += reachablePoints
     }
   }
 

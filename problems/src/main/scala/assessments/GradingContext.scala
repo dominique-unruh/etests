@@ -1,64 +1,79 @@
 package assessments
 
 import scala.language.implicitConversions
-import assessments.Comment.Format.markdown
-import assessments.Comment.Kind.feedback
-import assessments.GradingContext.{Case, GradeBlockExit}
 import assessments.pageelements.AnswerElement
 
-import scala.annotation.targetName
 import scala.collection.mutable
-import scala.util.boundary
-import scala.util.boundary.{Break, Label, break}
 
-/** Contains all information (including mutable one) that is relevant when grading a problem (except for
- * the problem itself).
+/** Contains all information (including mutable one) that is relevant when grading a single grading
+ * rule (except for the problem itself).
+ *
+ * A grader reads the student's [[answers]] (and may rewrite them for cleanup), may add [[comments]],
+ * and refers to the reachable points of its rule as [[GradingContext.max]]. It returns its verdict as
+ * a [[GradingContext.GraderOutcome]] (it does not award points directly — the points follow from the
+ * outcome and the rule's configuration; see [[pageelements.GradingElement]]).
  *
  * Not thread safe!
  * */
 case class GradingContext private (private val answers: mutable.Map[ElementName, String], val registrationNumber: String,
-                                   private val reachable: Points, private val label: Option[Label[GradeBlockExit]],
+                                   private val reachable: Points,
                                    val assessment: MarkdownAssessment) {
-  val points = Points.Mutable(0)
 
-  /** Grader-set verdict for this (sub)context. Defaults to [[GradingContext.Outcome.unspecified]]. */
-  var outcome: GradingContext.Outcome = GradingContext.Outcome.unspecified
-
-  /** Reachable points for this (sub)context (the current grade block / inline grader). */
+  /** Reachable points for the current grading rule. */
   def reachablePoints: Points = reachable
 
-  private [GradingContext] def subcontext(reachable: Points, label: Label[GradeBlockExit]): GradingContext =
-    copy(answers=answers.clone(), registrationNumber = registrationNumber, reachable = reachable, label = Some(label))
-
-  private [GradingContext] def mergeSubcontext(context: GradingContext): Unit = {
-    points += context.points
-    comments += NestedComment(context.comments.toSeq, kind=feedback)
-    if (context.outcome != GradingContext.Outcome.unspecified)
-      outcome = context.outcome
-  }
-
-  private [GradingContext] def assertLabel(label: Label[GradeBlockExit])
-                                          (using exceptionContext: ExceptionContext): Unit =
-    assert(this.label.isDefined && (this.label.get eq label))
-
   private val comments: mutable.IndexedBuffer[Comment] = mutable.ArrayDeque[Comment]()
-
 }
 
 object GradingContext {
-  case class GradeBlockExit private[GradingContext] (abort: Boolean)
+  /** A grader's verdict about a student's answer for a single grading rule. The awarded points follow
+   * from this outcome together with the rule's configuration (`reachablePoints`, `negative`); a grader
+   * never manipulates points directly.
+   *
+   *  - [[fires]]: the rule applies fully — the rule's full points are added (positive rule) or
+   *    subtracted (negative rule).
+   *  - [[firesPartially]]: the rule applies partially — `points` are added/subtracted; must satisfy
+   *    `0 < points < reachablePoints` (checked when the outcome is used, else an exception is thrown).
+   *  - [[doesntFire]]: the rule does not apply — no points. */
+  enum GraderOutcome {
+    case fires
+    case firesPartially(points: Points)
+    case doesntFire
 
-  /** A grader's verdict about a student's answer, independent of the awarded points.
-   * Set inside a grader via `outcome = Outcome.correct` (etc.); surfaced as a badge in the webapp. */
-  enum Outcome {
-    case unspecified, missing, notApplicable, correct, incorrect, partiallyCorrect, partiallyCorrectFullPoints
+    /** Whether this outcome counts as the rule having "fired" (fully or partially). Used to decide
+     * `unless` suppression and mutual-exclusion tests. */
+    def fired: Boolean = this match {
+      case doesntFire => false
+      case _ => true
+    }
+  }
+
+  /** The visual badge shown for a grading rule in the solution/grading view. Decoupled from
+   * [[GraderOutcome]]: the same outcome maps to different badges depending on whether the rule is
+   * positive/negative and full/partial. See [[pageelements.GradingElement.displayFor]].
+   *
+   *  - [[correct]]: green check (positive full rule fired).
+   *  - [[partial]]: yellow circle (partial rule fired, or a rule fired only partially).
+   *  - [[incorrect]]: red cross (positive rule did not fire).
+   *  - [[penalized]]: red check (negative full rule fired — a penalty was applied).
+   *  - [[noPenalty]]: green cross (negative rule did not fire — no penalty).
+   *  - [[notApplicable]]: gray n/a (rule not evaluated because an `unless` rule fired).
+   *  - [[error]]: the grader threw. */
+  enum DisplayOutcome {
+    case correct, partial, incorrect, penalized, noPenalty, notApplicable, error
+
+    /** Short badge glyph (the color conveys good/bad; see `_solution.scss` / `grading.ts`). */
+    def glyph: String = this match {
+      case DisplayOutcome.correct | DisplayOutcome.penalized => "✓"  // check (green=correct, red=penalty applied)
+      case DisplayOutcome.partial => "◐"                             // half circle
+      case DisplayOutcome.incorrect | DisplayOutcome.noPenalty => "✗" // ballot X (red=wrong, green=no penalty)
+      case DisplayOutcome.notApplicable => "n/a"
+      case DisplayOutcome.error => "⚠"                               // warning sign
+    }
   }
 
   def comments(using context: GradingContext): mutable.IndexedBuffer[Comment] = context.comments
-  def points(using context: GradingContext): Points.Mutable = context.points
-  def points_=(points: Points)(using context: GradingContext): Unit = context.points := points
-  def outcome(using context: GradingContext): Outcome = context.outcome
-  def outcome_=(outcome: Outcome)(using context: GradingContext): Unit = context.outcome = outcome
+
   def answers(using context: GradingContext): mutable.Map[ElementName | AnswerElement, String] = new mutable.Map {
     private val answers = context.answers
     private def toName(name: ElementName | AnswerElement): ElementName = name match
@@ -78,52 +93,10 @@ object GradingContext {
 
   def apply(answers: Map[ElementName, String], registrationNumber: String, reachable: Points,
             assessment: MarkdownAssessment): GradingContext =
-    new GradingContext(answers.to(mutable.Map), registrationNumber, reachable, label = None, assessment = assessment)
+    new GradingContext(answers.to(mutable.Map), registrationNumber, reachable, assessment = assessment)
 
-  /** To be used inside [[GradingContext.gradeBlock]] */
+  /** Reachable points for the current grading rule (to be used inside a grader). */
   def max(using context: GradingContext): Points = context.reachable
-
-  /** To be used inside [[GradingContext.gradeBlock]].
-   * Exits the current grade block (by default without rolling back).
-   * @param points Points to give in the grade block
-   * @param comment Add this comment (same as `comments += comment`)
-   * @param condition If this is false, to [[abort()]] instead
-   * */
-  def done(points: Points = null, comment: String = null, condition: Boolean = true)
-          (using context: GradingContext, label: Label[GradeBlockExit], exceptionContext: ExceptionContext): Nothing = {
-    if (!condition)
-      abort()
-    context.assertLabel(label)
-    if (points != null) {
-      if (context.points != Points.zero)
-        throw ExceptionWithContext(s"done(points=...) called after context.points += .... Use one or the other within a grade block")
-      context.points += points
-    }
-    if (comment != null)
-      comments += comment
-    break(GradeBlockExit(abort = false))
-  }
-
-  def abort()(using context: GradingContext, label: Label[GradeBlockExit], exceptionContext: ExceptionContext): Nothing = {
-    context.assertLabel(label)
-    break(GradeBlockExit(abort = true))
-  }
-
-  final class Case(val name: String, val description: String, options: Set[String]) {
-    override def equals(obj: Any): Boolean =
-      throw new RuntimeException(".equals not supported on Case")
-
-    def ==(name: String): Boolean =
-      if (!options.contains(name))
-        throw RuntimeException(s"""Unknown case "$name", must be one of: ${options.mkString(", ")}.""")
-      name == this.name
-
-    override def toString: String = s"Case($name)"
-  }
-
-  object Case {
-    def unapply(arg: Case): Some[String] = Some(arg.name)
-  }
 
   @deprecated("Just use `answers(name) = ...` or `answers.updateWith(...)`.")
   def fixAnswer(name: ElementName)(f: PartialFunction[String, String])(using gradingContext: GradingContext): Unit =
@@ -134,151 +107,4 @@ object GradingContext {
   @deprecated("Just use `answers(name) = ...` or `answers.updateWith(...)`.")
   def fixAnswer(element: AnswerElement)(f: PartialFunction[String, String])(using gradingContext: GradingContext): Unit =
     fixAnswer(element.name)(f)
-
-  /** Starts a block for grading a single subproblem.
-   *
-   * In the block, you can normally add comments using `+=`.
-   * You can refer to the reachable points of the whole block as [[max]].
-   * You can exit the block with a given number of points using [[done]]`(n)`.
-   * (These will be automatically added to [[points]] and the block will be exited.
-   * An additional comment will be added saying how many points out of how many
-   * were added.)
-   *
-   * Example:
-   * {{{
-   * commenter.gradeBlock(40) {
-   *   if (everything good)
-   *     commenter += "Well done"
-   *     done(max)
-   *     if (so so)
-   *     commenter += "So so"
-   *     done(max/2)
-   *   commenter += "Sorry"
-   *   done(0)
-   * }
-   * }}}
-   *
-   * @param max  Number of reachable points for this subproblem.
-   * @param allowExitWithoutDone If `false` (default), the block must finish via `done()` / `abort()`,
-   *                             otherwise falling off the end throws. If `true`, reaching the end of
-   *                             `body` without `done()`/`abort()` simply exits normally (no abort),
-   *                             keeping whatever points were awarded. Used by inline graders, which
-   *                             may just fall through.
-   * @param body A block which does grading for the subproblem
-   * */
-  def gradeBlock(max: Points, allowExitWithoutDone: Boolean = false)(body: (GradingContext, Label[GradeBlockExit], ExceptionContext) ?=> Unit)
-                (using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
-    val (result, subcontext) = bareGradeBlock(max, allowExitWithoutDone = allowExitWithoutDone)(body)
-    if (result.abort) return
-    val reached = subcontext.points
-    assert(reached <= max)
-    assert(reached >= 0)
-    subcontext.comments += Comment.feedback(s"$reached out of $max points")
-    context.mergeSubcontext(subcontext)
-  }
-
-  def bareGradeBlock(max: Points, allowExitWithoutDone : Boolean = false)(body: (GradingContext, Label[GradeBlockExit], ExceptionContext) ?=> Unit)
-                    (using context: GradingContext, exceptionContext: ExceptionContext): (GradeBlockExit, GradingContext) = {
-    val local = Label[GradeBlockExit]()
-    val subcontext = context.subcontext(max, local)
-
-    val result =
-      try {
-        body(using subcontext, local, exceptionContext)
-        if (allowExitWithoutDone) GradeBlockExit(abort = false)
-        else
-          throw ExceptionWithContext(s"Grade block returned without using done() / abort()")
-      } catch {
-        case ex: Break[GradeBlockExit] @unchecked =>
-          if ex.label eq local then ex.value
-          else throw ex
-      }
-    (result, subcontext)
-  }
-
-  /** Allows to give grades based on trying out various combinations of criteria.
-   *
-   * If there are several cases accepted by the checker, one with most points will be used.
-   * If there is still ambiguity, with the shortest comment.
-   * Comment and points are added to this [[Commenter]].
-   * The comment is autogenerated from the matched case and the points.
-   * 0 points if no case matches.
-   *
-   * @param max          Reachable points for the subproblem at hand
-   * @param distinctions A sequence of distinctions.
-   *                     A distinction means one criterion where one has several possibilities.
-   *                     (E.g., use the reference solution -vs- use value from previous answer)
-   *                     Each distinction is a list of (name, description) where description is a human readable string.
-   *                     Empty description means the description will be omitted (for default situations).
-   *                     E.g. `Seq(Seq("ref" -> "", "your" -> "based on your previous answer"),
-   *                     Seq("equal" -> "", "approx" -> "only approximately equal"))`
-   * @param grades       For each combination of cases for each distinction, a grade is specified.
-   *                     Specified as a Seq of `pattern -> Points` where `pattern` is a string
-   *                     specifying in which cases the points are given. E.g., `"ref-approx" -> 3` would
-   *                     give 3 points for being approximately equal to the reference solution.
-   *                     Parts in the pattern can be `*` to match every case.
-   * @param checker      Takes a case (i.e., some combination of the different distinctions, like ref and approx)
-   *                     and checks whether the given solution applies to that case (e.g., is the solution approximately
-   *                     equal to the reference solution?)
-   *                     The checker needs to return its verdict by calling `break(true)` (a match) or `break(false)` (not matching this case).
-   *
-   * */
-  //noinspection ScalaUnreachableCode
-  def combinatorialGrader(max: Points, distinctions: Seq[Seq[(String, String)]],
-                          grades: Seq[(String, Points)])
-                         (checker: (GradingContext, Label[GradeBlockExit], ExceptionContext) ?=> Seq[Case] => Unit)
-                         (implicit exceptionContext: ExceptionContext, context: GradingContext): Unit = {
-    // Get the distinctions uses Case objects
-    val distinctions2 = distinctions
-      .map(options => options.map((name, description) => Case(name, description, options.map(_._1).toSet)))
-    // get all combinations of cases
-    val combos = distinctions2.foldLeft[Seq[Seq[Case]]](Seq(Seq.empty)) { (acc: Seq[Seq[Case]], additional: Seq[Case]) =>
-      for (combo <- acc;
-           add <- additional)
-      yield combo.appended(add)
-    }
-
-    def getPoints(combo: Seq[Case]): Points = {
-      val matches = grades.filter((pattern, points) =>
-        val patternParts = pattern.split("-")
-        assert(patternParts.length == combo.length)
-        combo.zip(patternParts).forall((c, p) => p == "*" || c == p)
-      )
-      if (matches.isEmpty)
-        throw ExceptionWithContext(s"No pattern matches ${combo.map(_.name).mkString("-")}")
-      if (matches.length > 1)
-        throw ExceptionWithContext(s"Several pattern matche ${combo.map(_.name).mkString("-")}, namely ${matches.map(_._1).mkString(", ")}")
-      matches.head._2
-    }
-
-    // for each combo, get whether it fits, the grade, and a comment string
-    val evaluated = for (combo <- combos)
-      yield {
-        val (result, subcontext) = bareGradeBlock(max)(checker(combo))
-        val accepted = !result.abort
-        assert(subcontext.points.get == Points.zero, subcontext.points)
-        val points: Points = if accepted then getPoints(combo) else -1 // Points should not matter if not accepted, and this makes sure we don't get errors for missing ununsed cases
-        val comment = combo.map(_.description).filter(_.nonEmpty) match
-          case Seq() => "Correct solution"
-          case cases => "Correct solution, except: " + cases.mkString(", ")
-        (combo, accepted, points, comment, subcontext)
-      }
-    //    println(evaluated)
-    evaluated
-      .filter((combo, accepted, points, comment, subcontext) => accepted)
-      .maxByOption((combo, accepted, points, comment, subcontext) => (points, -comment.length)) // Most points, from those shortest comment
-    match {
-      case Some((_, _, points, comment, subcontext)) =>
-        subcontext.comments += s"$comment. $points out of $max points."
-        subcontext.points += points
-        context.mergeSubcontext(subcontext)
-      case None =>
-        comments += s"Incorrect. 0 out of $max points."
-    }
-
-    //    println(s"Chosen: $combo $points $comment")
-
-  }
-
 }
-

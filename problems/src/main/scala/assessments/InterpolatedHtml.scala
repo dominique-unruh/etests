@@ -119,7 +119,9 @@ object HtmlConvertible {
   /** We don't import these by default to be safe from unexpected conversions. */
   object extraConversions {
     given int2html: Conversion[Int, HtmlConvertible] = toStringConversion
-    given points2html: Conversion[PointsWrapper, HtmlConvertible] = toStringConversion
+    @deprecated given points2html: Conversion[PointsWrapper, HtmlConvertible] = toStringConversion
     given double2html: Conversion[Double, HtmlConvertible] = toStringConversion
   }
+
+  given points2html: Conversion[PointsWrapper, HtmlConvertible] = toStringConversion
 }

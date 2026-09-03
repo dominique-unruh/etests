@@ -75,7 +75,6 @@ final class MultipleChoice(override val name: ElementName,
   def renderHtmlRadioStatic(selected: String): Html = {
     val html = StringBuilder()
     val groupName = name.jsElementId + Utils.uniqueId()
-    html ++= selected
     html ++= s"""<fieldset>\n"""
     html ++= s"""<label><input disabled name="$groupName" type="radio" name="" value=""${if (selected=="") " checked" else ""}/>\n"""
     html ++= notSelectedString += '\n'

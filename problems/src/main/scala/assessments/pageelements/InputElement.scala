@@ -27,7 +27,9 @@ case class InputElement(name: ElementName,
   private def renderStaticHtml(context: RenderContext, files: FileMapBuilder): Html = {
     val answer = context.studentAnswer(name).getOrElse("")
     if (useTextarea)
-      Html(s"""<textarea rows="${tags(inputElementRows)}" cols="${tags(inputElementColumns)}" type="text" readonly>${escapeHtml4(answer)}</textarea>""")
+      // Encode newlines as &#10; so the whitespace-significant textarea content is not re-indented
+      // by IndentedInterpolator when this Html is interpolated into an indented template slot.
+      Html(s"""<textarea rows="${tags(inputElementRows)}" cols="${tags(inputElementColumns)}" type="text" readonly>${escapeHtml4(answer).replace("\n", "&#10;")}</textarea>""")
     else
       Html(s"""<input type="text" size="${tags(inputElementColumns)}" readonly value="${escapeHtml4(answer)}"/>""")
   }

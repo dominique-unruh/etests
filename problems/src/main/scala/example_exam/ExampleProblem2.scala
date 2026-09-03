@@ -2,6 +2,7 @@ package example_exam
 
 import assessments.DynexiteDefaults.*
 import assessments.GradingContext.*
+import assessments.GradingContext.GraderOutcome.{doesntFire, fires}
 import assessments.InterpolatedMarkdown.md
 import assessments.pageelements.{Element, InputElement, StaticElement}
 import assessments.math.Math
@@ -42,12 +43,13 @@ $gradingRules
 
     val parsed = answer.mathTry
     if (parsed == Math.noAnswer)
-      done()
-
-    if (parsed.toSympyMC() `algebraicEqual` 10)
+      doesntFire
+    else if (parsed.toSympyMC() `algebraicEqual` 10) {
       comments += "Correct"
-      points += reachablePoints
-    else
+      fires
+    } else {
       comments += raw"Doesn't evaluate to 10, but to \(${parsed.toSympyMC().simplify.latex}\)"
+      doesntFire
+    }
   })
 }

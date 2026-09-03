@@ -56,27 +56,33 @@
     display: none;
   }
 
+  // Positive full rule fired: green check.
   &.outcome-correct {
     background-color: #2e7d32;
   }
 
+  // Partial credit (partial rule fired, or a rule fired only partially): yellow circle.
+  &.outcome-partial {
+    background-color: #f9a825;
+  }
+
+  // Positive rule did not fire: red cross.
   &.outcome-incorrect {
     background-color: #c62828;
   }
 
-  &.outcome-partiallyCorrect {
-    background-color: #f9a825;
+  // Negative (penalty) full rule fired — points were removed: red check.
+  &.outcome-penalized {
+    background-color: #c62828;
   }
 
-  &.outcome-partiallyCorrectFullPoints {
-    background-color: #1565c0;
+  // Negative (penalty) rule did not fire — no points removed: green cross.
+  &.outcome-noPenalty {
+    background-color: #2e7d32;
   }
 
-  &.outcome-missing {
-    background-color: #757575;
-  }
-
-  &.outcome-inapplicable {
+  // Rule not evaluated because an `unless` rule fired: gray n/a.
+  &.outcome-notApplicable {
     background-color: #9e9e9e;
   }
 

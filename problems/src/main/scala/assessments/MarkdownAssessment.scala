@@ -2,9 +2,8 @@ package assessments
 
 import assessments.Exam.{ExamMainRun, runOption}
 import assessments.ExceptionContext.{addToExceptionContext, initialExceptionContext}
-import assessments.GradingContext.{Outcome, answersImmutable, comments}
+import assessments.GradingContext.{GraderOutcome, answersImmutable, comments}
 import assessments.InterpolatedMarkdown.md
-import assessments.pageelements.GradingElement.Feedback
 import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, GradingElement, ProblemElement, StaticElement}
 import example_exam.ExampleProblem.question
 import externalsystems.{Dynexite, MoodleStack}
@@ -38,8 +37,6 @@ abstract class MarkdownAssessment extends TestSuite {
   private var testCases: Test = uninitialized
   def getTests: Test = { initDefaultTests; testCases }
 
-  @deprecated("Use inline graders")
-  def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {}
   lazy val reachablePoints: Points
 
   private def findMethod(elementName: ElementName) =
@@ -119,6 +116,26 @@ abstract class MarkdownAssessment extends TestSuite {
       for (case (answerElement: AnswerElement) <- assessment.pageElements.values)
         yield answerElement -> ""
     addTest(testSolution(changes = emptyReference.toSeq, expected = 0).withName("No answers, no points?"))
+
+    // On the reference solution: no partial rule should fire, every full (non-partial) positive rule
+    // should fire (or be notApplicable because a higher-priority rule fired), and no negative (penalty)
+    // rule should fire. `catchExceptions = false` so a throwing grader fails this test.
+    addTest(Test("Reference solution: rule outcomes consistent") {
+      val gradingElements = assessment.pageElements.values.collect { case e: GradingElement => e }.toSeq
+      if (gradingElements.nonEmpty) {
+        val feedbacks = assessment.gradeAll(DummyExam, referenceSolution, None, catchExceptions = false).awaitResult()
+        for (e <- gradingElements) {
+          val fb = feedbacks(e.name)
+          if (!e.negative && e.partial)
+            assert(!fb.fired, s"Partial rule ${e.name} fired on the reference solution (a partial rule should not fire when the answer is fully correct).")
+          if (!e.negative && !e.partial)
+            assert(fb.outcome != Some(GraderOutcome.doesntFire),
+              s"Full rule ${e.name} did not fire on the reference solution (and is not notApplicable).")
+          if (e.negative)
+            assert(!fb.fired, s"Negative (penalty) rule ${e.name} fired on the reference solution (should not).")
+        }
+      }
+    })
 
     addTest(Test("Class name") {
       def cleanup(input: String): String = {
@@ -216,11 +233,22 @@ abstract class MarkdownAssessment extends TestSuite {
 
   def grader(name: String): GradingElement =
     this.pageElements(ElementName(name)).asInstanceOf[GradingElement]
+  /** Registers a test asserting that the grader named `grader`, run **in isolation** (ignoring
+   * `unless`), yields the given [[GraderOutcome]] on `solution`. This tests the grader's own verdict;
+   * the interplay with other rules (mutual exclusion via `unless`, resulting `notApplicable`) is
+   * covered by [[testGraderGroup]] and the built-in reference-solution test.
+   *
+   * @param grader   the grading element, by name or directly.
+   * @param solution the answers to grade against.
+   * @param outcome  the expected [[GraderOutcome]] (`fires` / `firesPartially(...)` / `doesntFire`);
+   *                 if `null`, the outcome is not asserted (use `test` instead).
+   * @param test     an optional extra check on the rendered rule text (including any comments the
+   *                 grader produced), e.g. to assert a specific comment was added.
+   * @param name     the test name; defaults to `"Grader <name> with <solution>"`. */
   def testGrader(grader: String | GradingElement,
                  solution: Answers,
-                 outcome: Outcome = null,
-                 points: Points = null,
-                 test: Feedback => (GradingContext, ExceptionContext) ?=> Unit = null,
+                 outcome: GraderOutcome = null,
+                 test: Html => Unit = null,
                  name: String = null): Unit = {
     val gradingElement = grader match {
       case name: String => this.grader(name)
@@ -230,19 +258,12 @@ abstract class MarkdownAssessment extends TestSuite {
       if (name != null) name
       else s"Grader ${gradingElement.name} with ${solution.description}"
     val testCase = Test(testName) {
-      given context: GradingContext = GradingContext(solution.answers, "NO STUDENT", reachablePoints, this)
-      val feedback = gradingElement.computeFeedback(
-        exam = DummyExam,
-        assessment = this,
-        registrationNumber = None,
-        answers = solution,
-        catchExceptions = false).awaitResult()
+      val (result, html) = gradingElement.runGrader(
+        exam = DummyExam, assessment = this.assessment, registrationNumber = None, answers = solution).awaitResult()
       if (outcome != null)
-        assert(outcome == feedback.outcome, s"Expected: $outcome, got: ${feedback.outcome}")
-      if (points != null)
-        assert(points == feedback.points.get)
+        assert(outcome == result, s"Expected: $outcome, got: $result")
       if (test != null)
-        test(feedback)
+        test(html)
     }
     addTest(testCase)
   }
@@ -266,13 +287,8 @@ abstract class MarkdownAssessment extends TestSuite {
       if (name != null) name
       else s"Grader ${gradingElement.name} throws with ${solution.description}"
     val testCase = Test(testName) {
-      given context: GradingContext = GradingContext(solution.answers, "NO STUDENT", reachablePoints, this)
-      val result = Try(gradingElement.computeFeedback(
-        exam = DummyExam,
-        assessment = this,
-        registrationNumber = None,
-        answers = solution,
-        catchExceptions = false).awaitResult())
+      val result = Try(gradingElement.runGrader(
+        exam = DummyExam, assessment = this.assessment, registrationNumber = None, answers = solution).awaitResult())
       assert(result.isFailure)
     }
     addTest(testCase)
@@ -312,49 +328,41 @@ abstract class MarkdownAssessment extends TestSuite {
     addTest(testCase)
   }
 
-  /** Tests whether at most one of the given graders triggers.
-   * More specifically: if one is correct or partially correct or partially correct full points or has nonzero points,
-   *      then all later ones need to be notApplicable. And if a grader is notApplicable,
-   *      at least one earlier in the chain needs to have triggered.
+  /** Tests that **at most one** of the given graders fires in the *actual* grading of `solution` —
+   * i.e. grading the whole assessment via [[Assessment.gradeAll]], which honors each rule's `unless`
+   * (a rule that is suppressed by an `unless` shows as `notApplicable`, not fired). Use this for a
+   * priority chain of mutually-exclusive rules: it verifies that the rules together with their
+   * `unless` wiring never award two of the group's rules at once — the real double-credit failure
+   * mode. Because `unless` is applied here, the graders need **not** be mutually exclusive in
+   * isolation: a lower rule may fire on its own as long as a higher rule's `unless` suppresses it in
+   * the joint grading.
    *
-   * The graders are considered in the given order, which must be their priority order (highest first).
-   * A grader "triggers" if its outcome is `correct`, `partiallyCorrect`, or `partiallyCorrectFullPoints`,
-   * or it awards nonzero points.
+   * Runs with `catchExceptions = false`, so a grader that throws (e.g. `missingGrader`) fails the
+   * test rather than being silently counted as not-fired.
    *
-   * @param solution the answers to grade against. If `null` (default), the check is run once for **each**
-   *                 [[Answers]] `val`/`lazy val` declared in this class (see [[testOverall]] / [[testingSolutions]]).
-   * @param name     the test name; defaults to `"grader chain: <grader1>, <grader2>, ..."`.
-   * @param graders  the grading elements (by name or directly), in descending priority order.
-   */
-  def testGraderChain(solution: Answers = null,
-                      name: String = null,
-                      graders: Seq[String | GradingElement]): Unit = {
-    def graderNames = graders.map { case e : GradingElement => e.name.toString; case e : String => e }
-    val testName = Option(name).getOrElse(s"grader chain: ${graderNames.mkString(", ")}")
-    def testChain(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
-      val answers = answersImmutable
-      val elements = graders.map {
-        case e: GradingElement => e
-        case n: String => grader(n)
-      }
-      val feedbacks = elements.map { element =>
-        (element, element.computeFeedback(exam = DummyExam, assessment = this, registrationNumber = None, answers = answers, catchExceptions = false).awaitResult())
-      }
-      def triggered(feedback: Feedback): Boolean =
-        feedback.outcome == Outcome.correct ||
-          feedback.outcome == Outcome.partiallyCorrect ||
-          feedback.outcome == Outcome.partiallyCorrectFullPoints ||
-          feedback.points.exists(_ != Points.zero)
-      // If a grader triggered, every later grader must be notApplicable.
-      for (i <- feedbacks.indices if triggered(feedbacks(i)._2); j <- (i + 1) until feedbacks.length)
-        assert(feedbacks(j)._2.outcome == Outcome.notApplicable,
-          s"Grader ${feedbacks(i)._1.name} triggered, but later grader ${feedbacks(j)._1.name} is ${feedbacks(j)._2.outcome} (expected notApplicable) for ${answers}.")
-      // If a grader is notApplicable, some earlier grader must have triggered.
-      for (i <- feedbacks.indices if feedbacks(i)._2.outcome == Outcome.notApplicable)
-        assert(feedbacks.take(i).exists { case (_, fb) => triggered(fb) },
-          s"Grader ${feedbacks(i)._1.name} is notApplicable, but no earlier grader triggered for ${answers}.")
+   * @param graders  the grading elements (by name or directly) that should be mutually exclusive.
+   * @param solution the answers to grade against. If `null` (default), the check runs once for **each**
+   *                 [[Answers]] `val`/`lazy val` declared in this class (see [[testingSolutions]]).
+   * @param name     the test name; defaults to `"grader group (≤1 fires): <grader1>, ..."`. */
+  def testGraderGroup(graders: Seq[String | GradingElement],
+                      solution: Answers = null,
+                      name: String = null): Unit = {
+    val elements = graders.map {
+      case e: GradingElement => e
+      case n: String => grader(n)
     }
-    testOverall(solution = solution, test = testChain, name = testName)
+    val testName = Option(name).getOrElse(s"grader group (≤1 fires): ${elements.map(_.name).mkString(", ")}")
+    def check(using context: GradingContext, exceptionContext: ExceptionContext): Unit = {
+      val answers = answersImmutable
+      // Grade the whole assessment jointly so each rule's `unless` is applied; then count how many of
+      // the group's rules actually fired (a suppressed rule is `notApplicable`, i.e. not fired).
+      val feedbacks = this.assessment.gradeAll(
+        exam = DummyExam, answers = answers, registrationNumber = None, catchExceptions = false).awaitResult()
+      val firedGraders = elements.filter(element => feedbacks(element.name).fired)
+      assert(firedGraders.length <= 1,
+        s"More than one grader fired (joint grading, honoring `unless`) for $answers: ${firedGraders.map(_.name).mkString(", ")}.")
+    }
+    testOverall(solution = solution, test = check, name = testName)
   }
 }
 

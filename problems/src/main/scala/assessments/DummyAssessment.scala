@@ -13,8 +13,5 @@ class DummyAssessment(override val name: String) extends MarkdownAssessment {
   assert(name != null && name != "")
   override lazy val question: InterpolatedMarkdown[Element] = Markdown("Dummy question $name")
 
-  override def grade()(using context: GradingContext, exceptionContext: ExceptionContext): Unit =
-    throw NoGraderYetException
-
   override lazy val reachablePoints: Points = 999
 }

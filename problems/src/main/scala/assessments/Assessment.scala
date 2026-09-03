@@ -1,6 +1,9 @@
 package assessments
 
 import assessments.Assessment.feedbackTimeout
+import assessments.ExceptionContext.initialExceptionContext
+import assessments.GradingContext.{DisplayOutcome, GraderOutcome}
+import assessments.pageelements.GradingElement.{Feedback, GradingExceptions}
 import assessments.pageelements.RenderContext.problem
 import assessments.pageelements.{AnswerElement, DynamicElement, Element, ElementAction, ErrorElement, GradingElement, ImageElement, InputElement, RenderContext, StaticElement}
 import com.eed3si9n.eval.Eval
@@ -13,7 +16,7 @@ import scala.collection.{SeqMap, mutable}
 import scala.util.matching.Regex
 import play.api.libs.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, JsValue}
 import utils.Tag.Tags
-import utils.{FutureCache, IndentedInterpolator, Tag, Utils}
+import utils.{FutureCache, IndentedInterpolator, Memoize, Tag, Utils, memoized}
 
 import java.io.{BufferedReader, InputStreamReader}
 import java.nio.charset.StandardCharsets
@@ -91,13 +94,97 @@ class Assessment (val name: String,
     (body, fileMapBuilder.result())
   }
 
-  def pointsReached(exam: Exam, answers: Answers, registrationNumber: Option[String]): Future[Points] = {
-    val pointIterFuture =
-      Future.traverse(pageElements.values.collect { case e: GradingElement => e }) {
-        _.pointsReached(exam, this, registrationNumber, answers)
+  def pointsReached(exam: Exam, answers: Answers, registrationNumber: Option[String]): Future[Points] =
+    gradeAll(exam, answers, registrationNumber, catchExceptions = true).map { feedbacks =>
+      feedbacks.values.map(_.points).foldLeft(0: Points)(_ + _)
+    }
+
+  /** Resolves ALL grading rules of this assessment together, honoring their `unless` dependencies, and
+   * returns each rule's [[Feedback]] (badge, points, comments). The rules are ordered topologically by
+   * `unless`; a rule is skipped (`notApplicable`, 0 points) if any rule it lists in `unless` fired.
+   *
+   * The result is memoized (per answers / student / grading-exceptions / `catchExceptions`), so the
+   * many `etest-grading` components of one problem — plus the points total — all share a single pass
+   * over the graders.
+   *
+   * @param catchExceptions if `true`, a grader that throws yields an `error` feedback (0 points) and
+   *                        grading continues; if `false`, the throw propagates (fails the future). */
+  def gradeAll(exam: Exam, answers: Answers, registrationNumber: Option[String],
+               catchExceptions: Boolean): Future[Map[ElementName, Feedback]] =
+    // Pass the grading exceptions explicitly so they are part of the memoization key (see
+    // gradeAllMemoized): editing the exceptions CSV must invalidate a previously-cached result for
+    // otherwise-identical arguments.
+    gradeAllMemoized(exam, answers, registrationNumber, catchExceptions, exam.gradingExceptions())
+
+  // Cache keys for gradeAllMemoized. `exam` is excluded (fixed per assessment, only feeds
+  // gradingExceptions); the value class GradingExceptions is keyed by its underlying map.
+  private given Memoize.Key[Exam] = Memoize.Key.constant
+  private given Memoize.Key[Answers] = Memoize.Key.by(identity)
+  private given Memoize.Key[Option[String]] = Memoize.Key.by(identity)
+  private given Memoize.Key[GradingExceptions] = Memoize.Key.by(_.map)
+
+  /** Per-instance memoization of [[gradeAll]], so the many `etest-grading` components of one problem —
+   * plus the points total — all share a single pass over the graders. Keyed on answers / student /
+   * gradingExceptions / catchExceptions. */
+  @memoized
+  private def gradeAllMemoized(exam: Exam, answers: Answers, registrationNumber: Option[String],
+                               catchExceptions: Boolean, gradingExceptions: GradingExceptions)
+      : Future[Map[ElementName, Feedback]] =
+    gradeAllUncached(exam, answers, registrationNumber, catchExceptions)
+
+  /** Topological order of the grading rules such that every rule comes after all rules it lists in
+   * `unless`. Throws on an unknown `unless` target or a dependency cycle. */
+  private def gradingOrder(elements: Seq[GradingElement])(using ExceptionContext): Seq[GradingElement] = {
+    val byName = elements.map(e => e.name -> e).toMap
+    for (e <- elements; u <- e.unless if !byName.contains(u))
+      throw ExceptionWithContext(s"Grading rule ${e.name} lists unless=$u, but no such grading rule exists in this problem")
+    val result = mutable.ListBuffer[GradingElement]()
+    val visited = mutable.Set[ElementName]()
+    val inProgress = mutable.Set[ElementName]()
+    def visit(e: GradingElement): Unit = {
+      if (visited(e.name)) return
+      if (inProgress(e.name))
+        throw ExceptionWithContext(s"Cycle in `unless` dependencies of grading rules (at ${e.name})")
+      inProgress += e.name
+      for (u <- e.unless) visit(byName(u))
+      inProgress -= e.name
+      visited += e.name
+      result += e
+    }
+    elements.foreach(visit)
+    result.toSeq
+  }
+
+  private def gradeAllUncached(exam: Exam, answers: Answers, registrationNumber: Option[String],
+                               catchExceptions: Boolean): Future[Map[ElementName, Feedback]] = {
+    given ExceptionContext = initialExceptionContext(s"Grading all rules of $name")
+    val gradingElements = pageElements.values.collect { case e: GradingElement => e }.toSeq
+    val order = gradingOrder(gradingElements)
+    val init: Future[(Map[ElementName, Feedback], Set[ElementName])] =
+      Future.successful((Map.empty, Set.empty))
+    val folded = order.foldLeft(init) { (accFuture, e) =>
+      accFuture.flatMap { case (results, fired) =>
+        e.exceptionOverride(exam, this, registrationNumber, answers) match {
+          case Some(fb) =>
+            Future.successful((results + (e.name -> fb), if (fb.fired) fired + e.name else fired))
+          case None if e.unless.exists(fired.contains) =>
+            val fb = Feedback(e.name, e.renderText(this, registrationNumber, answers), Points.zero,
+              DisplayOutcome.notApplicable, None)
+            Future.successful((results + (e.name -> fb), fired))
+          case None =>
+            e.runGrader(exam, this, registrationNumber, answers).map { case (outcome, textHtml) =>
+              val fb = Feedback(e.name, textHtml, e.signedPoints(outcome), e.displayFor(Some(outcome)), Some(outcome))
+              (results + (e.name -> fb), if (outcome.fired) fired + e.name else fired)
+            }.recover {
+              case ex: Exception if catchExceptions =>
+                val fb = Feedback(e.name, e.renderText(this, registrationNumber, answers), Points.zero,
+                  DisplayOutcome.error, None, Some(ex))
+                (results + (e.name -> fb), fired)
+            }
+        }
       }
-    for (points <- pointIterFuture) yield
-      points.map(_.getOrElse(0: Points)).sum
+    }
+    folded.map(_._1)
   }
 
   private object PointsReached extends DynamicElement {
