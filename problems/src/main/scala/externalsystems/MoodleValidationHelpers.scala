@@ -33,19 +33,47 @@ object MoodleValidationHelpers {
         |);""".stripMargin))
 
   /** Validator for a well-typed superposition of `dim`-qubit computational basis states: every
-   * `ket(...)` must be applied to a single `dim`-bit string (`ket(00...0)`, ..., `ket(11...1)`;
-   * parsed as the integers whose decimal digits are the bits, e.g. `ket(010)` -> `10`), and the
-   * whole expression must evaluate to a `2^dim`-dimensional vector (assuming `ket(...)` is such a
-   * vector). Rejects bad ket arguments (`ket(2)`, too many/few digits, several args) and non-vector
-   * expressions (a scalar, a bare variable, a dot product). `ketVector(3)` is the 3-qubit case. */
-  def ketVector(dim: Int): FunctionDefinition = {
+   * `ket(...)` must be applied to a single `dim`-symbol label, and the whole expression must evaluate
+   * to a `2^dim`-dimensional vector (assuming `ket(...)` is such a vector). Rejects bad ket arguments
+   * (`ket(2)`, `ket(1/2)`, several args) and non-vector expressions (a scalar, a bare variable, a dot
+   * product). `ketVector(3)` is the 3-qubit computational-basis case.
+   *
+   * With `variables` non-empty each label position may also hold one of those symbols (each standing
+   * for a bit), so the labels are no longer purely numeric — e.g. `ketVector(3, Seq("a", "b"))` accepts
+   * `ket(ab0)`, `ket(a0b)`, `ket(110)`, `ket(001)+ket(110)`, `1/sqrt(2)*(ket(ab0)-(-1)^a*ket(ab1))`.
+   * A finite variable list and fixed `dim` give a finite set of possible labels, so we keep the
+   * enumeration approach: every length-`dim` string over `{0, 1} ∪ variables` is enumerated and its
+   * parsed Maxima form (a decimal integer for all-digit labels, a symbol otherwise) put in `valid`;
+   * `ket(label)` is then accepted iff its argument is `member` of that list.
+   *
+   * Two subtleties: (1) Maxima parses a numeric ket label as an integer and drops leading zeros
+   * (`ket(001)` becomes `ket(1)`), so `ket(001)` and `ket(1)` are the same — the enumerated integers
+   * collapse the same way, and `[[texSingleArgKet]](dim)` re-pads for display. A consequence is that a
+   * purely numeric shorter label such as `ket(0)`/`ket(1)` also validates here (it collapses onto
+   * `000`/`001`), which conveniently also allows one-qubit partial answers. (2) Only labels whose
+   * string is either all-digit or starts with a letter are enumerable as a single Maxima atom; a
+   * digit-then-letter label (`0ab`) is not a single identifier and is dropped (STACK would not parse it
+   * as one symbol either). */
+  def ketVector(dim: Int, variables: Seq[String] = Seq.empty): FunctionDefinition = {
     require(dim >= 1, s"ketVector dimension must be >= 1: $dim")
-    val name = s"ket${dim}vector"
+    require(variables.forall(v => v.length == 1 && v.head.isLetter && v == v.toLowerCase),
+      s"ketVector variables must be single lowercase letters: $variables")
     val vectorDim = 1 << dim
-    // Valid ket labels: each dim-bit string read as a decimal integer (binary of b, leading zeros drop
-    // to the same integer, matching how STACK parses ket(010) as 10).
-    val validLabels = (0 until vectorDim).map(Integer.toBinaryString).mkString(", ")
-    val example = "0" * dim
+    val alphabet = Seq("0", "1") ++ variables
+    // All length-dim labels over the alphabet, each mapped to how STACK parses it: an integer for a
+    // pure-digit label (leading zeros collapse, e.g. 010 -> 10), the symbol itself for one starting
+    // with a letter, dropped otherwise (a digit-then-letter string is not a single Maxima atom).
+    val combos = Seq.fill(dim)(alphabet).foldRight(Seq(""))((opts, acc) => opts.flatMap(o => acc.map(o + _)))
+    val validLabels = combos.flatMap { s =>
+      if (s.forall(_.isDigit)) Some(BigInt(s).toString)
+      else if (s.head.isLetter) Some(s)
+      else None
+    }.distinct.mkString(", ")
+    val name = if (variables.isEmpty) s"ket${dim}vector" else s"ket${dim}vector${variables.mkString}"
+    val example = (variables ++ Seq.fill(dim)("0")).take(dim).mkString
+    val labelDesc =
+      if (variables.isEmpty) s"a $dim-bit string"
+      else s"a $dim-symbol string over {${alphabet.mkString(", ")}}"
     FunctionDefinition(
       name = name,
       dependencies = Seq.empty,
@@ -57,7 +85,7 @@ object MoodleValidationHelpers {
            |  if emptyp(e) then "Please enter a superposition of kets."
            |  else (
            |    r : first(e),
-           |    if not freeof(bad, r) then "Every ket must be applied to a $dim-bit string, e.g. ket($example)."
+           |    if not freeof(bad, r) then "Every ket must be applied to $labelDesc, e.g. ket($example)."
            |    elseif listp(r) and length(r) = $vectorDim then ""
            |    else "The expression must be a vector of dimension $vectorDim (a linear combination of kets)."
            |  )
