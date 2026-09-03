@@ -14,6 +14,14 @@ object MoodleStack {
   /** A guess what kind of identifiers are OK in Moodle/Stack situations */
   private val identifierRegex = "^[a-zA-Z][a-zA-Z0-9_]*$".r.anchored
 
+  /** Extra options are either a plain identifier (e.g. `simp`) or a `key:value` form (e.g. `validator:myfunc`). */
+  private val optionRegex = "^[a-zA-Z][a-zA-Z0-9_]*(:[a-zA-Z][a-zA-Z0-9_]*)?$".r.anchored
+
+  /** Extracts the name of the variable/function defined by a Maxima statement of the form
+   * `name : ...` or `name(args) := ...` (returns `None` if it does not have that shape). */
+  private def definedVariableName(definition: String): Option[String] =
+    "^\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*(\\([^)]*\\))?\\s*:=?".r.findFirstMatchIn(definition).map(_.group(1))
+
   enum InputType {
     case algebraic
     /** Input is a raw string */
@@ -47,6 +55,18 @@ object MoodleStack {
     case impliedMultiplication extends InsertStars(1)
   }
 
+  /** A named Maxima function together with the definitions it (and its sub-definitions) need. Used
+   * e.g. as a [[moodleValidation]] validator (see [[MoodleValidationHelpers]]).
+   *
+   * @param name    the name of the Maxima function.
+   * @param dependencies other function definitions this one depends on.
+   * @param definitions    the Maxima definitions of this function (one definition per string, each defining
+   *                a variable/function; must include the function `name`). */
+  case class FunctionDefinition(name: String, dependencies: Seq[FunctionDefinition], definitions: Seq[String]) {
+    /** All definitions needed by this function, including (transitively) those of its helpers. */
+    def allDefs: Seq[String] = dependencies.flatMap(_.allDefs) ++ definitions
+  }
+
   /** Represents a Moodle/Stack input field */
   case class Input(typ: InputType,
                    name: String,
@@ -57,11 +77,14 @@ object MoodleStack {
                    insertStars: InsertStars,
                    /** Size of the input field. */
                    boxsize: Int,
+                   /** Maxima variable/function definitions needed by this input (e.g. its validator
+                    * function). Merged into the question variables at export time. One definition per string. */
+                   questionVariables: Seq[String] = Seq.empty,
                   ) {
     assert(name.nonEmpty)
     assert(reference.nonEmpty)
     assert(allowWords.forall(identifierRegex.matches), allowWords)
-    assert(extraOptions.forall(identifierRegex.matches))
+    assert(extraOptions.forall(optionRegex.matches), extraOptions)
     assert(boxsize > 0)
 
     def xml: Elem =
@@ -86,7 +109,7 @@ object MoodleStack {
   }
 
   case class Question(name: String, questionText: Html,
-                      questionVariables: String = "",
+                      questionVariables: Seq[String] = Seq.empty,
                       files: Map[String, Array[Byte]] = Map.empty,
                       inputs: Seq[Input]) {
     def xml: Elem = {
@@ -116,6 +139,24 @@ object MoodleStack {
         Seq(Text("\n"), _)
       }
 
+      // Question-level variables plus the variables contributed by each input (e.g. validator
+      // functions and their shared helpers). Identical definitions are deduplicated so that a
+      // helper function used by several inputs does not clash; after that, two distinct definitions
+      // of the same variable/function name are an error.
+      val allDefinitions = (questionVariables ++ inputs.flatMap(_.questionVariables))
+        .filter(_.nonEmpty).distinct
+      val clashes = allDefinitions.groupBy(definedVariableName).collect {
+        case (Some(varName), defs) if defs.size > 1 => varName
+      }
+      if (clashes.nonEmpty)
+        throw IllegalArgumentException(s"In Moodle export of question ${this.name}, these variables are defined more than once: ${clashes.mkString(", ")}")
+      // Ensure each definition is terminated (Maxima separates statements with ; or $), otherwise a
+      // definition without a trailing terminator would glue onto the next one and cause a syntax error.
+      val allQuestionVariables = allDefinitions.map { d =>
+        val t = d.stripTrailing
+        if (t.endsWith(";") || t.endsWith("$")) t else t + ";"
+      }.mkString("\n")
+
       val footer = s"""\n<hr><p style="color: gray; font-size: smaller; text-align: right;">Optional comments (use sparingly, in case of trouble only):<br>[[input:COMMENT_FIELD]]<br/>\n""" +
         s"""[Question name: ${escapeHtml4(name)}]</p>"""
 
@@ -144,7 +185,7 @@ object MoodleStack {
           </stackversion>
           <questionvariables>
             <text>
-              {scala.xml.PCData(questionVariables)}
+              {scala.xml.PCData(allQuestionVariables)}
             </text>
           </questionvariables>
           <specificfeedback format="html">
@@ -212,15 +253,23 @@ object MoodleStack {
     val reference = inputElement.tags.getOrElse(moodleReferenceSolution,
       if (inputElement.reference != "") inputElement.reference else "?")
 
+    // A validator is exported as a `validator:<name>` extra option; its (and its sub-helpers')
+    // Maxima definitions are contributed to the question variables.
+    val (validatorOptions, validatorVariables) = inputElement.tags.get(moodleValidation) match {
+      case Some(helper) => (Seq(s"validator:${helper.name}"), helper.allDefs)
+      case None => (Seq.empty, Seq.empty)
+    }
+
     Input(
       typ = typ,
       name = name,
       reference = reference,
       forbidWords = forbidWords,
       allowWords = allowWords,
-      extraOptions = inputElement.tags(moodleExtraOptions) appended MoodleExtraOptions.allowEmpty,
+      extraOptions = (inputElement.tags(moodleExtraOptions) ++ validatorOptions) appended MoodleExtraOptions.allowEmpty,
       insertStars = inputElement.tags(moodleInsertStars),
       boxsize = inputElement.tags(InputElement.inputElementColumns),
+      questionVariables = validatorVariables,
     )
   }
 
@@ -320,7 +369,14 @@ object MoodleStack {
    * If given, only the given symbols are allowed (this differs from Moodle's defaults where 1+2 character symbols are allowed unless explicitly forbidden).
    **/
   val moodleAllowWords = Tag[InputElement, Seq[String]]()
-  val moodleQuestionVariables = Tag[Assessment, String](default="")
+  /** A STACK input validator (see [[MoodleValidationHelpers]]). The input gets the extra option
+   * `validator:<helper.name>`, and the helper's (and its sub-helpers') Maxima definitions are
+   * injected into the question variables (deduplicated across inputs). */
+  val moodleValidation = Tag[InputElement, FunctionDefinition]()
+  /** Question-level Maxima variable/function definitions (one definition per string). Merged with
+   * the definitions contributed by individual input elements (e.g. validators); identical strings
+   * are deduplicated, and defining the same name twice is an error. */
+  val moodleQuestionVariables = Tag[Assessment, Seq[String]](default = Seq.empty)
   val moodleExtraOptions = Tag[InputElement, Seq[String]](default=Seq.empty)
   object MoodleExtraOptions {
     @deprecated("Automatically added")
