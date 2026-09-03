@@ -170,11 +170,15 @@ object DynexiteDefaults {
               name: String = null,
               partial: Boolean = false,
               negative: Boolean = false,
-              unless: Seq[ElementName] = Seq.empty)
+              unless: Seq[ElementName] | String = Seq.empty)
              (using implicitName: ImplicitName[ElementName, name.type]) : GradingElement = {
+    val unless2: Seq[ElementName] = unless match {
+      case str: String => str.split(' ').map(ElementName(_))
+      case seq: Seq[_] => seq
+    }
     if (implicitName.name.name == "question") // Inlined in the markdown, not a good default
       throw RuntimeException("grading called inside question markdown. Put into own val or pass name parameter.")
-    GradingElement(implicitName.name, reachablePoints, text, grader, negative = negative, partial = partial, unless = unless)
+    GradingElement(implicitName.name, reachablePoints, text, grader, negative = negative, partial = partial, unless = unless2)
   }
 
   def missingGrader(using context: GradingContext, exceptionContext: ExceptionContext): GraderOutcome =
