@@ -63,4 +63,26 @@ object MoodleValidationHelpers {
            |  )
            |);""".stripMargin))
   }
+
+
+  /** Maxima `texput` definition that renders a single-argument `ket(x)` as `\(|x\rangle\)`. Add it to
+   * [[MoodleStack.moodleQuestionVariables]] so STACK displays ket-notation answers in bra-ket form.
+   * The argument is shown as-is; use [[texSingleArgKet]] when all kets have the same fixed number of qubits and
+   * you want leading zeros. */
+  val texSingleArgKet = """texput(ket, lambda([ex], sconcat("\\lvert ", tex1(first(ex)), "\\rangle")))"""
+
+  /** Like [[texSingleArgKet]], but renders the ket argument as a fixed-width `dim`-digit bit string,
+   * zero-padded on the left (so `ket(10)` displays as `\(|010\rangle\)` for `dim = 3`). Use only for
+   * questions whose kets all have exactly `dim` qubits (padding a differently-sized ket would mislabel
+   * it).
+   *
+   * Pads with a `while`/`sconcat` loop rather than `printf`: STACK's CAS security forbids `printf`
+   * ("Forbidden function"), which makes the whole question variables fail ("Error(s) in
+   * question-variables"). */
+  def texSingleArgKet(dim: Int): String =
+    // `\\\\rangle` (not `\\rangle`): the `s` interpolator applies escape processing (unlike the plain
+    // triple-quoted no-arg `texSingleArgKet`), so four backslashes are needed to emit the two that
+    // Maxima's string literal needs to render a single `\rangle`.
+    s"""texput(ket, lambda([ex], block([s: sconcat(first(ex))], while slength(s) < $dim do s: sconcat("0", s), sconcat("\\\\lvert ", s, "\\\\rangle"))))"""
+
 }
