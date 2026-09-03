@@ -15,6 +15,24 @@
 # changes (Dockerfile, config.php, composer manifests).
 
 services:
+  latex:
+    build:
+      context: ./latex
+    image: etests-latex
+    ports:
+      - "18081:8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    develop:
+      watch:
+        - action: rebuild
+          path: ./latex
+
   stack-parser:
     build:
       context: ./stack-parser
