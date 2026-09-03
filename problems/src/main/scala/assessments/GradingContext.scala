@@ -43,7 +43,7 @@ object GradingContext {
     /** Whether this outcome counts as the rule having "fired" (fully or partially). Used to decide
      * `unless` suppression and mutual-exclusion tests. */
     def fired: Boolean = this match {
-      case doesntFire => false
+      case GraderOutcome.doesntFire => false
       case _ => true
     }
   }
