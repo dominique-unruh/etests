@@ -62,7 +62,8 @@ object MoodleStack {
    * @param dependencies other function definitions this one depends on.
    * @param definitions    the Maxima definitions of this function (one definition per string, each defining
    *                a variable/function; must include the function `name`). */
-  case class FunctionDefinition(name: String, dependencies: Seq[FunctionDefinition], definitions: Seq[String]) {
+  case class FunctionDefinition(name: String, dependencies: Seq[FunctionDefinition] = Seq.empty, definitions: Seq[String] = Seq.empty) {
+    assert(dependencies.nonEmpty || definitions.nonEmpty)
     /** All definitions needed by this function, including (transitively) those of its helpers. */
     def allDefs: Seq[String] = dependencies.flatMap(_.allDefs) ++ definitions
   }

@@ -32,6 +32,26 @@ object MoodleValidationHelpers {
         |  )
         |);""".stripMargin))
 
+  /** Accepts only a concrete, complex-valued formula, i.e. one that evaluates to a complex number
+   * with no free variables (e.g. `1/4`, `sqrt(2)`, `2+3*i`, `i`), rejecting variables and non-numeric
+   * expressions (e.g. `ket(0)`). Unlike [[concreteReal]] it also accepts a non-zero imaginary part.
+   *
+   * Binds `simp:true` locally because STACK evaluates question variables with `simp:false`, under
+   * which `float`/`realpart` etc. stay unsimplified and the numeric checks would misfire. */
+  val concreteComplex: FunctionDefinition = FunctionDefinition(
+    name = "concretecomplex",
+    dependencies = Seq.empty,
+    definitions = Seq(
+      """concretecomplex(ans) := block([simp:true, v, r, re, im],
+        |  v : errcatch(float(rectform(ans))),
+        |  if emptyp(v) then "Please enter a value that evaluates to a concrete number."
+        |  else (
+        |    r : first(v), re : realpart(r), im : imagpart(r),
+        |    if not (numberp(re) and numberp(im)) then "Please enter a complex number (without variables)."
+        |    else ""
+        |  )
+        |);""".stripMargin))
+
   /** Validator for a well-typed superposition of `dim`-qubit computational basis states: every
    * `ket(...)` must be applied to a single `dim`-symbol label, and the whole expression must evaluate
    * to a `2^dim`-dimensional vector (assuming `ket(...)` is such a vector). Rejects bad ket arguments
