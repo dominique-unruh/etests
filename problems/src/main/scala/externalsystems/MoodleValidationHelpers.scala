@@ -18,16 +18,16 @@ object MoodleValidationHelpers {
    * Binds `simp:true` locally because STACK evaluates question variables with `simp:false`, under
    * which `float`/`realpart` etc. stay unsimplified and the numeric checks would misfire. */
   val concreteReal: FunctionDefinition = FunctionDefinition(
-    name = "concreteReal",
+    name = "concretereal",
     dependencies = Seq.empty,
     definitions = Seq(
-      """concreteReal(ans) := block([simp:true, v, r, re, im],
+      """concretereal(ans) := block([simp:true, v, r, re, im],
         |  v : errcatch(float(rectform(ans))),
         |  if emptyp(v) then "Please enter a value that evaluates to a concrete number."
         |  else (
         |    r : first(v), re : realpart(r), im : imagpart(r),
-        |    if not (numberp(re) and numberp(im)) then "Please enter a concrete value (an expression without unknowns)."
-        |    elseif not is(equal(im, 0)) then "Please enter a real-valued expression (no imaginary part)."
+        |    if not (numberp(re) and numberp(im)) then "Please enter a real number (without variables)."
+        |    elseif not is(equal(im, 0)) then "Please enter a real number (no imaginary part)."
         |    else ""
         |  )
         |);""".stripMargin))

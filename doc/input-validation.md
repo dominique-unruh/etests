@@ -97,14 +97,32 @@ definition lacking one would glue onto the next and cause a syntax error — see
 
 ## Gotcha: "the optional validator threw internal Maxima errors"
 
-STACK shows this generic message whenever the validator function errors *or is missing*. Two causes
-we have hit:
+STACK shows this generic message (lang string `inputvalidatorerrcouldnot`) whenever the validator
+call does not evaluate to a string — most often because the function is *missing*, so the call comes
+back as an unevaluated noun. Causes we have hit:
 
+* **Mixed-case validator name.** STACK is case-insensitive and lowercases identifiers when it
+  resolves the `validator:` option, so a name like `concreteReal` becomes the call `concretereal(...)`
+  while the question-variable definition keeps its original case — the two never match and the call
+  stays unevaluated. **Validator function names must be lowercase.** `inputElementToMoodle` enforces
+  this with a `require`.
 * **Unterminated question variables.** If a question variable (e.g. a `texput(...)` line) had no
   trailing `;`, the validator definition that followed it was glued on, the question variables failed
   to parse (`... is not an infix operator`), and the validator function was never defined — so
   calling it errored. The export now auto-terminates each definition (see above), which fixes this.
 * **`simp:false`.** See below.
+
+The stack-parser service now logs the real cause to stderr when a validator fails, e.g.
+`[stack validator] option "concretereal" on input "prob" did not return a string; got:
+concretereal(1) (is the validator function defined, with a lowercase name?)` — see
+`stack/input/inputbase.class.php`.
+
+* **`/parse` did not instantiate the question.** The webapp's live preview validates one input via the
+  service's `/parse` endpoint (`api/public/parseservice.php`). It used to call
+  `validate_student_response` on the input in isolation, without the compiled question variables — so a
+  validator whose function is defined in the question variables was undefined. Fixed by instantiating
+  the question (`initialise_question_from_seed`) and validating via `get_input_state`, which passes the
+  question variables into the input's validation.
 
 ## Gotcha: `simp:false`
 
@@ -119,14 +137,23 @@ Fix: bind `simp:true` locally inside the validator's block, i.e.
 
 ## Writing / testing your own validator
 
-Add a new `FunctionDefinition` to `MoodleValidationHelpers` (or build one inline). Keep the Maxima
-robust to STACK's environment (bind `simp:true`; guard evaluation with `errcatch`).
+Add a new `FunctionDefinition` to `MoodleValidationHelpers` (or build one inline). Rules of thumb:
+lowercase name; bind `simp:true`; guard evaluation with `errcatch`; return a string.
 
-The host `maxima` may be broken; a working Maxima lives in the `stack-parser` Docker image. To try a
-validator the way STACK sees it (with `simp:false`):
+Two levels of local testing:
 
-```bash
-docker run --rm -i stack-parser:latest maxima --very-quiet --batch-string='simp:false$
-concreteReal(ans) := block([simp:true, ...])$
-print(concreteReal(1))$'
-```
+* **Quick Maxima check** (function logic only). A STACK-loaded Maxima lives in the optimised service
+  image; run it with `simp:false` (STACK's setting):
+  ```bash
+  docker run --rm -i etests-stack-parser:opt \
+    /moodle-qtype_stack/stack/maxima_opt_auto <<'EOF'
+  simp:false$
+  concretereal(ans) := block([simp:true, ...]);
+  concretereal(1);
+  EOF
+  ```
+* **Full STACK validation** (the real path, catches the case/parse issues above). Export the question
+  (`extractStack`), then drive STACK's input validation in the `:opt` image via
+  `qtype_stack_question::get_input_state(inputName, [inputName => answer])` +
+  `render_validation(...)` — this mirrors the `/validate` (and `/parse`) endpoints the webapp uses.
+  This is how the bugs above were reproduced.

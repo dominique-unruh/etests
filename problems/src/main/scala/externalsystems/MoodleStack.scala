@@ -254,9 +254,14 @@ object MoodleStack {
       if (inputElement.reference != "") inputElement.reference else "?")
 
     // A validator is exported as a `validator:<name>` extra option; its (and its sub-helpers')
-    // Maxima definitions are contributed to the question variables.
+    // Maxima definitions are contributed to the question variables. The name must be lowercase:
+    // STACK lowercases the identifier when resolving the `validator:` option, so a mixed-case name
+    // would not match its definition (leading to "the optional validator threw internal Maxima errors").
     val (validatorOptions, validatorVariables) = inputElement.tags.get(moodleValidation) match {
-      case Some(helper) => (Seq(s"validator:${helper.name}"), helper.allDefs)
+      case Some(validator) =>
+        require(validator.name.matches("[a-z][a-z0-9_]*"),
+          s"Validator function name must be lowercase (STACK is case-insensitive): ${validator.name}")
+        (Seq(s"validator:${validator.name}"), validator.allDefs)
       case None => (Seq.empty, Seq.empty)
     }
 
