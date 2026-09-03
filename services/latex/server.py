@@ -156,6 +156,6 @@ class ThreadedHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
 
 
 if __name__ == "__main__":
-    server = ThreadedHTTPServer(("", 8080), Handler)
-    print("latex service listening on :8080", flush=True)
+    server = ThreadedHTTPServer(("", 8081), Handler)
+    print("latex service listening on :8081", flush=True)
     server.serve_forever()

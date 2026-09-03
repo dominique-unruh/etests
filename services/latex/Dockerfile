@@ -5,5 +5,5 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 && \
     rm -rf /var/lib/apt/lists/*
 COPY server.py /
-EXPOSE 8080
+EXPOSE 8081
 CMD ["python3", "/server.py"]
