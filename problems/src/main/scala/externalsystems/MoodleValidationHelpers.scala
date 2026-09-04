@@ -161,7 +161,9 @@ object MoodleValidationHelpers {
       else None
     }.distinct.mkString(", ")
     val name = if (variables.isEmpty) s"ket${dim}vector" else s"ket${dim}vector${variables.mkString}"
-    val example = (variables ++ Seq.fill(dim)("0")).take(dim).mkString
+    val example =
+      if (variables.nonEmpty) (variables.head ++ "0" ++ variables.mkString).take(dim)
+      else ("01" * dim).take(dim)
     val labelDesc =
       if (variables.isEmpty) s"a $dim-bit string"
       else s"a $dim-symbol string over {${alphabet.mkString(", ")}}"
