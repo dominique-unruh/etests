@@ -90,7 +90,6 @@ object GetValidRegisteredStudents extends Task {
   val rwthOnlineImport = rwthOnlineExport
     .map { entry =>
       toPublish.get(entry.registrationNumber) match
-        // TODO: remove password-info
         case Some((grade, link)) => entry.setGrade(grade).setRemark(s"Details (available temporarily): $link")
         case None => entry.setGrade("X")
     }
