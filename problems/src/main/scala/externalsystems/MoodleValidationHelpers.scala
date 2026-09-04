@@ -52,6 +52,31 @@ object MoodleValidationHelpers {
         |  )
         |);""".stripMargin))
 
+  /** Accepts only the literal answer `no` (the bare symbol), rejecting everything else. Intended as a
+   * branch of [[or]] for questions where `no` is a valid "no such value" answer alongside a formula
+   * (e.g. `or(isNo, concreteComplex)`). Pair with [[MoodleStack.moodleAllowWords]] so `no` is not
+   * treated as a forbidden variable.
+   *
+   * No `simp:true`: the check is a structural symbol comparison. */
+  val isNo: FunctionDefinition = FunctionDefinition(
+    name = "isno",
+    dependencies = Seq.empty,
+    definitions = Seq(
+      """isno(ans) := if ans = no then "" else "Please enter \"no\" or a value.";"""))
+
+  /** Combines two validators disjunctively: accepts the answer if `h1` accepts it, otherwise falls
+   * back to `h2`. If both reject, `h2`'s error message is shown (so make `h2` the main expected form
+   * and `h1` the special-case escape, e.g. `or(isNo, concreteComplex)`). Both validators are added as
+   * dependencies, so their definitions are injected too. */
+  def or(h1: FunctionDefinition, h2: FunctionDefinition): FunctionDefinition = {
+    val name = s"or${h1.name}${h2.name}"
+    FunctionDefinition(
+      name = name,
+      dependencies = Seq(h1, h2),
+      definitions = Seq(
+        s"""$name(ans) := if ${h1.name}(ans) = "" then "" else ${h2.name}(ans);"""))
+  }
+
   /** Lifts an element validator to a *set* validator: accepts a Maxima set `{...}` all of whose
    * elements pass `inner` (e.g. `setOf(concreteReal)` accepts `{-1, 1}`, `{1/2, sqrt(2)}`, rejects a
    * non-set like `5` and a set with a bad element like `{1, x}`, reporting the first element's error).
