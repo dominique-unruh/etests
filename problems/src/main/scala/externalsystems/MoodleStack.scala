@@ -53,6 +53,9 @@ object MoodleStack {
     /** Insert stars for implied multiplication only.
      * Warning: Currently unclear how to mimic that when grading and in our previews. */
     case impliedMultiplication extends InsertStars(1)
+    /** Insert stars assuming single-character variable names: a run of letters like `XZZXI` is split
+     * into the product `X*Z*Z*X*I`. */
+    case singleCharVars extends InsertStars(2)
   }
 
   /** A named Maxima function together with the definitions it (and its sub-definitions) need. Used
