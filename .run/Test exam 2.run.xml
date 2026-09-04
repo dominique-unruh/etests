@@ -1,0 +1,33 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Test exam 2" type="uTestRunConfiguration" factoryName="utest" show_console_on_std_err="false" show_console_on_std_out="false">
+    <module name="etests.exams.main" />
+    <option name="VMParameters" value="" />
+    <option name="allowRunningInParallel" value="false" />
+    <option name="alternativeJrePath" />
+    <option name="alternativeJrePathEnabled" value="false" />
+    <option name="classpathModifications">
+      <list />
+    </option>
+    <option name="defaultTargetName" />
+    <option name="envFilePaths">
+      <list />
+    </option>
+    <option name="envs">
+      <map />
+    </option>
+    <option name="passParentEnvs" value="true" />
+    <option name="programParameters" value="" />
+    <option name="projectPathOnTarget" />
+    <option name="selectedOptions">
+      <list />
+    </option>
+    <option name="testKind" value="Class" />
+    <option name="workingDirectory" value="$PROJECT_DIR$" />
+    <option name="shortenClasspath" value="NONE" />
+    <option name="testClassPath" value="y2026_iqc2.Iqc2exam" />
+    <option name="workingDirectory" value="$PROJECT_DIR$" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
