@@ -85,6 +85,44 @@ object MoodleValidationHelpers {
            |);""".stripMargin))
   }
 
+  /** Validator for a bare gate string of exactly `dim` letters drawn from `letters` (default the
+   * one-qubit gates `X,Y,Z,H,S,T,P,I`), e.g. `gateTensor(5)` accepts `XZZXI`, `XXXXX` and rejects
+   * `XZZX` (too short), `XZWXI` (`W` not a gate), `X+Y` (not a single product), `IIIII` only if `I`
+   * is excluded from `letters`.
+   *
+   * Assumes the input uses [[MoodleStack.InsertStars.singleCharVars]] with `simp:false`, so a typed
+   * run like `XZZXI` reaches the validator already parsed as the length-`dim` product `X*Z*Z*X*I`
+   * (order preserved, no powers). The check is therefore structural — a product of exactly `dim`
+   * factors, each a gate symbol — so it binds `simp:false` itself to be safe. A single-letter answer
+   * arrives as a bare atom and is handled too (and rejected unless `dim = 1`). This validates only the
+   * *shape*; whether the gate is a correct answer is up to the grader. */
+  def gateTensor(dim: Int, letters: String = "XYZHSTPI"): FunctionDefinition = {
+    require(dim >= 1, s"gateTensor dimension must be >= 1: $dim")
+    require(letters.nonEmpty && letters.forall(c => c.isLetter && c == c.toUpper) && letters.distinct == letters,
+      s"gateTensor letters must be distinct uppercase letters: $letters")
+    val name = s"gatetensor$dim${letters.toLowerCase}"
+    val lettersDisplay = letters.mkString(", ") // "X, Y, Z, ..." for both the Maxima list and the message
+    val example = letters.head.toString * dim   // e.g. "XXXXX"
+    FunctionDefinition(
+      name = name,
+      dependencies = Seq.empty,
+      definitions = Seq(
+        s"""$name(ans) := block([simp:false, letters, facs, e, bad],
+           |  letters : [$lettersDisplay],
+           |  facs : if atom(ans) then [ans]
+           |         else if op(ans) = "*" then args(ans)
+           |         else [],
+           |  if facs = [] then "Please enter a single tensor product of gate letters, e.g. $example."
+           |  else if length(facs) # $dim then sconcat("Please enter exactly $dim letters (you entered ", string(length(facs)), ").")
+           |  else (
+           |    bad : [],
+           |    for e in facs do (if not member(e, letters) then bad : cons(e, bad)),
+           |    if bad # [] then "Use only the letters $lettersDisplay."
+           |    else ""
+           |  )
+           |);""".stripMargin))
+  }
+
   /** Validator for a well-typed superposition of `dim`-qubit computational basis states: every
    * `ket(...)` must be applied to a single `dim`-symbol label, and the whole expression must evaluate
    * to a `2^dim`-dimensional vector (assuming `ket(...)` is such a vector). Rejects bad ket arguments
