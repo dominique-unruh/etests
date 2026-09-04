@@ -52,6 +52,39 @@ object MoodleValidationHelpers {
         |  )
         |);""".stripMargin))
 
+  /** Lifts an element validator to a *set* validator: accepts a Maxima set `{...}` all of whose
+   * elements pass `inner` (e.g. `setOf(concreteReal)` accepts `{-1, 1}`, `{1/2, sqrt(2)}`, rejects a
+   * non-set like `5` and a set with a bad element like `{1, x}`, reporting the first element's error).
+   * The empty set passes; pair with [[MoodleStack.MoodleExtraOptions.allowEmpty]] if that should be a
+   * valid answer. The inner validator is added as a dependency, so its definitions are injected too.
+   *
+   * No `simp:true` here (unlike the numeric validators): `setp`/`listify` are structural and `inner`
+   * binds its own `simp` locally as needed. */
+  def setOf(inner: FunctionDefinition): FunctionDefinition = {
+    val name = s"setof${inner.name}"
+    FunctionDefinition(
+      name = name,
+      dependencies = Seq(inner),
+      definitions = Seq(
+        // Prefix the element's own error with which element failed, so the message doesn't read as if
+        // the whole answer must be that thing (e.g. `{1, i}` -> "Set element \(i\): Please enter a real
+        // ...", not a bare "Please enter a real number"). No "invalid" prefix here: STACK already
+        // prepends "This answer is invalid." to the returned message. The element is shown as rendered
+        // LaTeX via `\(tex1(e)\)` (STACK feedback runs through MathJax): this both looks right and sidesteps
+        // Maxima's internal spelling of the imaginary unit (`string(i)` would print `%i`; `tex1` gives `i`).
+        // `\\\\(` in this `s"""..."""` -> Maxima source `\\(` -> one literal backslash in the string.
+        s"""$name(ans) := block([l, e, msg, r],
+           |  if not setp(ans) then "Please enter a set, e.g. {1, 2}."
+           |  else (
+           |    l : listify(ans), msg : "",
+           |    for e in l do (if msg = "" then (
+           |      r : ${inner.name}(e),
+           |      if r # "" then msg : sconcat("Set element \\\\(", tex1(e), "\\\\): ", r))),
+           |    msg
+           |  )
+           |);""".stripMargin))
+  }
+
   /** Validator for a well-typed superposition of `dim`-qubit computational basis states: every
    * `ket(...)` must be applied to a single `dim`-symbol label, and the whole expression must evaluate
    * to a `2^dim`-dimensional vector (assuming `ket(...)` is such a vector). Rejects bad ket arguments
