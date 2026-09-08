@@ -75,8 +75,8 @@ case class Exam(name: String, tags: Tags[Exam] = Tags())(val problems: MarkdownA
 
     (tags.get(Dynexite.dynexiteCourseId), tags.get(Dynexite.dynexiteExamId)) match {
       case (Some(course), Some(exam)) => println(Dynexite.examUrl(course, exam))
-      case (None, _) => println(s"Set tag dynexiteCourseId on exam ${name}")
-      case (_, None) => println(s"Set tag dynexiteExamId on exam ${name}")
+      case (None, _) => println(s"*** Set tag dynexiteCourseId on exam ${name}")
+      case (_, None) => println(s"*** Set tag dynexiteExamId on exam ${name}")
     }
 
     if (testResult.isFailure)

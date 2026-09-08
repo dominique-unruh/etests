@@ -643,6 +643,22 @@ object Dynexite {
     case _ => None
   }
 
+  /** Upload via [[uploadSingleTry]], retrying on failure up to `tries` attempts total. */
+  private def upload(questionId: String, xml: String, expectedName: String, title: String,
+                     reachablePoints: Points, cookie: String, tries: Int = 3): Unit = {
+    var attempt = 1
+    while (true) {
+      try {
+        uploadSingleTry(questionId, xml, expectedName, title, reachablePoints, cookie)
+        return
+      } catch case e: Throwable if attempt < tries =>
+        logger.warn(s"Upload to Dynexite item $questionId failed (attempt $attempt/$tries), " +
+          s"retrying: ${e.getMessage}")
+        attempt += 1
+        Thread.sleep(5000)
+    }
+  }
+
   /** Upload a Moodle/STACK question XML directly into an existing Dynexite item, via the builder
    * WebSocket (`/t/api/sub/builder/<questionId>`). The item must already exist; this overwrites its
    * (single) block's `questionXML`, `title`, and reachable points (`logic.points`). The server
@@ -651,8 +667,8 @@ object Dynexite {
    * As a safety check, the item's name must equal `expectedName` (guards against a wrong/stale
    * `dynexiteQuestionId`); a mismatch throws and nothing is uploaded. Single attempt: `cookie` is
    * supplied by the caller (a handshake rejection surfaces as [[DynexiteUnauthenticated]]). */
-  private def upload(questionId: String, xml: String, expectedName: String, title: String,
-                     reachablePoints: Points, cookie: String): Unit = {
+  private def uploadSingleTry(questionId: String, xml: String, expectedName: String, title: String,
+                              reachablePoints: Points, cookie: String): Unit = {
     val url = URI.create(s"wss://dynexite.rwth-aachen.de/t/api/sub/builder/$questionId")
     val queue = new LinkedBlockingQueue[String]()
 
