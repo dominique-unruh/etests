@@ -135,7 +135,7 @@ object MoodleStack {
         boxsize = 25,
         forbidWords = Seq.empty,
         allowWords = Seq.empty,
-        extraOptions = Seq.empty,
+        extraOptions = Seq(MoodleExtraOptions.allowEmpty),
         insertStars = InsertStars.dontInsert,
       )
 

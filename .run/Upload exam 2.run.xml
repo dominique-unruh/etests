@@ -1,0 +1,15 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Upload exam 2" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="y2026_iqc2.Iqc2exam" />
+    <module name="etests.exams.main" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="y2026_iqc2.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
