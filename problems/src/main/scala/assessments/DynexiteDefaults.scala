@@ -191,7 +191,8 @@ object DynexiteDefaults {
   def isOneOf(element: AnswerElement, options: String*)(using context: GradingContext, exceptionContext: ExceptionContext): GraderOutcome = {
     assert(!options.contains(""))
     for (case mc : MultipleChoice <- Some(element))
-        assert(options.toSet.subsetOf(mc.options.keySet))
+        if (!options.toSet.subsetOf(mc.options.keySet))
+          throw IllegalArgumentException(s"Options $options not a subset of ${mc.options.keySet}")
     if (options.contains(element.stringValue)) fires else doesntFire
   }
 
