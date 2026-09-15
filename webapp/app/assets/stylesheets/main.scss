@@ -1,4 +1,25 @@
 @media screen {
+    /* Left-edge shadow shown while an answer change is waiting for feedback from the server
+       (the `loading-data` class is set on <body> by StateManager). A fixed overlay so it does
+       not affect layout; fades in/out via opacity. */
+    body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 50px;
+        background: linear-gradient(to right, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0));
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.15s ease-in-out;
+        z-index: 9999;
+    }
+
+    body.loading-data::before {
+        opacity: 1;
+    }
+
     .two-column-container {
         display: grid;
         grid-template-columns: 1fr 400px; /* Left column flexible, right column fixed width */

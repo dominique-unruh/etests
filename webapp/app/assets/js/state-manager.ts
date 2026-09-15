@@ -7,6 +7,9 @@ import {
 } from "./interactive-element.js";
 
 export class StateManager {
+    // Abort a feedback request that never responds, so the loading indicator can't get stuck.
+    private static readonly feedbackRequestTimeoutMs = 30000;
+
     private interactiveElements: Map<string, InteractiveElement<JsonValue, JsonValue>> = new Map();
     private content: Map<string, Readonly<JsonValue>> = new Map();
     private examName: string;
@@ -59,7 +62,18 @@ export class StateManager {
         console.log(this, this.content);
         this.content.set(id, newElementContent);
         this.needFeedbackUpdate = .2;
+        this.updateLoadingIndicator();
         console.log("Content changed from interactive element", this.content, id);
+    }
+
+    // Number of feedback requests currently awaiting a server response.
+    private feedbackInFlight = 0
+
+    /** Sets the `loading-data` class on <body> while an answer change is waiting for feedback:
+     * either a request is in flight, or a change is queued for the next request. */
+    private updateLoadingIndicator() {
+        const loading = this.needFeedbackUpdate > 0 || this.feedbackInFlight > 0
+        document.body.classList.toggle("loading-data", loading)
     }
 
     setContent(newContent: Record<string, Readonly<JsonValue>>) {
@@ -114,30 +128,45 @@ export class StateManager {
         const prevNeedFeedbackUpdate = this.needFeedbackUpdate
         this.needFeedbackUpdate = 0;
         this.lastFeedbackUpdateRequest = Date.now()
-        const response = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                'CSRF-Token': this.csrfToken,
-            },
-            body: JSON.stringify(content),
-            })
-        if (!response.ok) {
-            this.showError(`HTTP error: ${response.status}`);
-            return;
+        this.feedbackInFlight += 1;
+        this.updateLoadingIndicator();
+        try {
+            // Time out a hung request so the promise always settles; otherwise `feedbackInFlight`
+            // would leak (stuck loading indicator) and the poller would never retry.
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    'CSRF-Token': this.csrfToken,
+                },
+                body: JSON.stringify(content),
+                signal: AbortSignal.timeout(StateManager.feedbackRequestTimeoutMs),
+                })
+            if (!response.ok) {
+                this.showError(`HTTP error: ${response.status}`);
+                this.needFeedbackUpdate = Math.max(this.needFeedbackUpdate, prevNeedFeedbackUpdate);
+                return;
+            }
+            const parsed = await response.json()
+            const feedback = parsed.feedback
+            const timedout: boolean = parsed.timedout
+            if (myCounter != this.currentFeedbackCounter)
+                return;
+            this.setFeedback(feedback);
+            if (timedout) {
+                console.log("(Feedback had timeout)")
+                this.needFeedbackUpdate = prevNeedFeedbackUpdate * 1.3;
+            }
+            if (parsed.errors != null)
+                console.log("(Feedback has errors)", parsed.errors)
+        } catch (e) {
+            // Network failure or the AbortSignal timeout: keep the change queued so the poller retries.
+            console.warn("Feedback request failed", e)
+            this.needFeedbackUpdate = Math.max(this.needFeedbackUpdate, prevNeedFeedbackUpdate);
+        } finally {
+            this.feedbackInFlight -= 1;
+            this.updateLoadingIndicator();
         }
-        const parsed = await response.json()
-        const feedback = parsed.feedback
-        const timedout: boolean = parsed.timedout
-        if (myCounter != this.currentFeedbackCounter)
-            return;
-        this.setFeedback(feedback);
-        if (timedout) {
-            console.log("(Feedback had timeout)")
-            this.needFeedbackUpdate = prevNeedFeedbackUpdate * 1.3;
-        }
-        if (parsed.errors != null)
-            console.log("(Feedback has errors)", parsed.errors)
     }
 
     async askForAnswers(kind: string) {
