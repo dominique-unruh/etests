@@ -1,5 +1,6 @@
 package assessments
 
+import assessments.BonusPointGrading.logger
 import assessments.GradingScale.{failGrade, passingGrades}
 import assessments.InterpolatedMarkdown.md
 import utils.Utils
@@ -9,6 +10,7 @@ import scala.util.boundary.break
 import assessments.HtmlConvertible.extraConversions.points2html
 import externalsystems.Spreadsheet
 import cats.syntax.foldable.*
+import com.typesafe.scalalogging.Logger
 
 /** A mapping from the number of points reached in an exam to a final grade.
   *
@@ -24,6 +26,10 @@ trait GradingScale {
   def grade(registrationNumber: String, points: Points): (Html, Double)
   /** An HTML table rendering of this scale, for display to students. */
   def html: Html
+}
+
+object BonusPointGrading {
+  private val logger = Logger[BonusPointGrading]
 }
 
 class BonusPointGrading(scale: GradingScale, passingThreshold: Points, reachableBonusPoints : Points,
@@ -48,7 +54,8 @@ class BonusPointGrading(scale: GradingScale, passingThreshold: Points, reachable
   /** Returns the final grade for a student who reached `points` points. */
   override def grade(registrationNumber: String, points: Points): (Html, Double) = {
     val comments = Seq.newBuilder[InterpolatedMarkdown[Points]]
-    val bonusPoints = bonusPointTable.lookup(bonusPointsIndex, registrationNumber)
+    val bonusPoints: Points = bonusPointTable.lookupOption(bonusPointsIndex, registrationNumber)
+      .getOrElse { logger.warn(s"No bonus points available for student $registrationNumber, assuming 0"); 0 }
     assert(bonusPoints <= reachableBonusPoints)
     val examPoints = points
     val examReachable = 100 : Points
@@ -138,4 +145,6 @@ object GradingScale {
   val passingGrades: Seq[Double] = Seq(1, 1.3, 1.7, 2, 2.3, 2.7, 3, 3.3, 3.7, 4)
   /** The grade denoting a failed exam (5.0). */
   val failGrade: Double = 5
+
+  private val logger = Logger[GradingScale]
 }

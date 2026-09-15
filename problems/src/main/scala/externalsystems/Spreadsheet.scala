@@ -80,6 +80,12 @@ case class Spreadsheet private (
       case Seq(value) => value
       case _ => throw new IllegalArgumentException(s"key: $key, index ${index.name}, multiple elements")
 
+  def lookupOption[U](index: Index[U], key: String): Option[U] =
+    lookupAll(index, key) match
+      case Seq() => None
+      case Seq(value) => Some(value)
+      case _ => throw new IllegalArgumentException(s"key: $key, index ${index.name}, multiple elements")
+
   def lookupOption(header: String, key: String): Option[Row] = lookupAll(header, key) match
     case Seq() => None
     case Seq(value) => Some(value)
