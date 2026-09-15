@@ -275,6 +275,7 @@ sealed trait Math {
         case Bool(bool) => false
         case Sympy(op, arguments*) => arguments.exists(has)
         case Math.Foreign(value) => false
+        case _ => throw MatchError(s"Missing case in hasSubterm: $math")
       }
     }
 

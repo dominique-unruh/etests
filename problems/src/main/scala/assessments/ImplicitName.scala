@@ -14,6 +14,7 @@ object ImplicitName {
       ImplicitName(summon[FromString[T]].fromString(explicitName))
   }
 
+  @FunctionalInterface
   trait FromString[T] {
     def fromString(name: String): T
   }
