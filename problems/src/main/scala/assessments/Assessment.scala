@@ -177,6 +177,9 @@ class Assessment (val name: String,
               (results + (e.name -> fb), if (outcome.fired) fired + e.name else fired)
             }.recover {
               case ex: Exception if catchExceptions =>
+                Assessment.logger.warn(
+                  s"Grader ${e.name} of $name threw for ${registrationNumber.getOrElse("NO_STUDENT")} " +
+                    "(shown as an error box in the feedback)", ex)
                 val fb = Feedback(e.name, e.renderText(this, registrationNumber, answers), Points.zero,
                   DisplayOutcome.error, None, Some(ex))
                 (results + (e.name -> fb), fired)
@@ -257,6 +260,8 @@ class Assessment (val name: String,
 }
 
 object Assessment {
+  private val logger = com.typesafe.scalalogging.Logger[Assessment]
+
   val feedbackTimeout = Duration("1 second")
 
   /** The stylesheet embedded into every static (non-webapp) render — archives, exported PDFs, and
