@@ -28,7 +28,7 @@ object Sciebo {
   def getPublicReadLink(root: Path, path: Path): String = {
     def once(): String = {
       val subpath = root.relativize(path).toString
-      PersistentCache.getOrCompute[String](s"SCIEBO-PUBLIC-LINK2:$subpath".getBytes, _.getBytes, new String(_)) {
+      PersistentCache.getOrCompute[String](s"SCIEBO-PUBLIC-LINK3:$subpath".getBytes, _.getBytes, new String(_)) {
         synchronized {
           Utils.waitUntil(lastRequest.plus((secondsBetweenRequests * 1000).toLong, ChronoUnit.MILLIS))
           lastRequest = Instant.now()
