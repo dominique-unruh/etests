@@ -185,6 +185,7 @@ object TaskGradeEveryone extends Task {
   
   private def makeReports(): Unit = {
     val targetDir = gradingReportDir
+    Files.createDirectories(targetDir)
 //    val targetDir = Utils.getSystemPropertyPath("student.report.dir", "the directory where to write the student reports")
     Files.writeString(targetDir.resolve("errors.html"), "Grading task in progress.")
     val errors = mutable.Queue[(String, Assessment, String)]()
