@@ -22,7 +22,11 @@ import scala.collection.SeqMap
 object CreateGradeMailing extends Task {
   val examResults = Spreadsheet.load(gradingResultSpreadsheet, CSV.default)
   val allStudentsSheet = Spreadsheet.load(allStudents, CSV.default)
+  var counter = 0
+  val total = examResults.rows.length
   val rows = for (row <- examResults.rows) yield {
+    counter += 1
+    println(s"$counter/$total: ${row.student}")
     assert(row.grade.nonEmpty)
     val grade = f"${row.grade.toDouble}%.1f"
     val regno = row.student
@@ -37,8 +41,9 @@ object CreateGradeMailing extends Task {
       "registration" -> regno)
   }
   val sheet = Spreadsheet.fromMapIterable(rows)
-  sheet.save(TaskContext.lecturePrivateDir resolve "exam1/grade-mailing.csv", format = CSV.default)
-  println("Done.")
+  val targetFile = TaskContext.examPrivateDir resolve "grade-mailing.csv"
+  sheet.save(targetFile, format = CSV.default)
+  println(s"Done. Mailing in: $targetFile")
 }
 
 /*
@@ -77,13 +82,13 @@ Dear all,
 the exam has been graded. If you participated, you should have gotten an email with the grade.
 If you did not get one, please contact me.
 
-The email also contained a link to a personal Sciebo folder with detailed grading information. The password for the folder is "password".
+The email also contained a link to a personal Sciebo folder with detailed grading information.
 
 This Sciebo folder contains:
 
-    grading.pdf: Your exam, with your grade and detailed information about the grading of each problem.
-    grading.html: Same as HTML.
-    dynexite.pdf: Your exam as downloaded directly from Dynexite. (It shows how Dynexite processed your input in case you suspect something broke into the translation into our software.)
+* grading.pdf: Your exam, with your grade and detailed information about the grading of each problem.
+* grading.html: Same as HTML.
+* dynexite.pdf: Your exam as downloaded directly from Dynexite. (It shows how Dynexite processed your input in case you suspect something broke into the translation into our software.)
 
 The grade distribution (before the exam inspection, including only students who showed up) was:
 
