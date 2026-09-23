@@ -13,14 +13,12 @@
         @*        <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/favicon.png")">*@
         <script type="text/javascript" src="@routes.MiscController.javascriptRoutes"></script>
             <!--suppress JSUnresolvedLibraryURL -->
+        @* Shared MathJax configuration, see webapp/app/views/assessment.scala.html. Must come
+           before the MathJax script. *@
+        <script src="@routes.Assets.versioned("lib/problems/js/mathjax-config.js")"></script>
         <script id="MathJax-script" async src="@routes.Assets.versioned("lib/mathjax/es5/tex-mml-chtml.js")"></script>
         <script src="@routes.Assets.versioned("lib/jquery/jquery.min.js")"></script>
         <script> @* misc configuration *@
-        window.MathJax = {
-            tex: {
-                inlineMath: [['$', '$'], ['\\(', '\\)']]
-            }
-        };
         let csrfToken = "@(CSRF.getToken.value)";
         </script>
 @*        <script language="JavaScript" src="@routes.Assets.versioned("js/assessment.js")"></script>*@

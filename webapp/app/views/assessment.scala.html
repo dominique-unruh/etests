@@ -18,15 +18,11 @@
         <link rel="stylesheet" href="@routes.Assets.versioned("stylesheets/main.css")">
         <script type="text/javascript" src="@routes.MiscController.javascriptRoutes"></script>
         <script src="@routes.Assets.versioned("lib/jquery/jquery.min.js")"></script>
+        @* MathJax configuration (delimiters, copyable/accessible LaTeX source); shared with static
+           HTML rendering, which inlines the same file via Assessment.mathjaxConfigJS. Must come
+           before the MathJax script below. *@
+        <script src="@routes.Assets.versioned("lib/problems/js/mathjax-config.js")"></script>
         <script>
-            window.MathJax = {
-                tex: {
-                    inlineMath: [['$', '$'], ['\\(', '\\)']]
-                },
-                // startup: {
-                //     typeset: false
-                // },
-            };
             window.csrfToken = "@(CSRF.getToken.value)";
         </script>
         <script id="MathJax-script" src="@routes.Assets.versioned("lib/mathjax/es5/tex-mml-chtml.js")"></script>

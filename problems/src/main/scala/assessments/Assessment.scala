@@ -286,15 +286,25 @@ object Assessment {
       resources.get(0).getContentAsString
     } finally scanResult.close()
   }
+  /** The MathJax configuration (delimiters, copyable/accessible LaTeX source), shared with the
+   *  preview webapp, which serves the same file as `lib/problems/js/mathjax-config.js`. Compiled
+   *  from `problems/src/main/assets/js/mathjax-config.js` and located on the classpath the same way
+   *  as [[staticCSS]] (see there for why the path is matched by its tail). */
+  lazy val mathjaxConfigJS: String = {
+    val scanResult = new ClassGraph().acceptPaths("META-INF/resources", "js").scan()
+    try {
+      val resources = scanResult.getResourcesWithLeafName("mathjax-config.js")
+        .filter(_.getPath.endsWith("js/mathjax-config.js"))
+      if (resources.isEmpty)
+        throw new RuntimeException(
+          "Could not find js/mathjax-config.js on the classpath (is the sbt-web build output present?)")
+      resources.get(0).getContentAsString
+    } finally scanResult.close()
+  }
   lazy val htmlHeaderStatic: Html = Html(
     ind"""<meta charset="UTF-8">
          |<script>
-         |  window.MathJax = {
-         |    tex: {
-         |      inlineMath: [['$$', '$$'], ['\\\\(', '\\\\)']],
-         |      displayMath: [['$$$$', '$$$$'], ['\\\\[', '\\\\]']]
-         |    }
-         |  };
+         |  $mathjaxConfigJS
          |</script>
          |<style>
          |  $staticCSS
