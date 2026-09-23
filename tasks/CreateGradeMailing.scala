@@ -41,7 +41,7 @@ object CreateGradeMailing extends Task {
       "registration" -> regno)
   }
   val sheet = Spreadsheet.fromMapIterable(rows)
-  val targetFile = TaskContext.examPrivateDir resolve "grade-mailing.csv"
+  val targetFile = TaskContext.examPrivateDir.resolve("grade-mailing.csv")
   sheet.save(targetFile, format = CSV.default)
   println(s"Done. Mailing in: $targetFile")
 }
