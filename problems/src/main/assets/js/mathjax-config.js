@@ -5,9 +5,17 @@
 
    Besides the delimiters, this makes typeset math copyable: MathJax's CHTML output draws glyphs
    with CSS-generated content, so selecting and copying it yields nothing. A render action appends
-   the original LaTeX source as a visually hidden <mjx-copytext> node (styled in
-   `problems/src/main/assets/stylesheets/_mathjax.scss`), which is what ends up in the clipboard and
-   what assistive technology reads. */
+   the original LaTeX source as a visually hidden <mjx-copytext> node, which is what ends up in the
+   clipboard and what assistive technology reads. */
+
+/* Styling of that node, applied inline rather than through a stylesheet so that it cannot get out
+   of sync with this file (static HTML inlines a stylesheet that is located on the classpath, where
+   a stale build artifact can win — which showed the LaTeX source as ordinary text).
+   Clipped rather than hidden: display:none / visibility:hidden would exclude it both from the
+   selection and from assistive technology. */
+const MJX_COPYTEXT_STYLE =
+    'position: absolute; clip: rect(1px, 1px, 1px, 1px); width: 1px; height: 1px;' +
+    ' overflow: hidden; -webkit-user-select: text; user-select: text;';
 window.MathJax = {
     tex: {
         inlineMath: [['$', '$'], ['\\(', '\\)']],
@@ -46,7 +54,8 @@ window.MathJax = {
         if (!math.isEscaped) {
             const adaptor = doc.adaptor;
             const latex = math.start.delim + math.math + math.end.delim;
-            const text = adaptor.node('mjx-copytext', {role: 'math', 'aria-label': latex},
+            const text = adaptor.node('mjx-copytext',
+                {role: 'math', 'aria-label': latex, style: MJX_COPYTEXT_STYLE},
                 [adaptor.text(latex)]);
             // Hide the visual rendering from assistive technology and offer the LaTeX instead
             // (what MathJax does for its assistive MathML node).

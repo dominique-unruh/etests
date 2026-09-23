@@ -275,29 +275,29 @@ object Assessment {
    *  nothing on a clean build, causing static renders to ship outdated or missing styling.)
    *
    *  The webapp does not use this; it serves its own compiled `main.css`. */
-  lazy val staticCSS: String = {
-    val scanResult = new ClassGraph().acceptPaths("META-INF/resources", "stylesheets").scan()
-    try {
-      val resources = scanResult.getResourcesWithLeafName("static.css")
-        .filter(_.getPath.endsWith("stylesheets/static.css"))
-      if (resources.isEmpty)
-        throw new RuntimeException(
-          "Could not find stylesheets/static.css on the classpath (is the sbt-sassify build output present?)")
-      resources.get(0).getContentAsString
-    } finally scanResult.close()
-  }
+  lazy val staticCSS: String = webjarResource("stylesheets/static.css")
   /** The MathJax configuration (delimiters, copyable/accessible LaTeX source), shared with the
    *  preview webapp, which serves the same file as `lib/problems/js/mathjax-config.js`. Compiled
    *  from `problems/src/main/assets/js/mathjax-config.js` and located on the classpath the same way
-   *  as [[staticCSS]] (see there for why the path is matched by its tail). */
-  lazy val mathjaxConfigJS: String = {
-    val scanResult = new ClassGraph().acceptPaths("META-INF/resources", "js").scan()
+   *  as [[staticCSS]]. */
+  lazy val mathjaxConfigJS: String = webjarResource("js/mathjax-config.js")
+
+  /** Reads the sbt-web build output `path` (e.g. `stylesheets/static.css`) from the classpath.
+   *
+   *  Only the *webjar* copy under `META-INF/resources/webjars/` counts. sbt-web also leaves the
+   *  same files at the classpath root of some build/run configurations, and those copies are not
+   *  always regenerated: matching them too made the lookup depend on classpath order and could
+   *  silently serve a stale file (which once shipped static HTML without the `mjx-copytext` rule,
+   *  showing the hidden LaTeX source as ordinary text). */
+  private def webjarResource(path: String): String = {
+    val scanResult = new ClassGraph().acceptPaths("META-INF/resources").scan()
     try {
-      val resources = scanResult.getResourcesWithLeafName("mathjax-config.js")
-        .filter(_.getPath.endsWith("js/mathjax-config.js"))
+      val resources = scanResult.getResourcesWithLeafName(path.split('/').last)
+        .filter(r => r.getPath.contains("META-INF/resources/webjars/") && r.getPath.endsWith(path))
       if (resources.isEmpty)
         throw new RuntimeException(
-          "Could not find js/mathjax-config.js on the classpath (is the sbt-web build output present?)")
+          s"Could not find $path below META-INF/resources/webjars on the classpath " +
+            "(is the sbt-web build output present?)")
       resources.get(0).getContentAsString
     } finally scanResult.close()
   }
